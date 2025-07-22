@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Settings as SettingsIcon, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+  SheetClose,
+} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -142,17 +142,17 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button variant="ghost" size="icon">
           <SettingsIcon className="h-5 w-5" />
           <span className="sr-only">Settings</span>
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
+      </SheetTrigger>
+      <SheetContent side="right" className="max-h-[100vh] w-[400px] sm:max-w-[540px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Settings</SheetTitle>
+        </SheetHeader>
         <div className="grid gap-6 py-4">
            <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">
@@ -284,15 +284,15 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
                 </div>
             </div>
         </div>
-        <DialogFooter>
-          <DialogClose asChild>
+        <SheetFooter>
+          <SheetClose asChild>
             <Button type="button" variant="secondary">
               Cancel
             </Button>
-          </DialogClose>
+          </SheetClose>
           <Button onClick={handleSave}>Save changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
