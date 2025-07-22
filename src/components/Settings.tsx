@@ -19,16 +19,28 @@ import { ThemeToggle } from './ThemeToggle';
 import { Separator } from './ui/separator';
 import type { ComponentVisibility } from '@/app/page';
 import { Switch } from './ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, visibility: ComponentVisibility) => void;
+  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, visibility: ComponentVisibility) => void;
 }
+
+const languages = [
+    { value: 'English', label: 'English' },
+    { value: 'Spanish', label: 'Español' },
+    { value: 'French', label: 'Français' },
+    { value: 'German', label: 'Deutsch' },
+    { value: 'Japanese', label: '日本語' },
+    { value: 'Korean', label: '한국어' },
+    { value: 'Vietnamese', label: 'Tiếng Việt' },
+];
 
 export function Settings({ onSettingsSave }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [count, setCount] = useState(5);
+  const [language, setLanguage] = useState('English');
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
     greeting: true,
@@ -42,11 +54,13 @@ export function Settings({ onSettingsSave }: SettingsProps) {
       const savedTopic = localStorage.getItem('newTabTopic') || '';
       const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
       const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
+      const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
       const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
 
       setTopic(savedTopic);
       setView(savedView);
       setCount(savedCount);
+      setLanguage(savedLanguage)
       setVisibility({
         clock: savedVisibility.clock ?? true,
         greeting: savedVisibility.greeting ?? true,
@@ -61,8 +75,9 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     localStorage.setItem('newTabTopic', topic);
     localStorage.setItem('newTabView', view);
     localStorage.setItem('newTabCount', count.toString());
+    localStorage.setItem('newTabLanguage', language);
     localStorage.setItem('newTabVisibility', JSON.stringify(visibility));
-    onSettingsSave(topic, view, count, visibility);
+    onSettingsSave(topic, view, count, language, visibility);
     setIsOpen(false);
   };
   
@@ -112,13 +127,28 @@ export function Settings({ onSettingsSave }: SettingsProps) {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="language" className="text-right">
+              Language
+            </Label>
+            <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a language" />
+                </SelectTrigger>
+                <SelectContent>
+                    {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="count" className="text-right">
               Number
             </Label>
             <Input
               id="count"
               type="number"
-              value={count}
+              value={count === 0 ? '' : count}
               onChange={handleCountChange}
               className="col-span-3"
               placeholder="e.g. 5"

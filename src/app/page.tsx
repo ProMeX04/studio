@@ -66,6 +66,7 @@ export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
   const [count, setCount] = useState(5);
+  const [language, setLanguage] = useState('English');
   const [isLoading, setIsLoading] = useState(false);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
@@ -78,7 +79,7 @@ export default function Home() {
     learn: true,
   });
 
-  const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, forceNew: boolean = false) => {
+  const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
       return;
     }
@@ -103,8 +104,8 @@ export default function Home() {
         setFlashcardSet(null);
         setQuizSet(null);
 
-        const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: currentCount });
-        const quizPromise = generateQuiz({ topic: currentTopic, count: currentCount });
+        const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: currentCount, language: currentLanguage });
+        const quizPromise = generateQuiz({ topic: currentTopic, count: currentCount, language: currentLanguage });
 
         const [flashcards, quiz] = await Promise.all([flashcardsPromise, quizPromise]);
         
@@ -130,11 +131,13 @@ export default function Home() {
     const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
     const savedTopic = localStorage.getItem('newTabTopic') || 'Roman History';
     const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
+    const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
     const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
 
     setView(savedView);
     setTopic(savedTopic);
-    setCount(savedCount)
+    setCount(savedCount);
+    setLanguage(savedLanguage);
     setVisibility({
         clock: savedVisibility.clock ?? true,
         greeting: savedVisibility.greeting ?? true,
@@ -142,20 +145,22 @@ export default function Home() {
         quickLinks: savedVisibility.quickLinks ?? true,
         learn: savedVisibility.learn ?? true,
     });
-    handleGenerate(savedTopic, savedCount);
+    handleGenerate(savedTopic, savedCount, savedLanguage);
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newVisibility: ComponentVisibility) => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newLanguage: string, newVisibility: ComponentVisibility) => {
+    const topicChanged = newTopic !== topic;
     setTopic(newTopic);
     setView(newView);
     setCount(newCount);
+    setLanguage(newLanguage);
     setVisibility(newVisibility);
     // When settings are saved, we force a regeneration if topic has changed.
-    handleGenerate(newTopic, newCount, topic !== newTopic);
+    handleGenerate(newTopic, newCount, newLanguage, topicChanged);
   };
   
   const onGenerateNew = () => {
-     handleGenerate(topic, count, true);
+     handleGenerate(topic, count, language, true);
   }
 
 
