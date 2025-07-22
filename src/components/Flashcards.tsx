@@ -1,65 +1,80 @@
 "use client";
 
-import { useState, useMemo } from 'react';
-import { BookOpen, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { generateFlashcards, GenerateFlashcardsOutput } from '@/ai/flows/generate-flashcards';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+
+interface Flashcard {
+  front: string;
+  back: string;
+}
+
+interface FlashcardSet {
+  id: string;
+  topic: string;
+  cards: Flashcard[];
+}
 
 export function Flashcards() {
-  const [topic, setTopic] = useState('');
-  const [flashcards, setFlashcards] = useState<GenerateFlashcardsOutput>([]);
+  const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([]);
+  const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleGenerate = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
-    if (!topic.trim()) return;
-
-    setIsLoading(true);
-    setFlashcards([]);
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
-
-    try {
-      const result = await generateFlashcards({ topic });
-      if (result.length === 0) {
-        toast({ title: 'No flashcards generated', description: 'Try a different topic.' });
+  useEffect(() => {
+    const fetchFlashcards = async () => {
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, 'flashcards'), orderBy('createdAt', 'desc'), limit(5));
+        const querySnapshot = await getDocs(q);
+        const sets = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
+        setFlashcardSets(sets);
+        if (sets.length === 0) {
+          toast({ title: 'No flashcards found', description: 'There are no flashcard sets in the database.' });
+        }
+      } catch (error) {
+        console.error(error);
+        toast({ title: 'Error', description: 'Failed to fetch flashcards.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
       }
-      setFlashcards(result);
-    } catch (error) {
-      console.error(error);
-      toast({ title: 'Error', description: 'Failed to generate flashcards.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    fetchFlashcards();
+  }, [toast]);
 
-  const handleNext = () => {
+  const handleNextCard = () => {
     setIsFlipped(false);
     setTimeout(() => {
-        if(currentCardIndex === flashcards.length - 1) {
-            handleGenerate();
-        } else {
-            setCurrentCardIndex((prev) => prev + 1);
-        }
-    }, 150) // wait for flip back animation
+      setCurrentCardIndex((prev) => (prev + 1) % (flashcardSets[currentSetIndex]?.cards.length || 1));
+    }, 150);
   };
+  
+  const handleNextSet = () => {
+      setIsFlipped(false);
+      setCurrentCardIndex(0);
+      setCurrentSetIndex((prev) => (prev + 1) % (flashcardSets.length || 1));
+  }
 
-  const currentCard = useMemo(() => flashcards[currentCardIndex], [flashcards, currentCardIndex]);
+  const currentSet = useMemo(() => flashcardSets[currentSetIndex], [flashcardSets, currentSetIndex]);
+  const currentCard = useMemo(() => currentSet?.cards[currentCardIndex], [currentSet, currentCardIndex]);
 
   return (
     <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline">
-          <BookOpen className="h-5 w-5" />
-          AI Flashcards
+        <CardTitle className="flex items-center justify-between gap-2 font-headline">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            AI Flashcards
+          </div>
+          {currentSet && <span className="text-sm font-normal text-muted-foreground">{currentSet.topic}</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col justify-center items-center">
@@ -68,46 +83,34 @@ export function Flashcards() {
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
           </div>
-        ) : flashcards.length > 0 ? (
+        ) : currentCard ? (
           <div className="w-full space-y-4">
             <div className="flashcard-container h-48" onClick={() => setIsFlipped(!isFlipped)}>
-                <div className={cn("flashcard relative w-full h-full cursor-pointer rounded-lg border bg-primary/20", { 'is-flipped': isFlipped })}>
-                    <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center">
-                        <p className="text-lg font-semibold text-primary-foreground">{currentCard?.front}</p>
-                    </div>
-                    <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg bg-accent/30">
-                        <p className="text-lg text-accent-foreground">{currentCard?.back}</p>
-                    </div>
+              <div className={cn("flashcard relative w-full h-full cursor-pointer rounded-lg border bg-primary/20", { 'is-flipped': isFlipped })}>
+                <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center">
+                  <p className="text-lg font-semibold text-primary-foreground">{currentCard?.front}</p>
                 </div>
+                <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg bg-accent/30">
+                  <p className="text-lg text-accent-foreground">{currentCard?.back}</p>
+                </div>
+              </div>
             </div>
             <p className="text-center text-sm text-muted-foreground">
-              Card {currentCardIndex + 1} of {flashcards.length}
+              Card {currentCardIndex + 1} of {currentSet.cards.length}
             </p>
           </div>
         ) : (
           <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-             Enter a topic to generate flashcards.
+             No flashcards available.
           </div>
         )}
       </CardContent>
       <CardFooter className="flex-col !pt-0 gap-2">
-        {flashcards.length > 0 ? (
-            <Button onClick={handleNext} className="w-full">
-              {currentCardIndex === flashcards.length - 1 ? "Generate New Set" : "Next Card"}
-            </Button>
-        ) : (
-          <form onSubmit={handleGenerate} className="flex w-full gap-2">
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. World Capitals"
-              disabled={isLoading}
-              className='bg-background/50'
-            />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? <RefreshCw className="h-4 w-4 animate-spin"/> : 'Go'}
-            </Button>
-          </form>
+        {flashcardSets.length > 0 && (
+          <div className="w-full flex gap-2">
+            <Button onClick={handleNextCard} className="w-full">Next Card</Button>
+            <Button onClick={handleNextSet} variant="secondary" className="w-full">Next Set</Button>
+          </div>
         )}
       </CardFooter>
     </Card>

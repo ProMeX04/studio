@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { FileQuestion, RefreshCw } from 'lucide-react';
+import { FileQuestion } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Skeleton } from './ui/skeleton';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 import { Progress } from './ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 
 interface QuizQuestion {
   question: string;
@@ -20,48 +20,74 @@ interface QuizQuestion {
 }
 
 interface QuizData {
+  id: string;
+  topic: string;
   questions: QuizQuestion[];
 }
 
 export function Quiz() {
-  const [topic, setTopic] = useState('');
-  const [quiz, setQuiz] = useState<QuizData | null>(null);
+  const [quizzes, setQuizzes] = useState<QuizData[]>([]);
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFinished, setIsFinished] = useState(false);
   const { toast } = useToast();
 
-  const handleGenerate = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
-    if (!topic.trim()) return;
-    
-    setIsLoading(true);
-    setQuiz(null);
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, 'quizzes'), orderBy('createdAt', 'desc'), limit(5));
+        const querySnapshot = await getDocs(q);
+        const quizData = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // The quiz is stored as a JSON string in the 'quiz' field
+            const parsedQuiz = JSON.parse(data.quiz);
+            return {
+                id: doc.id,
+                topic: data.topic,
+                questions: parsedQuiz.questions,
+            } as QuizData;
+        });
+        setQuizzes(quizData);
+        if (quizData.length === 0) {
+          toast({ title: 'No quizzes found', description: 'There are no quizzes in the database.' });
+        }
+      } catch (error) {
+        console.error(error);
+        toast({ title: 'Error', description: 'Failed to fetch quizzes.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchQuizzes();
+  }, [toast]);
+  
+  const currentQuiz = quizzes[currentQuizIndex];
+  
+  const resetQuizState = () => {
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsCorrect(null);
     setScore(0);
     setIsFinished(false);
+  }
 
-    try {
-      const result = await generateQuiz({ topic });
-      const parsedQuiz: QuizData = JSON.parse(result.quiz);
-      setQuiz(parsedQuiz);
-    } catch (error) {
-      console.error(error);
-      toast({ title: 'Error', description: 'Failed to generate quiz. The AI might have returned an invalid format. Please try again.', variant: 'destructive' });
-      setQuiz(null);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleNextQuiz = () => {
+    resetQuizState();
+    setCurrentQuizIndex((prev) => (prev + 1) % (quizzes.length || 1));
+  };
+  
+  const handleRestart = () => {
+    resetQuizState();
   };
 
   const handleSubmitAnswer = () => {
-    if (!selectedAnswer || !quiz) return;
-    const correct = selectedAnswer === quiz.questions[currentQuestionIndex].answer;
+    if (!selectedAnswer || !currentQuiz) return;
+    const correct = selectedAnswer === currentQuiz.questions[currentQuestionIndex].answer;
     setIsCorrect(correct);
     if (correct) {
       setScore(s => s + 1);
@@ -71,26 +97,25 @@ export function Quiz() {
   const handleNextQuestion = () => {
     setIsCorrect(null);
     setSelectedAnswer(null);
-    if (currentQuestionIndex === quiz!.questions.length - 1) {
+    if (currentQuestionIndex === currentQuiz!.questions.length - 1) {
       setIsFinished(true);
     } else {
       setCurrentQuestionIndex(i => i + 1);
     }
   };
-  
-  const handleRestart = () => {
-    handleGenerate();
-  };
 
-  const currentQuestion = quiz?.questions[currentQuestionIndex];
-  const progress = quiz ? ((currentQuestionIndex) / quiz.questions.length) * 100 : 0;
+  const currentQuestion = currentQuiz?.questions[currentQuestionIndex];
+  const progress = currentQuiz ? ((currentQuestionIndex) / currentQuiz.questions.length) * 100 : 0;
 
   return (
     <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline">
-          <FileQuestion className="h-5 w-5" />
-          AI Quiz
+        <CardTitle className="flex items-center justify-between gap-2 font-headline">
+            <div className="flex items-center gap-2">
+                <FileQuestion className="h-5 w-5" />
+                AI Quiz
+            </div>
+            {currentQuiz && <span className="text-sm font-normal text-muted-foreground">{currentQuiz.topic}</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col justify-center">
@@ -102,7 +127,7 @@ export function Quiz() {
             <Skeleton className="h-4 w-full" />
           </div>
         )}
-        {!isLoading && quiz && !isFinished && currentQuestion && (
+        {!isLoading && currentQuiz && !isFinished && currentQuestion && (
             <div className="space-y-4">
                 <Progress value={progress} className="h-2" />
                 <p className="font-semibold text-lg">{currentQuestion.question}</p>
@@ -123,40 +148,29 @@ export function Quiz() {
         {!isLoading && isFinished && (
             <div className="text-center space-y-4">
                 <h3 className="text-2xl font-bold">Quiz Complete!</h3>
-                <p className="text-lg">Your score: {score} / {quiz?.questions.length}</p>
-                <Button onClick={handleRestart}>Play Again with Same Topic</Button>
+                <p className="text-lg">Your score: {score} / {currentQuiz?.questions.length}</p>
+                <Button onClick={handleRestart}>Play Again</Button>
             </div>
         )}
-        {!isLoading && !quiz && !isFinished && (
+        {!isLoading && !currentQuiz && !isFinished && (
             <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-                 Enter a topic to generate a quiz.
+                 No quizzes available.
             </div>
         )}
 
       </CardContent>
       <CardFooter className="flex-col !pt-0 gap-2">
-        {quiz && !isFinished ? (
+        {currentQuiz && !isFinished ? (
             isCorrect !== null ? (
                 <Button onClick={handleNextQuestion} className="w-full">
-                    {currentQuestionIndex === quiz.questions.length - 1 ? "Finish Quiz" : "Next Question"}
+                    {currentQuestionIndex === currentQuiz.questions.length - 1 ? "Finish Quiz" : "Next Question"}
                 </Button>
             ) : (
                 <Button onClick={handleSubmitAnswer} disabled={!selectedAnswer} className="w-full">Submit</Button>
             )
-        ) : (
-          <form onSubmit={handleGenerate} className="flex w-full gap-2">
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Solar System"
-              disabled={isLoading}
-              className='bg-background/50'
-            />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? <RefreshCw className="h-4 w-4 animate-spin"/> : 'Go'}
-            </Button>
-          </form>
-        )}
+        ) : quizzes.length > 0 ? (
+            <Button onClick={handleNextQuiz} className="w-full">Next Quiz</Button>
+        ) : null }
       </CardFooter>
     </Card>
   );
