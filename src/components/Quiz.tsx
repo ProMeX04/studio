@@ -74,7 +74,7 @@ export function Quiz({ quizSet }: QuizProps) {
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
-             <h3 className="text-xl font-semibold text-center">{currentQuestion.question}</h3>
+             <h3 className="text-2xl font-semibold text-center">{currentQuestion.question}</h3>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
                 onValueChange={handleAnswerSelect}
@@ -85,7 +85,7 @@ export function Quiz({ quizSet }: QuizProps) {
                 <Label
                   key={index}
                   className={cn(
-                    "flex items-center gap-4 p-4 rounded-lg border transition-colors",
+                    "flex items-center gap-4 p-4 rounded-lg border transition-colors text-lg",
                     isAnswered ? getOptionClass(option) : 'cursor-pointer hover:bg-accent/50'
                   )}
                 >
@@ -96,11 +96,11 @@ export function Quiz({ quizSet }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className="p-4 rounded-lg bg-secondary/70">
-                    <p className="font-bold">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
-                    <p className="text-sm text-secondary-foreground">{currentQuestion.explanation}</p>
+                    <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
+                    <p className="text-base text-secondary-foreground">{currentQuestion.explanation}</p>
                  </div>
             )}
-            <p className="text-center text-sm text-muted-foreground pt-4">
+            <p className="text-center text-base text-muted-foreground pt-4">
               Question {currentQuestionIndex + 1} of {quizSet.questions.length}
             </p>
           </div>
