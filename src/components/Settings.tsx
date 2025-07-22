@@ -139,9 +139,10 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   };
 
   const handleRemoveBackground = () => {
-    setSelectedBackground(null); // Use null to signify removal
+    setSelectedBackground(null);
     setUploadedBackground(null);
     localStorage.removeItem('newTabUploadedBackground');
+    onSettingsSave(topic, count, language, null);
   };
 
   return (
