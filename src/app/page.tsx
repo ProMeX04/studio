@@ -1,10 +1,76 @@
 "use client";
 
+import { useState } from 'react';
 import { Greeting } from '@/components/Greeting';
 import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
-import { Chat } from '@/components/Chat';
+import { Flashcards } from '@/components/Flashcards';
+import { Quiz } from '@/components/Quiz';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { addFlashcardsToDb } from '@/ai/flows/generate-flashcards';
+import { addQuizToDb } from '@/ai/flows/generate-quiz';
+import { Loader } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+
+function Learn() {
+  const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
+  const [topic, setTopic] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      toast({ title: 'Error', description: 'Please enter a topic.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Run sequentially to avoid overloading the API
+      await addFlashcardsToDb({ topic });
+      await addQuizToDb({ topic });
+
+      toast({ title: 'Success', description: `Content for "${topic}" generated successfully.` });
+      // Components will refetch data automatically
+      setTopic('');
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Error', description: 'Failed to generate content. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+     <Card className="w-full bg-transparent shadow-none border-none p-0">
+        <div className="flex flex-col sm:flex-row items-center gap-2 p-4 border-b">
+            <div className="flex-grow w-full">
+                <Input 
+                    placeholder="Enter a topic to generate flashcards & quizzes..."
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    disabled={isLoading}
+                />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+                 <Button onClick={handleGenerate} disabled={isLoading} className="w-full sm:w-auto">
+                    {isLoading ? <Loader className="animate-spin" /> : 'Generate'}
+                </Button>
+                <div className="flex gap-2">
+                    <Button variant={view === 'flashcards' ? 'default' : 'outline'} onClick={() => setView('flashcards')}>Flashcards</Button>
+                    <Button variant={view === 'quiz' ? 'default' : 'outline'} onClick={() => setView('quiz')}>Quiz</Button>
+                </div>
+            </div>
+        </div>
+        <div>
+            {view === 'flashcards' ? <Flashcards /> : <Quiz />}
+        </div>
+     </Card>
+  );
+}
+
 
 export default function Home() {
   return (
@@ -20,7 +86,7 @@ export default function Home() {
             <QuickLinks />
           </div>
           <div className="lg:col-span-4">
-            <Chat />
+            <Learn />
           </div>
         </div>
       </div>
