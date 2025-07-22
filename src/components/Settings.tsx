@@ -15,6 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { ThemeToggle } from './ThemeToggle';
+import { Separator } from './ui/separator';
 
 interface SettingsProps {
   onSettingsSave: (topic: string, view: 'flashcards' | 'quiz') => void;
@@ -54,9 +56,18 @@ export function Settings({ onSettingsSave }: SettingsProps) {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <div className="grid gap-6 py-4">
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              Theme
+            </Label>
+            <div className="col-span-3">
+              <ThemeToggle />
+            </div>
+          </div>
+          <Separator />
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="topic" className="text-right">
-              Topic
+              Learn Topic
             </Label>
             <Input
               id="topic"
@@ -67,7 +78,7 @@ export function Settings({ onSettingsSave }: SettingsProps) {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">View</Label>
+            <Label className="text-right">Learn View</Label>
             <RadioGroup 
               value={view}
               onValueChange={(value) => setView(value as 'flashcards' | 'quiz')}

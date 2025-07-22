@@ -14,7 +14,31 @@ import { Loader } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 
-function Learn() {
+interface LearnProps {
+  view: 'flashcards' | 'quiz';
+  isLoading: boolean;
+  flashcardSet: FlashcardSet | null;
+  quizSet: QuizSet | null;
+}
+
+function Learn({ view, isLoading, flashcardSet, quizSet }: LearnProps) {
+  return (
+     <Card className="w-full bg-transparent shadow-none border-none p-0">
+        <div>
+            {isLoading && (
+              <div className="flex justify-center items-center h-48">
+                <Loader className="animate-spin" />
+              </div>
+            )}
+            {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
+            {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
+        </div>
+     </Card>
+  );
+}
+
+
+export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +48,6 @@ function Learn() {
 
   const handleGenerate = useCallback(async (currentTopic: string) => {
     if (!currentTopic.trim()) {
-      // Don't show an error, just show the default empty state.
       return;
     }
     setIsLoading(true);
@@ -67,27 +90,10 @@ function Learn() {
 
 
   return (
-     <Card className="w-full bg-transparent shadow-none border-none p-0">
-        <div className="absolute top-0 right-0">
+    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
+       <div className="absolute top-4 right-4">
             <Settings onSettingsSave={onSettingsSave} />
         </div>
-        <div>
-            {isLoading && (
-              <div className="flex justify-center items-center h-48">
-                <Loader className="animate-spin" />
-              </div>
-            )}
-            {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
-            {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
-        </div>
-     </Card>
-  );
-}
-
-
-export default function Home() {
-  return (
-    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8">
         <Clock />
         <Greeting />
@@ -99,7 +105,12 @@ export default function Home() {
             <QuickLinks />
           </div>
           <div className="lg:col-span-4 relative">
-            <Learn />
+             <Learn 
+                view={view}
+                isLoading={isLoading}
+                flashcardSet={flashcardSet}
+                quizSet={quizSet}
+             />
           </div>
         </div>
       </div>
