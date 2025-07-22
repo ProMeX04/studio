@@ -53,6 +53,14 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnP
   );
 }
 
+export interface ComponentVisibility {
+  clock: boolean;
+  greeting: boolean;
+  search: boolean;
+  quickLinks: boolean;
+  learn: boolean;
+}
+
 
 export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -62,6 +70,13 @@ export default function Home() {
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
+  const [visibility, setVisibility] = useState<ComponentVisibility>({
+    clock: true,
+    greeting: true,
+    search: true,
+    quickLinks: true,
+    learn: true,
+  });
 
   const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
@@ -115,19 +130,28 @@ export default function Home() {
     const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
     const savedTopic = localStorage.getItem('newTabTopic') || 'Roman History';
     const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
+    const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
 
     setView(savedView);
     setTopic(savedTopic);
     setCount(savedCount)
+    setVisibility({
+        clock: savedVisibility.clock ?? true,
+        greeting: savedVisibility.greeting ?? true,
+        search: savedVisibility.search ?? true,
+        quickLinks: savedVisibility.quickLinks ?? true,
+        learn: savedVisibility.learn ?? true,
+    });
     handleGenerate(savedTopic, savedCount);
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number) => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newVisibility: ComponentVisibility) => {
     setTopic(newTopic);
     setView(newView);
     setCount(newCount);
-    // When settings are saved, we force a regeneration.
-    handleGenerate(newTopic, newCount, true);
+    setVisibility(newVisibility);
+    // When settings are saved, we force a regeneration if topic has changed.
+    handleGenerate(newTopic, newCount, topic !== newTopic);
   };
   
   const onGenerateNew = () => {
@@ -141,24 +165,28 @@ export default function Home() {
             <Settings onSettingsSave={onSettingsSave} />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8">
-        <Clock />
-        <Greeting />
-        <Search />
+        {visibility.clock && <Clock />}
+        {visibility.greeting && <Greeting />}
+        {visibility.search && <Search />}
       </div>
       <div className="w-full max-w-6xl space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-4">
-            <QuickLinks />
-          </div>
-          <div className="lg:col-span-4 relative">
-             <Learn 
-                view={view}
-                isLoading={isLoading}
-                flashcardSet={flashcardSet}
-                quizSet={quizSet}
-                onGenerateNew={onGenerateNew}
-             />
-          </div>
+          {visibility.quickLinks && (
+            <div className="lg:col-span-4">
+              <QuickLinks />
+            </div>
+          )}
+          {visibility.learn && (
+             <div className="lg:col-span-4 relative">
+                 <Learn 
+                    view={view}
+                    isLoading={isLoading}
+                    flashcardSet={flashcardSet}
+                    quizSet={quizSet}
+                    onGenerateNew={onGenerateNew}
+                 />
+              </div>
+          )}
         </div>
       </div>
     </main>
