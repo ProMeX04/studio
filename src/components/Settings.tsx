@@ -19,27 +19,31 @@ import { ThemeToggle } from './ThemeToggle';
 import { Separator } from './ui/separator';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz') => void;
+  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number) => void;
 }
 
 export function Settings({ onSettingsSave }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
+  const [count, setCount] = useState(5);
 
   useEffect(() => {
     if (isOpen) {
       const savedTopic = localStorage.getItem('newTabTopic') || '';
       const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
+      const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
       setTopic(savedTopic);
       setView(savedView);
+      setCount(savedCount);
     }
   }, [isOpen]);
 
   const handleSave = () => {
     localStorage.setItem('newTabTopic', topic);
     localStorage.setItem('newTabView', view);
-    onSettingsSave(topic, view);
+    localStorage.setItem('newTabCount', count.toString());
+    onSettingsSave(topic, view, count);
     setIsOpen(false);
   };
 
@@ -75,6 +79,21 @@ export function Settings({ onSettingsSave }: SettingsProps) {
               onChange={(e) => setTopic(e.target.value)}
               className="col-span-3"
               placeholder="e.g. Roman History"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="count" className="text-right">
+              Number
+            </Label>
+            <Input
+              id="count"
+              type="number"
+              value={count}
+              onChange={(e) => setCount(parseInt(e.target.value, 10))}
+              className="col-span-3"
+              placeholder="e.g. 5"
+              min="1"
+              max="10"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">

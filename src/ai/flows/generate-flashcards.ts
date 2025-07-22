@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const GenerateFlashcardsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate flashcards.'),
+  count: z.number().describe('The number of flashcards to generate.'),
 });
 
 export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
@@ -34,7 +35,7 @@ const prompt = ai.definePrompt({
   name: 'generateFlashcardsPrompt',
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
-  prompt: `You are a flashcard generator. Generate a set of 5 flashcards for the topic: {{{topic}}}. Each flashcard should have a front and back.
+  prompt: `You are a flashcard generator. Generate a set of {{{count}}} flashcards for the topic: {{{topic}}}. Each flashcard should have a front and back.
 
 Return a JSON array of objects with "front" and "back" keys.
 

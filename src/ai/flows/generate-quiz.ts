@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const GenerateQuizInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a quiz.'),
+  count: z.number().describe('The number of questions to generate.'),
 });
 
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
@@ -35,7 +36,7 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are a quiz generator. Generate a 5-question multiple-choice quiz for the topic: {{{topic}}}. Each question should have 4 options and a single correct answer.
+  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}}. Each question should have 4 options and a single correct answer.
 
 Return a JSON array of objects with "question", "options", and "answer" keys.
 

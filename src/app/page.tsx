@@ -57,12 +57,13 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnP
 export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
+  const [count, setCount] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
 
-  const handleGenerate = useCallback(async (currentTopic: string, forceNew: boolean = false) => {
+  const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
       return;
     }
@@ -87,8 +88,8 @@ export default function Home() {
         setFlashcardSet(null);
         setQuizSet(null);
 
-        const flashcardsPromise = generateFlashcards({ topic: currentTopic });
-        const quizPromise = generateQuiz({ topic: currentTopic });
+        const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: currentCount });
+        const quizPromise = generateQuiz({ topic: currentTopic, count: currentCount });
 
         const [flashcards, quiz] = await Promise.all([flashcardsPromise, quizPromise]);
         
@@ -113,21 +114,24 @@ export default function Home() {
   useEffect(() => {
     const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
     const savedTopic = localStorage.getItem('newTabTopic') || 'Roman History';
+    const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
 
     setView(savedView);
     setTopic(savedTopic);
-    handleGenerate(savedTopic);
+    setCount(savedCount)
+    handleGenerate(savedTopic, savedCount);
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz') => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number) => {
     setTopic(newTopic);
     setView(newView);
+    setCount(newCount);
     // When settings are saved, we force a regeneration.
-    handleGenerate(newTopic, true);
+    handleGenerate(newTopic, newCount, true);
   };
   
   const onGenerateNew = () => {
-     handleGenerate(topic, true);
+     handleGenerate(topic, count, true);
   }
 
 
