@@ -173,6 +173,9 @@ export default function Home() {
     } else if (newBg) {
       setBackgroundImage(newBg);
       localStorage.setItem('newTabBackground', newBg);
+    } else {
+        // This case handles when 'newBg' is '', meaning no change from a previous non-null value.
+        // We do nothing to keep the existing background.
     }
     
     handleGenerate(newTopic, newCount, newLanguage, topicChanged);
@@ -186,19 +189,19 @@ export default function Home() {
   return (
     <main className={cn(
         "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8",
-        backgroundImage ? 'text-white' : ''
+        backgroundImage && 'text-white'
     )}>
       {backgroundImage && (
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${backgroundImage})` }}
         >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
-            {visibility.greeting && <Greeting />}
-            {visibility.weather && <Weather />}
+            {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
+            {visibility.weather && <Weather hasBackground={!!backgroundImage} />}
             <Settings onSettingsSave={onSettingsSave} />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">

@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Greeting() {
+interface GreetingProps {
+    hasBackground: boolean;
+}
+
+export function Greeting({ hasBackground }: GreetingProps) {
   const [fullGreeting, setFullGreeting] = useState('');
   const [typedGreeting, setTypedGreeting] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -38,7 +42,10 @@ export function Greeting() {
   }, [fullGreeting, typedGreeting]);
 
   return (
-    <p className="text-xl text-current/80 relative">
+    <p className={cn(
+        "text-xl relative",
+        hasBackground ? 'text-primary-foreground/80' : 'text-muted-foreground'
+    )}>
       {typedGreeting}
       <span className={cn(
           'ml-1 h-5 w-0.5 bg-current inline-block', 

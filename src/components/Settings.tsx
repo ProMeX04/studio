@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +20,8 @@ import { Separator } from './ui/separator';
 import type { ComponentVisibility } from '@/app/page';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface SettingsProps {
   onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, visibility: ComponentVisibility, bg: string | null) => void;
@@ -33,6 +35,15 @@ const languages = [
     { value: 'Japanese', label: '日本語' },
     { value: 'Korean', label: '한국어' },
     { value: 'Vietnamese', label: 'Tiếng Việt' },
+];
+
+const stockBackgrounds = [
+    { id: '1', url: 'https://placehold.co/1920x1080.png', hint: 'nature landscape'},
+    { id: '2', url: 'https://placehold.co/1920x1080.png', hint: 'abstract art'},
+    { id: '3', url: 'https://placehold.co/1920x1080.png', hint: 'city skyline'},
+    { id: '4', url: 'https://placehold.co/1920x1080.png', hint: 'minimalist texture'},
+    { id: '5', url: 'https://placehold.co/1920x1080.png', hint: 'space galaxy'},
+    { id: '6', url: 'https://placehold.co/1920x1080.png', hint: 'ocean waves'},
 ];
 
 export function Settings({ onSettingsSave }: SettingsProps) {
@@ -49,7 +60,9 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     learn: true,
     weather: true,
   });
-  const [background, setBackground] = useState<string | null>('');
+  const [selectedBackground, setSelectedBackground] = useState<string | null>('');
+  const [uploadedBackground, setUploadedBackground] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,7 +73,11 @@ export function Settings({ onSettingsSave }: SettingsProps) {
       const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
       const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
       const savedBg = localStorage.getItem('newTabBackground');
-
+      
+      const savedUploadedBg = localStorage.getItem('newTabUploadedBackground');
+      
+      setUploadedBackground(savedUploadedBg);
+      setSelectedBackground(savedBg);
       setTopic(savedTopic);
       setView(savedView);
       setCount(savedCount);
@@ -73,7 +90,6 @@ export function Settings({ onSettingsSave }: SettingsProps) {
         learn: savedVisibility.learn ?? true,
         weather: savedVisibility.weather ?? true,
       });
-      setBackground(savedBg);
     }
   }, [isOpen]);
 
@@ -83,8 +99,14 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     localStorage.setItem('newTabCount', count.toString());
     localStorage.setItem('newTabLanguage', language);
     localStorage.setItem('newTabVisibility', JSON.stringify(visibility));
-    onSettingsSave(topic, view, count, language, visibility, background);
-    setBackground(''); // reset temp state
+    
+    if (uploadedBackground) {
+        localStorage.setItem('newTabUploadedBackground', uploadedBackground);
+    } else {
+        localStorage.removeItem('newTabUploadedBackground');
+    }
+
+    onSettingsSave(topic, view, count, language, visibility, selectedBackground);
     setIsOpen(false);
   };
   
@@ -103,14 +125,18 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setBackground(event.target?.result as string);
+        const result = event.target?.result as string;
+        setUploadedBackground(result);
+        setSelectedBackground(result);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveBackground = () => {
-    setBackground(null); // Use null to signify removal
+    setSelectedBackground(null); // Use null to signify removal
+    setUploadedBackground(null);
+    localStorage.removeItem('newTabUploadedBackground');
   };
 
   return (
@@ -136,25 +162,35 @@ export function Settings({ onSettingsSave }: SettingsProps) {
           </div>
           <Separator />
           <p className="font-medium text-foreground">Background</p>
-           <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="background" className="text-right">
-                Image
-              </Label>
-              <div className="col-span-3 flex items-center gap-2">
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                  Upload Image
-                </Button>
-                <input
+            <div className="grid grid-cols-3 gap-2">
+                {stockBackgrounds.map(bg => (
+                    <div key={bg.id} className="relative cursor-pointer group" onClick={() => setSelectedBackground(bg.url)}>
+                        <Image src={bg.url} alt={`Background ${bg.id}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg.url && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} data-ai-hint={bg.hint} />
+                        {selectedBackground === bg.url && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
+                    </div>
+                ))}
+                 <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                    {uploadedBackground ? (
+                         <Image src={uploadedBackground} alt="Uploaded background" width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === uploadedBackground && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} />
+                    ) : (
+                        <div className="flex items-center justify-center w-full h-full aspect-video bg-muted rounded-md text-muted-foreground text-sm hover:bg-accent">
+                            Upload
+                        </div>
+                    )}
+                    {selectedBackground === uploadedBackground && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
+                 </div>
+                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleBackgroundUpload}
                   className="hidden"
                   accept="image/*"
                 />
-                <Button variant="ghost" onClick={handleRemoveBackground}>
-                  Remove
+            </div>
+             <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={handleRemoveBackground}>
+                  Remove Background
                 </Button>
-              </div>
             </div>
           <Separator />
           <p className="font-medium text-foreground">Learn Settings</p>

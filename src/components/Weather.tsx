@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getWeather, WeatherData } from '@/ai/flows/get-weather';
 import { Sun, Cloud, CloudRain, Snowflake, Loader, Thermometer, Wind } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const weatherIcons: { [key: string]: React.ReactNode } = {
   sunny: <Sun />,
@@ -13,7 +14,11 @@ const weatherIcons: { [key: string]: React.ReactNode } = {
   snow: <Snowflake />,
 };
 
-export function Weather() {
+interface WeatherProps {
+    hasBackground: boolean;
+}
+
+export function Weather({ hasBackground }: WeatherProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +59,10 @@ export function Weather() {
   }, [toast]);
 
   if (isLoading) {
-    return <div className="flex items-center gap-2 text-muted-foreground"><Loader className="animate-spin" /> <span>Loading...</span></div>;
+    return <div className={cn(
+        "flex items-center gap-2",
+        hasBackground ? 'text-primary-foreground/80' : 'text-muted-foreground'
+    )}><Loader className="animate-spin" /> <span>Loading...</span></div>;
   }
 
   if (error || !weather) {
@@ -66,7 +74,10 @@ export function Weather() {
   );
 
   return (
-    <div className="flex items-center gap-3 text-xl text-muted-foreground">
+    <div className={cn(
+        "flex items-center gap-3 text-xl",
+         hasBackground ? 'text-primary-foreground/80' : 'text-muted-foreground'
+    )}>
         <div className="flex items-center gap-1">
             {weatherIcon && weatherIcons[weatherIcon]}
             <span>{weather.condition}</span>
