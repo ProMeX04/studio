@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface Flashcard {
@@ -21,30 +19,33 @@ interface FlashcardsProps {
   flashcardSet: FlashcardSet | null;
 }
 
-export function Flashcards({ flashcardSet }: FlashcardsProps) {
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+function FlashcardItem({ card }: { card: Flashcard }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  useEffect(() => {
-    // Reset when the set changes
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
+  return (
+    <div className="flashcard-container h-48 perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
+      <div className={cn("flashcard relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
+        <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-primary/20 backface-hidden">
+          <p className="text-lg font-semibold text-primary-foreground">{card.front}</p>
+        </div>
+        <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-accent/30 backface-hidden rotate-y-180">
+          <p className="text-lg text-accent-foreground">{card.back}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+export function Flashcards({ flashcardSet }: FlashcardsProps) {
+   useEffect(() => {
+    // Nothing to reset on set change anymore
   }, [flashcardSet]);
 
-
-  const handleNextCard = () => {
-    setIsFlipped(false);
-    setTimeout(() => {
-      setCurrentCardIndex((prev) => (prev + 1) % (flashcardSet?.cards.length || 1));
-    }, 150);
-  };
-
-  const currentCard = useMemo(() => flashcardSet?.cards[currentCardIndex], [flashcardSet, currentCardIndex]);
-
-  if (!flashcardSet) {
+  if (!flashcardSet || flashcardSet.cards.length === 0) {
     return (
       <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-         Enter a topic above and click "Generate" to create some flashcards.
+         Enter a topic in settings and click "Save" to create some flashcards.
       </div>
     );
   }
@@ -52,40 +53,18 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardHeader>
-        <CardTitle className="flex items-center justify-end gap-2 font-headline">
+        <CardTitle className="flex items-center justify-between gap-2 font-headline">
+          <span className="text-lg">Flashcards</span>
           {flashcardSet && <span className="text-sm font-normal text-muted-foreground">{flashcardSet.topic}</span>}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-center items-center">
-       {currentCard ? (
-          <div className="w-full space-y-4">
-            <div className="flashcard-container h-48" onClick={() => setIsFlipped(!isFlipped)}>
-              <div className={cn("flashcard relative w-full h-full cursor-pointer rounded-lg border bg-primary/20", { 'is-flipped': isFlipped })}>
-                <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center">
-                  <p className="text-lg font-semibold text-primary-foreground">{currentCard?.front}</p>
-                </div>
-                <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg bg-accent/30">
-                  <p className="text-lg text-accent-foreground">{currentCard?.back}</p>
-                </div>
-              </div>
-            </div>
-            <p className="text-center text-sm text-muted-foreground">
-              Card {currentCardIndex + 1} of {flashcardSet.cards.length}
-            </p>
-          </div>
-        ) : (
-          <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-             No flashcards available.
-          </div>
-        )}
+      <CardContent className="flex-grow">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {flashcardSet.cards.map((card, index) => (
+            <FlashcardItem key={index} card={card} />
+          ))}
+        </div>
       </CardContent>
-      <CardFooter className="flex-col !pt-0 gap-2">
-        {flashcardSet.cards.length > 0 && (
-          <div className="w-full flex gap-2">
-            <Button onClick={handleNextCard} className="w-full">Next Card</Button>
-          </div>
-        )}
-      </CardFooter>
     </Card>
   );
 }
