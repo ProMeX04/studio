@@ -96,11 +96,11 @@ export function Quiz({ quizSet }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg",
+                    "p-4 rounded-lg text-foreground",
                      selectedAnswer === currentQuestion.answer ? "bg-primary/10" : "bg-destructive/10"
                  )}>
                     <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
-                    <p className="text-base text-secondary-foreground">{currentQuestion.explanation}</p>
+                    <p className="text-base">{currentQuestion.explanation}</p>
                  </div>
             )}
             <p className="text-center text-base text-muted-foreground pt-4">
