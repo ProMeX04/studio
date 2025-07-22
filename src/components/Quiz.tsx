@@ -53,7 +53,7 @@ export function Quiz() {
         });
         setQuizzes(quizData);
         if (quizData.length === 0) {
-          toast({ title: 'No quizzes found', description: 'There are no quizzes in the database.' });
+          toast({ title: 'No quizzes found', description: 'Generate a new set to get started.' });
         }
       } catch (error) {
         console.error(error);
@@ -149,7 +149,7 @@ export function Quiz() {
         )}
         {!isLoading && !currentQuiz && !isFinished && (
             <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-                 No quizzes available.
+                 No quizzes available. Enter a topic above and click "Generate" to create some.
             </div>
         )}
 

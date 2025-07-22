@@ -37,7 +37,7 @@ export function Flashcards() {
         const sets = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FlashcardSet));
         setFlashcardSets(sets);
         if (sets.length === 0) {
-          toast({ title: 'No flashcards found', description: 'There are no flashcard sets in the database.' });
+          toast({ title: 'No flashcards found', description: 'Generate a new set to get started.' });
         }
       } catch (error) {
         console.error(error);
@@ -96,7 +96,7 @@ export function Flashcards() {
           </div>
         ) : (
           <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
-             No flashcards available.
+             No flashcards available. Enter a topic above and click "Generate" to create some.
           </div>
         )}
       </CardContent>
