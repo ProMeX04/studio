@@ -15,7 +15,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { ThemeToggle } from './ThemeToggle';
 import { Separator } from './ui/separator';
 import type { ComponentVisibility } from '@/app/page';
 import { Switch } from './ui/switch';
@@ -24,8 +23,9 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, bg: string | null) => void;
+  onSettingsSave: (topic: string, count: number, language: string, bg: string | null) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
+  onViewChange: (view: 'flashcards' | 'quiz') => void;
 }
 
 const languages = [
@@ -47,7 +47,7 @@ const stockBackgrounds = [
     { id: '6', url: 'https://placehold.co/1920x1080.png', hint: 'ocean waves'},
 ];
 
-export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -94,7 +94,6 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
 
   const handleSave = () => {
     localStorage.setItem('newTabTopic', topic);
-    localStorage.setItem('newTabView', view);
     localStorage.setItem('newTabCount', count.toString());
     localStorage.setItem('newTabLanguage', language);
     
@@ -104,7 +103,7 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
         localStorage.removeItem('newTabUploadedBackground');
     }
 
-    onSettingsSave(topic, view, count, language, selectedBackground);
+    onSettingsSave(topic, count, language, selectedBackground);
     setIsOpen(false);
   };
   
@@ -119,6 +118,11 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
     setVisibility(newVisibility);
     onVisibilityChange(newVisibility);
   };
+
+  const handleViewChange = (newView: 'flashcards' | 'quiz') => {
+    setView(newView);
+    onViewChange(newView);
+  }
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,15 +156,6 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
           <SheetTitle>Settings</SheetTitle>
         </SheetHeader>
         <div className="grid gap-6 py-4">
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">
-              Theme
-            </Label>
-            <div className="col-span-3">
-              <ThemeToggle />
-            </div>
-          </div>
-          <Separator />
           <p className="font-medium text-foreground">Background</p>
             <div className="grid grid-cols-3 gap-2">
                 {stockBackgrounds.map(bg => (
@@ -240,7 +235,7 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
             <Label className="text-right">Default View</Label>
             <RadioGroup 
               value={view}
-              onValueChange={(value) => setView(value as 'flashcards' | 'quiz')}
+              onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')}
               className="col-span-3 flex gap-4"
             >
               <div className="flex items-center space-x-2">
