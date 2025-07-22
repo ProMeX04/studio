@@ -56,8 +56,8 @@ export function Quiz({ quizSet }: QuizProps) {
 
   const getOptionClass = (option: string) => {
     if (!isAnswered) return '';
-    if (option === currentQuestion?.answer) return 'bg-green-500/20 border-green-500';
-    if (option === selectedAnswer) return 'bg-red-500/20 border-red-500';
+    if (option === currentQuestion?.answer) return 'bg-primary/20 border-primary';
+    if (option === selectedAnswer) return 'bg-destructive/20 border-destructive';
     return '';
   };
 
@@ -95,7 +95,10 @@ export function Quiz({ quizSet }: QuizProps) {
               ))}
             </RadioGroup>
             {isAnswered && (
-                 <div className="p-4 rounded-lg bg-secondary/70">
+                 <div className={cn(
+                    "p-4 rounded-lg",
+                     selectedAnswer === currentQuestion.answer ? "bg-primary/10" : "bg-destructive/10"
+                 )}>
                     <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
                     <p className="text-base text-secondary-foreground">{currentQuestion.explanation}</p>
                  </div>
