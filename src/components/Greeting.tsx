@@ -36,7 +36,7 @@ export function Greeting() {
         } else {
           clearInterval(typingInterval);
         }
-      }, 50); // Adjust typing speed here
+      }, 50);
 
       return () => clearInterval(typingInterval);
     }
