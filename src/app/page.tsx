@@ -167,7 +167,7 @@ export default function Home() {
     topic: string;
     count: number;
     language: string;
-    background: string | null;
+    background: string | null | undefined;
     uploadedBackgrounds: string[];
   }) => {
       const { topic: newTopic, count: newCount, language: newLanguage, background: newBg, uploadedBackgrounds: newUploadedBgs } = settings;
@@ -215,8 +215,7 @@ export default function Home() {
 
   return (
     <main className={cn(
-        "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8",
-        !!backgroundImage && 'text-primary-foreground'
+        "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8"
     )}>
       {backgroundImage && (
         <div 
