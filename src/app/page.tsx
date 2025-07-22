@@ -19,44 +19,66 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+const GENERATION_TARGET = 50;
+const BATCH_SIZE = 10;
+
 interface LearnProps {
   view: 'flashcards' | 'quiz';
   isLoading: boolean;
   flashcardSet: FlashcardSet | null;
   quizSet: QuizSet | null;
-  onGenerateNew: () => void;
+  onGenerateNew: (forceNew: boolean) => void;
+  generationProgress: number;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnProps) {
-  if (isLoading) {
+function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress }: LearnProps) {
+    const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
+    const canGenerateMore = currentCount < GENERATION_TARGET;
+
+    const handleGenerateClick = () => {
+        // If we have content, clicking the button should either generate more or force a full reset.
+        // If we don't have content, it should always start a new generation.
+        if (currentCount > 0) {
+             onGenerateNew(!canGenerateMore);
+        } else {
+             onGenerateNew(true);
+        }
+    }
+
+    const hasContent = (view === 'flashcards' && flashcardSet && flashcardSet.cards.length > 0) || 
+                       (view === 'quiz' && quizSet && quizSet.questions.length > 0);
+  
     return (
-      <Card className="w-full bg-transparent shadow-none border-none p-0">
-        <div className="flex justify-center items-center h-48">
-          <Loader className="animate-spin" />
-        </div>
-      </Card>
-    );
-  }
-
-  const hasContent = (view === 'flashcards' && flashcardSet) || (view === 'quiz' && quizSet);
-
-  return (
      <Card className="w-full bg-transparent shadow-none border-none p-0 relative">
-        {hasContent && (
+        {(hasContent || isLoading) && (
            <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button onClick={onGenerateNew} variant="outline" size="icon" className="absolute top-0 right-0 z-10">
-                        <RefreshCcw />
+                    <Button onClick={handleGenerateClick} variant="outline" size="icon" className="absolute top-0 right-0 z-10" disabled={isLoading}>
+                        {isLoading ? <Loader className="animate-spin" /> : <RefreshCcw />}
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Generate New</p>
+                     {isLoading && <p>Generating...</p>}
+                     {!isLoading && hasContent && !canGenerateMore && <p>Start New Topic</p>}
+                     {!isLoading && hasContent && canGenerateMore && <p>Generate More</p>}
+                     {!isLoading && !hasContent && <p>Generate</p>}
                 </TooltipContent>
             </Tooltip>
            </TooltipProvider>
         )}
+         {hasContent && !isLoading && (
+            <div className="absolute top-2 right-12 text-sm text-muted-foreground z-10">
+                ({currentCount}/{GENERATION_TARGET})
+            </div>
+        )}
         <CardContent className="pt-8">
+            {isLoading && !hasContent && (
+                 <div className="flex flex-col justify-center items-center h-48">
+                    <Loader className="animate-spin mb-4" />
+                    <p>Generating new content for your topic...</p>
+                 </div>
+            )}
             {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
             {view === 'quiz' && <Quiz quizSet={quizSet} />}
         </CardContent>
@@ -72,13 +94,12 @@ export interface ComponentVisibility {
   learn: boolean;
 }
 
-
 export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
-  const [count, setCount] = useState(5);
   const [language, setLanguage] = useState('English');
   const [isLoading, setIsLoading] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
@@ -92,45 +113,68 @@ export default function Home() {
   const [backgroundImage, setBackgroundImage] = useState('');
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
 
-  const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, currentLanguage: string, forceNew: boolean = false) => {
+  const handleGenerate = useCallback(async (currentTopic: string, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
       return;
     }
     
     setIsLoading(true);
+    setGenerationProgress(0);
+    const db = await getDb();
+
+    let currentFlashcards: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: [] };
+    let currentQuiz: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: [] };
 
     if (forceNew) {
-      const db = await getDb();
       await db.delete('data', 'flashcards');
       await db.delete('data', 'quiz');
-    }
-    
-    try {
-      const db = await getDb();
+    } else {
       const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
       const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
-
-      if (flashcardData && quizData && flashcardData.topic === currentTopic && !forceNew) {
-        setFlashcardSet(flashcardData.data);
-        setQuizSet(quizData.data);
-      } else {
-        setFlashcardSet(null);
-        setQuizSet(null);
-
-        const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: currentCount, language: currentLanguage });
-        const quizPromise = generateQuiz({ topic: currentTopic, count: currentCount, language: currentLanguage });
-
-        const [flashcards, quiz] = await Promise.all([flashcardsPromise, quizPromise]);
-        
-        const newFlashcardSet: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: flashcards };
-        const newQuizSet: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: quiz };
-
-        await db.put('data', { id: 'flashcards', topic: currentTopic, data: newFlashcardSet });
-        await db.put('data', { id: 'quiz', topic: currentTopic, data: newQuizSet });
-        
-        setFlashcardSet(newFlashcardSet);
-        setQuizSet(newQuizSet);
+      if (flashcardData && flashcardData.topic === currentTopic) {
+        currentFlashcards = flashcardData.data;
+        setFlashcardSet(currentFlashcards);
       }
+      if (quizData && quizData.topic === currentTopic) {
+        currentQuiz = quizData.data;
+        setQuizSet(currentQuiz);
+      }
+    }
+    
+    setFlashcardSet(currentFlashcards);
+    setQuizSet(currentQuiz);
+    
+    try {
+       const totalItems = Math.max(currentFlashcards.cards.length, currentQuiz.questions.length);
+       const neededItems = GENERATION_TARGET - totalItems;
+
+        if (neededItems <= 0) {
+            setIsLoading(false);
+            return;
+        }
+
+       const batches = Math.ceil(neededItems / BATCH_SIZE);
+
+        for (let i = 0; i < batches; i++) {
+            const numToGenerate = Math.min(BATCH_SIZE, GENERATION_TARGET - Math.max(currentFlashcards.cards.length, currentQuiz.questions.length));
+            if (numToGenerate <= 0) continue;
+
+            const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: numToGenerate, language: currentLanguage, existingCards: currentFlashcards.cards });
+            const quizPromise = generateQuiz({ topic: currentTopic, count: numToGenerate, language: currentLanguage, existingQuestions: currentQuiz.questions });
+
+            const [newFlashcards, newQuiz] = await Promise.all([flashcardsPromise, quizPromise]);
+
+            currentFlashcards.cards.push(...newFlashcards);
+            currentQuiz.questions.push(...newQuiz);
+
+            setFlashcardSet({ ...currentFlashcards });
+            setQuizSet({ ...currentQuiz });
+            
+            await db.put('data', { id: 'flashcards', topic: currentTopic, data: currentFlashcards });
+            await db.put('data', { id: 'quiz', topic: currentTopic, data: currentQuiz });
+
+            setGenerationProgress(((i + 1) / batches) * 100);
+        }
 
     } catch (error) {
       console.error(error);
@@ -146,18 +190,19 @@ export default function Home() {
 
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
         const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Roman History';
-        const savedCount = (await db.get('data', 'count'))?.data as number || 5;
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+        
+        const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
+        const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
 
         if (savedBg) setBackgroundImage(savedBg);
         setUploadedBackgrounds(savedUploadedBgs);
         
         setView(savedView);
         setTopic(savedTopic);
-        setCount(savedCount);
         setLanguage(savedLanguage);
         setVisibility(savedVisibility ?? {
             clock: true,
@@ -167,29 +212,32 @@ export default function Home() {
             learn: true,
         });
         
-        handleGenerate(savedTopic, savedCount, savedLanguage);
+        if (flashcardData && flashcardData.topic === savedTopic) {
+            setFlashcardSet(flashcardData.data);
+        }
+
+        if (quizData && quizData.topic === savedTopic) {
+            setQuizSet(quizData.data);
+        }
     }
     loadInitialData();
-  }, [handleGenerate]);
+  }, []);
 
   const onSettingsSave = async (settings: {
     topic: string;
-    count: number;
     language: string;
     background: string | null | undefined;
     uploadedBackgrounds: string[];
   }) => {
-      const { topic: newTopic, count: newCount, language: newLanguage, background: newBg, uploadedBackgrounds: newUploadedBgs } = settings;
+      const { topic: newTopic, language: newLanguage, background: newBg, uploadedBackgrounds: newUploadedBgs } = settings;
       
-      const topicChanged = newTopic !== topic;
+      const topicChanged = newTopic !== topic || newLanguage !== language;
       setTopic(newTopic);
-      setCount(newCount);
       setLanguage(newLanguage);
       setUploadedBackgrounds(newUploadedBgs);
 
       const db = await getDb();
       await db.put('data', { id: 'topic', data: newTopic });
-      await db.put('data', { id: 'count', data: newCount });
       await db.put('data', { id: 'language', data: newLanguage });
       await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
 
@@ -202,7 +250,7 @@ export default function Home() {
       }
       
       if (topicChanged) {
-        handleGenerate(newTopic, newCount, newLanguage, true);
+        handleGenerate(newTopic, newLanguage, true);
       }
   };
   
@@ -218,8 +266,8 @@ export default function Home() {
     await db.put('data', { id: 'view', data: newView });
   }
 
-  const onGenerateNew = () => {
-     handleGenerate(topic, count, language, true);
+  const onGenerateNew = (forceNew: boolean) => {
+     handleGenerate(topic, language, forceNew);
   }
 
   return (
@@ -261,6 +309,7 @@ export default function Home() {
                     flashcardSet={flashcardSet}
                     quizSet={quizSet}
                     onGenerateNew={onGenerateNew}
+                    generationProgress={generationProgress}
                  />
               </div>
           )}

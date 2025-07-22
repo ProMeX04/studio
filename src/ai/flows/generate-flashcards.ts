@@ -11,18 +11,20 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const GenerateFlashcardsInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate flashcards.'),
-  count: z.number().describe('The number of flashcards to generate.'),
-  language: z.string().describe('The language for the flashcards.'),
-});
-
-export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
-
 const FlashcardSchema = z.object({
     front: z.string().describe('The front side of the flashcard.'),
     back: z.string().describe('The back side of the flashcard.'),
 });
+
+const GenerateFlashcardsInputSchema = z.object({
+  topic: z.string().describe('The topic for which to generate flashcards.'),
+  count: z.number().describe('The number of flashcards to generate.'),
+  language: z.string().describe('The language for the flashcards.'),
+  existingCards: z.array(FlashcardSchema).optional().describe('An array of existing flashcards to avoid duplication.'),
+});
+
+export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
+
 
 const GenerateFlashcardsOutputSchema = z.array(FlashcardSchema);
 
@@ -36,7 +38,16 @@ const prompt = ai.definePrompt({
   name: 'generateFlashcardsPrompt',
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
-  prompt: `You are a flashcard generator. Generate a set of {{{count}}} flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a front and back.
+  prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a front and back.
+
+{{#if existingCards}}
+You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
+
+Existing Flashcards:
+{{#each existingCards}}
+- Front: "{{{this.front}}}" / Back: "{{{this.back}}}"
+{{/each}}
+{{/if}}
 
 Return a JSON array of objects with "front" and "back" keys.
 

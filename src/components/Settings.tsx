@@ -28,7 +28,6 @@ import { getDb } from '@/lib/idb';
 interface SettingsProps {
   onSettingsSave: (settings: {
     topic: string;
-    count: number;
     language: string;
     background: string | null | undefined; // undefined means no change
     uploadedBackgrounds: string[];
@@ -62,7 +61,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
-  const [count, setCount] = useState(5);
   const [language, setLanguage] = useState('English');
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
@@ -83,7 +81,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
         const db = await getDb();
         const savedTopic = (await db.get('data', 'topic'))?.data as string || '';
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
-        const savedCount = (await db.get('data', 'count'))?.data as number || 5;
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string | null;
@@ -91,7 +88,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
         
         setTopic(savedTopic);
         setView(savedView);
-        setCount(savedCount);
         setLanguage(savedLanguage);
         setVisibility(savedVisibility ?? {
           clock: true,
@@ -111,19 +107,12 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   const handleSave = () => {
     onSettingsSave({
         topic,
-        count,
         language,
         background: pendingBackground,
         uploadedBackgrounds,
     });
     setIsOpen(false);
   };
-  
-  const handleCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const newCount = value === '' ? 0 : parseInt(value, 10);
-    setCount(isNaN(newCount) ? 0 : newCount);
-  }
 
   const handleVisibilitySwitch = (component: keyof ComponentVisibility, checked: boolean) => {
     const newVisibility = { ...visibility, [component]: checked };
@@ -157,14 +146,18 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
 
   const handleRemoveBackground = () => {
     setSelectedBackground(null);
-    onSettingsSave({
+    setPendingBackground(null);
+  };
+
+  const handleFinalSave = () => {
+     onSettingsSave({
       topic,
-      count,
       language,
-      background: null,
+      background: pendingBackground,
       uploadedBackgrounds,
     });
-  };
+    setIsOpen(false);
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -251,21 +244,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                 </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="count" className="text-right">
-                Number
-                </Label>
-                <Input
-                id="count"
-                type="number"
-                value={count === 0 ? '' : count}
-                onChange={handleCountChange}
-                className="col-span-3"
-                placeholder="e.g. 5"
-                min="1"
-                max="10"
-                />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Default View</Label>
                 <RadioGroup 
                 value={view}
@@ -316,7 +294,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
               Cancel
             </Button>
           </SheetClose>
-          <Button onClick={handleSave}>Save changes</Button>
+          <Button onClick={handleFinalSave}>Save changes</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
