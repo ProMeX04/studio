@@ -14,25 +14,30 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface SettingsProps {
-  onTopicSave: (topic: string) => void;
+  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz') => void;
 }
 
-export function Settings({ onTopicSave }: SettingsProps) {
+export function Settings({ onSettingsSave }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
+  const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
 
   useEffect(() => {
     if (isOpen) {
       const savedTopic = localStorage.getItem('newTabTopic') || '';
+      const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
       setTopic(savedTopic);
+      setView(savedView);
     }
   }, [isOpen]);
 
   const handleSave = () => {
     localStorage.setItem('newTabTopic', topic);
-    onTopicSave(topic);
+    localStorage.setItem('newTabView', view);
+    onSettingsSave(topic, view);
     setIsOpen(false);
   };
 
@@ -48,7 +53,7 @@ export function Settings({ onTopicSave }: SettingsProps) {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="topic" className="text-right">
               Topic
@@ -60,6 +65,23 @@ export function Settings({ onTopicSave }: SettingsProps) {
               className="col-span-3"
               placeholder="e.g. Roman History"
             />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">View</Label>
+            <RadioGroup 
+              value={view}
+              onValueChange={(value) => setView(value as 'flashcards' | 'quiz')}
+              className="col-span-3 flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="flashcards" id="flashcards" />
+                <Label htmlFor="flashcards">Flashcards</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="quiz" id="quiz" />
+                <Label htmlFor="quiz">Quiz</Label>
+              </div>
+            </RadioGroup>
           </div>
         </div>
         <DialogFooter>

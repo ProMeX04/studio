@@ -7,8 +7,6 @@ import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
 import { Flashcards, FlashcardSet } from '@/components/Flashcards';
 import { Quiz, QuizSet } from '@/components/Quiz';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
@@ -26,7 +24,7 @@ function Learn() {
 
   const handleGenerate = useCallback(async (currentTopic: string) => {
     if (!currentTopic.trim()) {
-      toast({ title: 'Error', description: 'Please enter a topic.', variant: 'destructive' });
+      // Don't show an error, just show the default empty state.
       return;
     }
     setIsLoading(true);
@@ -40,7 +38,6 @@ function Learn() {
       const quiz = await generateQuiz({ topic: currentTopic });
       setQuizSet({ id: 'local-quiz', topic: currentTopic, questions: quiz });
 
-      toast({ title: 'Success', description: `Content for "${currentTopic}" generated successfully.` });
     } catch (error) {
       console.error(error);
       toast({ title: 'Error', description: 'Failed to generate content. Please try again.', variant: 'destructive' });
@@ -51,39 +48,28 @@ function Learn() {
 
   useEffect(() => {
     const savedTopic = localStorage.getItem('newTabTopic');
+    const savedView = localStorage.getItem('newTabView') as 'flashcards' | 'quiz' | null;
+    
+    if (savedView) {
+      setView(savedView);
+    }
     if (savedTopic) {
       setTopic(savedTopic);
       handleGenerate(savedTopic);
     }
   }, [handleGenerate]);
 
-  const onTopicSave = (newTopic: string) => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz') => {
     setTopic(newTopic);
+    setView(newView);
     handleGenerate(newTopic);
   };
 
 
   return (
      <Card className="w-full bg-transparent shadow-none border-none p-0">
-        <div className="flex flex-col sm:flex-row items-center gap-2 p-4 border-b">
-            <div className="flex-grow w-full">
-                <Input 
-                    placeholder="Enter a topic to generate flashcards & quizzes..."
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleGenerate(topic)}
-                    disabled={isLoading}
-                />
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-                 <Button onClick={() => handleGenerate(topic)} disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading ? <Loader className="animate-spin" /> : 'Generate'}
-                </Button>
-                <div className="flex gap-2">
-                    <Button variant={view === 'flashcards' ? 'default' : 'outline'} onClick={() => setView('flashcards')}>Flashcards</Button>
-                    <Button variant={view === 'quiz' ? 'default' : 'outline'} onClick={() => setView('quiz')}>Quiz</Button>
-                </div>
-            </div>
+        <div className="absolute top-0 right-0">
+            <Settings onSettingsSave={onSettingsSave} />
         </div>
         <div>
             {isLoading && (
@@ -93,9 +79,6 @@ function Learn() {
             )}
             {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
             {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
-        </div>
-        <div className="absolute top-4 right-4">
-            <Settings onTopicSave={onTopicSave} />
         </div>
      </Card>
   );
