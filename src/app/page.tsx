@@ -24,9 +24,10 @@ interface LearnProps {
   flashcardSet: FlashcardSet | null;
   quizSet: QuizSet | null;
   onGenerateNew: () => void;
+  hasBackground: boolean;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, hasBackground }: LearnProps) {
   if (isLoading) {
     return (
       <Card className="w-full bg-transparent shadow-none border-none p-0">
@@ -48,8 +49,8 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnP
            </Button>
         )}
         <CardContent className="pt-8">
-            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
-            {view === 'quiz' && <Quiz quizSet={quizSet} />}
+            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} hasBackground={hasBackground} />}
+            {view === 'quiz' && <Quiz quizSet={quizSet} hasBackground={hasBackground} />}
         </CardContent>
      </Card>
   );
@@ -192,7 +193,9 @@ export default function Home() {
         await db.put('data', { id: 'background', data: newBg });
       }
       
-      handleGenerate(newTopic, newCount, newLanguage, topicChanged);
+      if (topicChanged) {
+        handleGenerate(newTopic, newCount, newLanguage, true);
+      }
   };
   
   const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
@@ -211,11 +214,12 @@ export default function Home() {
      handleGenerate(topic, count, language, true);
   }
 
+  const hasBackground = !!backgroundImage;
 
   return (
     <main className={cn(
         "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8",
-        backgroundImage && 'text-primary-foreground'
+        hasBackground && 'text-primary-foreground'
     )}>
       {backgroundImage && (
         <div 
@@ -226,7 +230,7 @@ export default function Home() {
         </div>
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
-            {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
+            {visibility.greeting && <Greeting />}
             <Settings 
               onSettingsSave={onSettingsSave} 
               onVisibilityChange={handleVisibilityChange} 
@@ -235,13 +239,13 @@ export default function Home() {
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
         {visibility.clock && <Clock />}
-        {visibility.search && <Search />}
+        {visibility.search && <Search hasBackground={hasBackground} />}
       </div>
       <div className="w-full max-w-6xl space-y-8 z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {visibility.quickLinks && (
             <div className="lg:col-span-4">
-              <QuickLinks />
+              <QuickLinks hasBackground={hasBackground} />
             </div>
           )}
           {visibility.learn && (
@@ -252,6 +256,7 @@ export default function Home() {
                     flashcardSet={flashcardSet}
                     quizSet={quizSet}
                     onGenerateNew={onGenerateNew}
+                    hasBackground={hasBackground}
                  />
               </div>
           )}

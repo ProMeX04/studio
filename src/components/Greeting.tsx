@@ -1,13 +1,10 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-interface GreetingProps {
-    hasBackground: boolean;
-}
-
-export function Greeting({ hasBackground }: GreetingProps) {
+export function Greeting() {
   const [fullGreeting, setFullGreeting] = useState('');
   const [typedGreeting, setTypedGreeting] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -42,10 +39,7 @@ export function Greeting({ hasBackground }: GreetingProps) {
   }, [fullGreeting, typedGreeting]);
 
   return (
-    <p className={cn(
-        "text-xl relative",
-        hasBackground ? 'text-primary-foreground/80' : 'text-muted-foreground'
-    )}>
+    <p className="text-xl relative text-foreground/80">
       {typedGreeting}
       <span className={cn(
           'ml-1 h-5 w-0.5 bg-current inline-block', 

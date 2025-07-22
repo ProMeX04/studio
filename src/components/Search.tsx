@@ -1,9 +1,11 @@
+
 "use client";
 
 import { Search as SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
-export function Search() {
+export function Search({ hasBackground }: { hasBackground: boolean }) {
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -21,7 +23,10 @@ export function Search() {
           type="search"
           name="q"
           placeholder="Search the web..."
-          className="pl-12 h-14 text-base bg-secondary/70 rounded-full border-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "pl-12 h-14 text-base rounded-full border-none focus-visible:ring-2 focus-visible:ring-ring",
+            hasBackground ? "bg-black/20 text-primary-foreground placeholder:text-primary-foreground/70" : "bg-secondary/70"
+            )}
         />
       </div>
     </form>

@@ -18,18 +18,25 @@ export interface FlashcardSet {
 
 interface FlashcardsProps {
   flashcardSet: FlashcardSet | null;
+  hasBackground: boolean;
 }
 
-function FlashcardItem({ card }: { card: Flashcard }) {
+function FlashcardItem({ card, hasBackground }: { card: Flashcard, hasBackground: boolean }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
     <div className="flashcard-container h-48 perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
       <div className={cn("flashcard relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
-        <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-primary text-primary-foreground shadow-lg backface-hidden">
+        <div className={cn(
+            "flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden",
+            hasBackground ? "bg-black/20 border-white/20" : "bg-primary text-primary-foreground"
+        )}>
           <p className="text-lg font-semibold">{card.front}</p>
         </div>
-        <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-secondary text-secondary-foreground shadow-lg backface-hidden rotate-y-180">
+        <div className={cn(
+            "flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden rotate-y-180",
+            hasBackground ? "bg-black/20 border-white/20" : "bg-secondary text-secondary-foreground"
+        )}>
           <p className="text-lg">{card.back}</p>
         </div>
       </div>
@@ -38,7 +45,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 }
 
 
-export function Flashcards({ flashcardSet }: FlashcardsProps) {
+export function Flashcards({ flashcardSet, hasBackground }: FlashcardsProps) {
    useEffect(() => {
     // Nothing to reset on set change anymore
   }, [flashcardSet]);
@@ -56,7 +63,7 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
       <CardContent className="flex-grow pt-8">
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {flashcardSet.cards.map((card, index) => (
-            <FlashcardItem key={index} card={card} />
+            <FlashcardItem key={index} card={card} hasBackground={hasBackground} />
           ))}
         </div>
       </CardContent>
