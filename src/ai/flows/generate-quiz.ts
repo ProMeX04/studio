@@ -19,9 +19,16 @@ const GenerateQuizInputSchema = z.object({
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
-const GenerateQuizOutputSchema = z.object({
-  quiz: z.string().describe('The generated quiz in JSON format.'),
+const QuizQuestionSchema = z.object({
+    question: z.string().describe("The question text."),
+    options: z.array(z.string()).length(4).describe("An array of 4 possible answers."),
+    answer: z.string().describe("The correct answer. Must be one of the options."),
 });
+
+const GenerateQuizOutputSchema = z.object({
+  questions: z.array(QuizQuestionSchema).describe('An array of 5 quiz questions.'),
+});
+
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
@@ -32,7 +39,7 @@ export async function addQuizToDb(input: GenerateQuizInput): Promise<void> {
     const quiz = await generateQuizFlow(input);
     await addDoc(collection(db, 'quizzes'), {
         topic: input.topic,
-        quiz: quiz.quiz,
+        questions: quiz.questions,
         createdAt: serverTimestamp(),
     });
 }
@@ -41,7 +48,7 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are a quiz generator. Generate a quiz with 5 questions on the following topic: {{{topic}}}. The quiz should be returned as a JSON object with a "questions" key, which is an array of question objects. Each question object should have a "question" (string), "options" (array of 4 strings), and an "answer" (string). Make sure that the JSON is parseable.`, 
+  prompt: `You are a quiz generator. Generate a quiz with 5 questions on the following topic: {{{topic}}}. The quiz should be returned as a JSON object with a "questions" key, which is an array of question objects. Each question object should have a "question" (string), "options" (array of 4 strings), and an "answer" (string).`, 
 });
 
 const generateQuizFlow = ai.defineFlow(

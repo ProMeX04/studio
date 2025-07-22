@@ -43,12 +43,10 @@ export function Quiz() {
         const querySnapshot = await getDocs(q);
         const quizData = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // The quiz is stored as a JSON string in the 'quiz' field
-            const parsedQuiz = JSON.parse(data.quiz);
             return {
                 id: doc.id,
                 topic: data.topic,
-                questions: parsedQuiz.questions,
+                questions: data.questions,
             } as QuizData;
         });
         setQuizzes(quizData);
