@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Greeting } from '@/components/Greeting';
 import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
@@ -14,6 +14,7 @@ import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Settings } from '@/components/Settings';
 
 function Learn() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -23,8 +24,8 @@ function Learn() {
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
 
-  const handleGenerate = async () => {
-    if (!topic.trim()) {
+  const handleGenerate = useCallback(async (currentTopic: string) => {
+    if (!currentTopic.trim()) {
       toast({ title: 'Error', description: 'Please enter a topic.', variant: 'destructive' });
       return;
     }
@@ -33,20 +34,34 @@ function Learn() {
     setQuizSet(null);
 
     try {
-      const flashcards = await generateFlashcards({ topic });
-      setFlashcardSet({ id: 'local-flashcards', topic, cards: flashcards });
+      const flashcards = await generateFlashcards({ topic: currentTopic });
+      setFlashcardSet({ id: 'local-flashcards', topic: currentTopic, cards: flashcards });
 
-      const quiz = await generateQuiz({ topic });
-      setQuizSet({ id: 'local-quiz', topic, questions: quiz });
+      const quiz = await generateQuiz({ topic: currentTopic });
+      setQuizSet({ id: 'local-quiz', topic: currentTopic, questions: quiz });
 
-      toast({ title: 'Success', description: `Content for "${topic}" generated successfully.` });
+      toast({ title: 'Success', description: `Content for "${currentTopic}" generated successfully.` });
     } catch (error) {
       console.error(error);
       toast({ title: 'Error', description: 'Failed to generate content. Please try again.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    const savedTopic = localStorage.getItem('newTabTopic');
+    if (savedTopic) {
+      setTopic(savedTopic);
+      handleGenerate(savedTopic);
+    }
+  }, [handleGenerate]);
+
+  const onTopicSave = (newTopic: string) => {
+    setTopic(newTopic);
+    handleGenerate(newTopic);
   };
+
 
   return (
      <Card className="w-full bg-transparent shadow-none border-none p-0">
@@ -56,12 +71,12 @@ function Learn() {
                     placeholder="Enter a topic to generate flashcards & quizzes..."
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleGenerate(topic)}
                     disabled={isLoading}
                 />
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
-                 <Button onClick={handleGenerate} disabled={isLoading} className="w-full sm:w-auto">
+                 <Button onClick={() => handleGenerate(topic)} disabled={isLoading} className="w-full sm:w-auto">
                     {isLoading ? <Loader className="animate-spin" /> : 'Generate'}
                 </Button>
                 <div className="flex gap-2">
@@ -79,6 +94,9 @@ function Learn() {
             {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
             {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
         </div>
+        <div className="absolute top-4 right-4">
+            <Settings onTopicSave={onTopicSave} />
+        </div>
      </Card>
   );
 }
@@ -86,7 +104,7 @@ function Learn() {
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
+    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8">
         <Clock />
         <Greeting />
@@ -97,7 +115,7 @@ export default function Home() {
           <div className="lg:col-span-4">
             <QuickLinks />
           </div>
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 relative">
             <Learn />
           </div>
         </div>
