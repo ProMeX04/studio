@@ -25,21 +25,26 @@ export async function generateResponse(input: GenerateResponseInput): Promise<Ge
   return generateResponseFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateResponsePrompt',
-  input: {schema: GenerateResponseInputSchema},
-  output: {schema: GenerateResponseOutputSchema},
-  prompt: `You are a helpful assistant. Respond to the following prompt: {{{prompt}}}`,
-});
-
 const generateResponseFlow = ai.defineFlow(
   {
     name: 'generateResponseFlow',
     inputSchema: GenerateResponseInputSchema,
     outputSchema: GenerateResponseOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output ?? '';
+  async ({ prompt }) => {
+    const llmResponse = await ai.generate({
+      prompt: `You are a helpful assistant. Respond to the following prompt: ${prompt}`,
+    });
+
+    const responseText = llmResponse.text;
+    
+    // Validate that the output is a string. If not, return an empty string.
+    const validationResult = GenerateResponseOutputSchema.safeParse(responseText);
+    if (validationResult.success) {
+      return validationResult.data;
+    } else {
+      console.error("AI response validation failed:", validationResult.error);
+      return "";
+    }
   }
 );
