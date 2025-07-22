@@ -25,9 +25,7 @@ const QuizQuestionSchema = z.object({
     answer: z.string().describe("The correct answer. Must be one of the options."),
 });
 
-const GenerateQuizOutputSchema = z.object({
-  questions: z.array(QuizQuestionSchema).describe('An array of 5 quiz questions.'),
-});
+const GenerateQuizOutputSchema = z.array(QuizQuestionSchema).describe('An array of 5 quiz questions.');
 
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
@@ -36,10 +34,10 @@ export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQu
 }
 
 export async function addQuizToDb(input: GenerateQuizInput): Promise<void> {
-    const quiz = await generateQuizFlow(input);
+    const quizQuestions = await generateQuizFlow(input);
     await addDoc(collection(db, 'quizzes'), {
         topic: input.topic,
-        questions: quiz.questions,
+        questions: quizQuestions,
         createdAt: serverTimestamp(),
     });
 }
@@ -48,7 +46,7 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are a quiz generator. Generate a quiz with 5 questions on the following topic: {{{topic}}}. The quiz should be returned as a JSON object with a "questions" key, which is an array of question objects. Each question object should have a "question" (string), "options" (array of 4 strings), and an "answer" (string).`, 
+  prompt: `You are a quiz generator. Generate a quiz with 5 questions on the following topic: {{{topic}}}. The quiz should be returned as a JSON array of question objects. Each question object should have a "question" (string), "options" (array of 4 strings), and an "answer" (string).`, 
 });
 
 const generateQuizFlow = ai.defineFlow(
