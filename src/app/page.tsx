@@ -17,7 +17,6 @@ import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, clearAllData, AppData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
@@ -261,5 +260,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
