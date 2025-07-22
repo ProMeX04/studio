@@ -10,29 +10,45 @@ import { Quiz, QuizSet } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
-import { Loader } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Loader, RefreshCcw } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
+import { getDb, LabeledData, clearAllData } from '@/lib/idb';
+import { Button } from '@/components/ui/button';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
   isLoading: boolean;
   flashcardSet: FlashcardSet | null;
   quizSet: QuizSet | null;
+  onGenerateNew: () => void;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet }: LearnProps) {
-  return (
-     <Card className="w-full bg-transparent shadow-none border-none p-0">
-        <div>
-            {isLoading && (
-              <div className="flex justify-center items-center h-48">
-                <Loader className="animate-spin" />
-              </div>
-            )}
-            {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
-            {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
+function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnProps) {
+  if (isLoading) {
+    return (
+      <Card className="w-full bg-transparent shadow-none border-none p-0">
+        <div className="flex justify-center items-center h-48">
+          <Loader className="animate-spin" />
         </div>
+      </Card>
+    );
+  }
+
+  const hasContent = (view === 'flashcards' && flashcardSet) || (view === 'quiz' && quizSet);
+
+  return (
+     <Card className="w-full bg-transparent shadow-none border-none p-0 relative">
+        {hasContent && (
+           <Button onClick={onGenerateNew} variant="outline" size="sm" className="absolute top-0 right-0 z-10">
+             <RefreshCcw className="mr-2" />
+             Generate New
+           </Button>
+        )}
+        <CardContent className="pt-8">
+            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
+            {view === 'quiz' && <Quiz quizSet={quizSet} />}
+        </CardContent>
      </Card>
   );
 }
@@ -46,20 +62,45 @@ export default function Home() {
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
 
-  const handleGenerate = useCallback(async (currentTopic: string) => {
+  const handleGenerate = useCallback(async (currentTopic: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
       return;
     }
+    
     setIsLoading(true);
-    setFlashcardSet(null);
-    setQuizSet(null);
 
+    if (forceNew) {
+      const db = await getDb();
+      await clearAllData(db);
+    }
+    
     try {
-      const flashcards = await generateFlashcards({ topic: currentTopic });
-      setFlashcardSet({ id: 'local-flashcards', topic: currentTopic, cards: flashcards });
+      const db = await getDb();
+      const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
+      const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
 
-      const quiz = await generateQuiz({ topic: currentTopic });
-      setQuizSet({ id: 'local-quiz', topic: currentTopic, questions: quiz });
+      if (flashcardData && quizData && flashcardData.topic === currentTopic && !forceNew) {
+        setFlashcardSet(flashcardData.data);
+        setQuizSet(quizData.data);
+      } else {
+        await clearAllData(db);
+        setFlashcardSet(null);
+        setQuizSet(null);
+
+        const flashcardsPromise = generateFlashcards({ topic: currentTopic });
+        const quizPromise = generateQuiz({ topic: currentTopic });
+
+        const [flashcards, quiz] = await Promise.all([flashcardsPromise, quizPromise]);
+        
+        const newFlashcardSet: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: flashcards };
+        const newQuizSet: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: quiz };
+
+        await db.put('data', { id: 'flashcards', topic: currentTopic, data: newFlashcardSet });
+        await db.put('data', { id: 'quiz', topic: currentTopic, data: newQuizSet });
+        
+        setFlashcardSet(newFlashcardSet);
+        setQuizSet(newQuizSet);
+      }
 
     } catch (error) {
       console.error(error);
@@ -70,23 +111,24 @@ export default function Home() {
   }, [toast]);
 
   useEffect(() => {
-    const savedTopic = localStorage.getItem('newTabTopic');
-    const savedView = localStorage.getItem('newTabView') as 'flashcards' | 'quiz' | null;
-    
-    if (savedView) {
-      setView(savedView);
-    }
-    if (savedTopic) {
-      setTopic(savedTopic);
-      handleGenerate(savedTopic);
-    }
+    const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
+    const savedTopic = localStorage.getItem('newTabTopic') || 'Roman History';
+
+    setView(savedView);
+    setTopic(savedTopic);
+    handleGenerate(savedTopic);
   }, [handleGenerate]);
 
   const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz') => {
     setTopic(newTopic);
     setView(newView);
-    handleGenerate(newTopic);
+    // When settings are saved, we force a regeneration.
+    handleGenerate(newTopic, true);
   };
+  
+  const onGenerateNew = () => {
+     handleGenerate(topic, true);
+  }
 
 
   return (
@@ -110,6 +152,7 @@ export default function Home() {
                 isLoading={isLoading}
                 flashcardSet={flashcardSet}
                 quizSet={quizSet}
+                onGenerateNew={onGenerateNew}
              />
           </div>
         </div>

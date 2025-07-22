@@ -64,10 +64,10 @@ export function Quiz({ quizSet }: QuizProps) {
     return '';
   };
 
-  if (!quizSet) {
+  if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
     return (
       <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
-        Enter a topic above and click "Generate" to create a quiz.
+        Enter a topic in settings and click "Save" to create a quiz.
       </div>
     );
   }
@@ -75,7 +75,8 @@ export function Quiz({ quizSet }: QuizProps) {
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardHeader>
-        <CardTitle className="flex items-center justify-end gap-2 font-headline">
+        <CardTitle className="flex items-center justify-between gap-2 font-headline">
+          <span className="text-lg">Quiz</span>
           {quizSet && <span className="text-sm font-normal text-muted-foreground">{quizSet.topic}</span>}
         </CardTitle>
       </CardHeader>
