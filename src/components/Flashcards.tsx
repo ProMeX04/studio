@@ -25,11 +25,11 @@ function FlashcardItem({ card }: { card: Flashcard }) {
   return (
     <div className="flashcard-container h-48 perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
       <div className={cn("flashcard relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
-        <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-primary/20 backface-hidden">
-          <p className="text-lg font-semibold text-primary-foreground">{card.front}</p>
+        <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-primary text-primary-foreground shadow-lg backface-hidden">
+          <p className="text-lg font-semibold">{card.front}</p>
         </div>
-        <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-accent/30 backface-hidden rotate-y-180">
-          <p className="text-lg text-accent-foreground">{card.back}</p>
+        <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border bg-secondary text-secondary-foreground shadow-lg backface-hidden rotate-y-180">
+          <p className="text-lg">{card.back}</p>
         </div>
       </div>
     </div>

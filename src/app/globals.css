@@ -17,7 +17,7 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 220 14% 46%;
+    --primary: 220 14% 36%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 220 15% 90%;
@@ -26,7 +26,7 @@ body {
     --muted: 220 9% 45%;
     --muted-foreground: 215.4 16.3% 56.9%;
 
-    --accent: 220 15% 90%;
+    --accent: 220 15% 94%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
