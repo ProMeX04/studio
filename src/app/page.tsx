@@ -15,7 +15,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, clearAllData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
-import { Weather } from '@/components/Weather';
 import { cn } from '@/lib/utils';
 
 interface LearnProps {
@@ -61,7 +60,6 @@ export interface ComponentVisibility {
   search: boolean;
   quickLinks: boolean;
   learn: boolean;
-  weather: boolean;
 }
 
 
@@ -80,7 +78,6 @@ export default function Home() {
     search: true,
     quickLinks: true,
     learn: true,
-    weather: true,
   });
   const [backgroundImage, setBackgroundImage] = useState('');
 
@@ -154,7 +151,6 @@ export default function Home() {
         search: savedVisibility.search ?? true,
         quickLinks: savedVisibility.quickLinks ?? true,
         learn: savedVisibility.learn ?? true,
-        weather: savedVisibility.weather ?? true,
     });
     handleGenerate(savedTopic, savedCount, savedLanguage);
   }, [handleGenerate]);
@@ -205,7 +201,6 @@ export default function Home() {
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
             {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
-            {visibility.weather && <Weather hasBackground={!!backgroundImage} />}
             <Settings onSettingsSave={onSettingsSave} onVisibilityChange={handleVisibilityChange} />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">

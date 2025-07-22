@@ -59,7 +59,6 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
     search: true,
     quickLinks: true,
     learn: true,
-    weather: true,
   });
   const [selectedBackground, setSelectedBackground] = useState<string | null>('');
   const [uploadedBackground, setUploadedBackground] = useState<string | null>(null);
@@ -89,7 +88,6 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
         search: savedVisibility.search ?? true,
         quickLinks: savedVisibility.quickLinks ?? true,
         learn: savedVisibility.learn ?? true,
-        weather: savedVisibility.weather ?? true,
       });
     }
   }, [isOpen]);
@@ -277,10 +275,6 @@ export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) 
                  <div className="flex items-center space-x-2">
                     <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(c) => handleVisibilitySwitch('learn', c)} />
                     <Label htmlFor="learn-visible">Learn Section</Label>
-                </div>
-                 <div className="flex items-center space-x-2">
-                    <Switch id="weather-visible" checked={visibility.weather} onCheckedChange={(c) => handleVisibilitySwitch('weather', c)} />
-                    <Label htmlFor="weather-visible">Weather</Label>
                 </div>
             </div>
         </div>
