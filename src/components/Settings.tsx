@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,7 @@ import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, visibility: ComponentVisibility) => void;
+  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, visibility: ComponentVisibility, bg: string | null) => void;
 }
 
 const languages = [
@@ -47,7 +47,10 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     search: true,
     quickLinks: true,
     learn: true,
+    weather: true,
   });
+  const [background, setBackground] = useState<string | null>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,6 +59,7 @@ export function Settings({ onSettingsSave }: SettingsProps) {
       const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
       const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
       const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
+      const savedBg = localStorage.getItem('newTabBackground');
 
       setTopic(savedTopic);
       setView(savedView);
@@ -67,7 +71,9 @@ export function Settings({ onSettingsSave }: SettingsProps) {
         search: savedVisibility.search ?? true,
         quickLinks: savedVisibility.quickLinks ?? true,
         learn: savedVisibility.learn ?? true,
+        weather: savedVisibility.weather ?? true,
       });
+      setBackground(savedBg);
     }
   }, [isOpen]);
 
@@ -77,7 +83,8 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     localStorage.setItem('newTabCount', count.toString());
     localStorage.setItem('newTabLanguage', language);
     localStorage.setItem('newTabVisibility', JSON.stringify(visibility));
-    onSettingsSave(topic, view, count, language, visibility);
+    onSettingsSave(topic, view, count, language, visibility, background);
+    setBackground(''); // reset temp state
     setIsOpen(false);
   };
   
@@ -89,6 +96,21 @@ export function Settings({ onSettingsSave }: SettingsProps) {
 
   const handleVisibilityChange = (component: keyof ComponentVisibility, checked: boolean) => {
     setVisibility(prev => ({ ...prev, [component]: checked }));
+  };
+
+  const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setBackground(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveBackground = () => {
+    setBackground(null); // Use null to signify removal
   };
 
   return (
@@ -112,6 +134,28 @@ export function Settings({ onSettingsSave }: SettingsProps) {
               <ThemeToggle />
             </div>
           </div>
+          <Separator />
+          <p className="font-medium text-foreground">Background</p>
+           <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="background" className="text-right">
+                Image
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  Upload Image
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleBackgroundUpload}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <Button variant="ghost" onClick={handleRemoveBackground}>
+                  Remove
+                </Button>
+              </div>
+            </div>
           <Separator />
           <p className="font-medium text-foreground">Learn Settings</p>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -195,6 +239,10 @@ export function Settings({ onSettingsSave }: SettingsProps) {
                  <div className="flex items-center space-x-2">
                     <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(c) => handleVisibilityChange('learn', c)} />
                     <Label htmlFor="learn-visible">Learn Section</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Switch id="weather-visible" checked={visibility.weather} onCheckedChange={(c) => handleVisibilityChange('weather', c)} />
+                    <Label htmlFor="weather-visible">Weather</Label>
                 </div>
             </div>
         </div>

@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, clearAllData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
+import { Weather } from '@/components/Weather';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
@@ -59,6 +60,7 @@ export interface ComponentVisibility {
   search: boolean;
   quickLinks: boolean;
   learn: boolean;
+  weather: boolean;
 }
 
 
@@ -77,7 +79,9 @@ export default function Home() {
     search: true,
     quickLinks: true,
     learn: true,
+    weather: true,
   });
+  const [backgroundImage, setBackgroundImage] = useState('');
 
   const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
@@ -133,6 +137,11 @@ export default function Home() {
     const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
     const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
     const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
+    const savedBg = localStorage.getItem('newTabBackground');
+
+    if (savedBg) {
+      setBackgroundImage(savedBg);
+    }
 
     setView(savedView);
     setTopic(savedTopic);
@@ -144,18 +153,27 @@ export default function Home() {
         search: savedVisibility.search ?? true,
         quickLinks: savedVisibility.quickLinks ?? true,
         learn: savedVisibility.learn ?? true,
+        weather: savedVisibility.weather ?? true,
     });
     handleGenerate(savedTopic, savedCount, savedLanguage);
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newLanguage: string, newVisibility: ComponentVisibility) => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newLanguage: string, newVisibility: ComponentVisibility, newBg: string | null) => {
     const topicChanged = newTopic !== topic;
     setTopic(newTopic);
     setView(newView);
     setCount(newCount);
     setLanguage(newLanguage);
     setVisibility(newVisibility);
-    // When settings are saved, we force a regeneration if topic has changed.
+    
+    if (newBg === null) {
+      setBackgroundImage('');
+      localStorage.removeItem('newTabBackground');
+    } else if (newBg) {
+      setBackgroundImage(newBg);
+      localStorage.setItem('newTabBackground', newBg);
+    }
+    
     handleGenerate(newTopic, newCount, newLanguage, topicChanged);
   };
   
@@ -166,15 +184,24 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
-       <div className="absolute top-4 right-4 flex items-center gap-4">
+      {backgroundImage && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        >
+          <div className="absolute inset-0 bg-background/80"></div>
+        </div>
+      )}
+      <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
             {visibility.greeting && <Greeting />}
+            {visibility.weather && <Weather />}
             <Settings onSettingsSave={onSettingsSave} />
         </div>
-      <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8">
+      <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
         {visibility.clock && <Clock />}
         {visibility.search && <Search />}
       </div>
-      <div className="w-full max-w-6xl space-y-8">
+      <div className="w-full max-w-6xl space-y-8 z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {visibility.quickLinks && (
             <div className="lg:col-span-4">
