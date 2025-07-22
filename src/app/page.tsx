@@ -16,6 +16,7 @@ import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, clearAllData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { Weather } from '@/components/Weather';
+import { cn } from '@/lib/utils';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
@@ -183,7 +184,10 @@ export default function Home() {
 
 
   return (
-    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
+    <main className={cn(
+        "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8",
+        backgroundImage ? 'text-white' : ''
+    )}>
       {backgroundImage && (
         <div 
           className="absolute inset-0 bg-cover bg-center"

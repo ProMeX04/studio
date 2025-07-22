@@ -38,10 +38,10 @@ export function Greeting() {
   }, [fullGreeting, typedGreeting]);
 
   return (
-    <p className="text-xl text-muted-foreground relative">
+    <p className="text-xl text-current/80 relative">
       {typedGreeting}
       <span className={cn(
-          'ml-1 h-5 w-0.5 bg-foreground inline-block', 
+          'ml-1 h-5 w-0.5 bg-current inline-block', 
           isTyping ? 'animate-pulse' : 'hidden'
       )}></span>
     </p>
