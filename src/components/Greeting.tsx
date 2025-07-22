@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export function Greeting() {
-  const [fullGreeting, setFullGreeting] = useState('');
-  const [displayedGreeting, setDisplayedGreeting] = useState('');
+  const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
     const today = new Date();
@@ -21,31 +20,12 @@ export function Greeting() {
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     const dateText = `, it's ${today.toLocaleDateString('en-US', options)}.`;
-    setFullGreeting(greetingText + dateText);
-
+    setGreeting(greetingText + dateText);
   }, []);
 
-  useEffect(() => {
-    if (fullGreeting) {
-      let i = 0;
-      setDisplayedGreeting('');
-      const typingInterval = setInterval(() => {
-        if (i < fullGreeting.length) {
-          setDisplayedGreeting(prev => prev + fullGreeting.charAt(i));
-          i++;
-        } else {
-          clearInterval(typingInterval);
-        }
-      }, 50);
-
-      return () => clearInterval(typingInterval);
-    }
-  }, [fullGreeting]);
-
-
   return (
-    <p className="text-xl text-muted-foreground">
-      {displayedGreeting}
+    <p className="text-xl text-muted-foreground animate-in fade-in duration-1000">
+      {greeting}
     </p>
   );
 }
