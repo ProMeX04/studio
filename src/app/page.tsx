@@ -5,7 +5,6 @@ import { Clock } from '@/components/Clock';
 import { Logo } from '@/components/Logo';
 import { Flashcards } from '@/components/Flashcards';
 import { Quiz } from '@/components/Quiz';
-import { GeminiInteraction } from '@/components/GeminiInteraction';
 
 export default function Home() {
   return (
@@ -16,7 +15,6 @@ export default function Home() {
         <Search />
       </div>
       <div className="w-full max-w-6xl space-y-8">
-        <GeminiInteraction />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-4">
             <QuickLinks />
