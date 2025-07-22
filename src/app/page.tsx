@@ -16,6 +16,7 @@ import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, clearAllData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
@@ -205,6 +206,7 @@ export default function Home() {
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
             {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
+            <ThemeToggle />
             <Settings onSettingsSave={onSettingsSave} onVisibilityChange={handleVisibilityChange} onViewChange={handleViewChange} />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">

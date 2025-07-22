@@ -21,6 +21,7 @@ import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
 
 interface SettingsProps {
   onSettingsSave: (topic: string, count: number, language: string, bg: string | null) => void;
@@ -156,6 +157,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
           <SheetTitle>Settings</SheetTitle>
         </SheetHeader>
         <div className="grid gap-6 py-4">
+          
+          <Separator />
           <p className="font-medium text-foreground">Background</p>
             <div className="grid grid-cols-3 gap-2">
                 {stockBackgrounds.map(bg => (
