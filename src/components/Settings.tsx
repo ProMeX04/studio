@@ -46,6 +46,12 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     onSettingsSave(topic, view, count);
     setIsOpen(false);
   };
+  
+  const handleCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const newCount = value === '' ? 0 : parseInt(value, 10);
+    setCount(isNaN(newCount) ? 0 : newCount);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -89,7 +95,7 @@ export function Settings({ onSettingsSave }: SettingsProps) {
               id="count"
               type="number"
               value={count}
-              onChange={(e) => setCount(parseInt(e.target.value, 10))}
+              onChange={handleCountChange}
               className="col-span-3"
               placeholder="e.g. 5"
               min="1"
