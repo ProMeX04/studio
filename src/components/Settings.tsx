@@ -24,7 +24,8 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, visibility: ComponentVisibility, bg: string | null) => void;
+  onSettingsSave: (topic: string, view: 'flashcards' | 'quiz', count: number, language: string, bg: string | null) => void;
+  onVisibilityChange: (visibility: ComponentVisibility) => void;
 }
 
 const languages = [
@@ -46,7 +47,7 @@ const stockBackgrounds = [
     { id: '6', url: 'https://placehold.co/1920x1080.png', hint: 'ocean waves'},
 ];
 
-export function Settings({ onSettingsSave }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -98,7 +99,6 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     localStorage.setItem('newTabView', view);
     localStorage.setItem('newTabCount', count.toString());
     localStorage.setItem('newTabLanguage', language);
-    localStorage.setItem('newTabVisibility', JSON.stringify(visibility));
     
     if (uploadedBackground) {
         localStorage.setItem('newTabUploadedBackground', uploadedBackground);
@@ -106,7 +106,7 @@ export function Settings({ onSettingsSave }: SettingsProps) {
         localStorage.removeItem('newTabUploadedBackground');
     }
 
-    onSettingsSave(topic, view, count, language, visibility, selectedBackground);
+    onSettingsSave(topic, view, count, language, selectedBackground);
     setIsOpen(false);
   };
   
@@ -116,8 +116,10 @@ export function Settings({ onSettingsSave }: SettingsProps) {
     setCount(isNaN(newCount) ? 0 : newCount);
   }
 
-  const handleVisibilityChange = (component: keyof ComponentVisibility, checked: boolean) => {
-    setVisibility(prev => ({ ...prev, [component]: checked }));
+  const handleVisibilitySwitch = (component: keyof ComponentVisibility, checked: boolean) => {
+    const newVisibility = { ...visibility, [component]: checked };
+    setVisibility(newVisibility);
+    onVisibilityChange(newVisibility);
   };
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,27 +259,27 @@ export function Settings({ onSettingsSave }: SettingsProps) {
             <p className="font-medium text-foreground">Visible Components</p>
              <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
                 <div className="flex items-center space-x-2">
-                    <Switch id="clock-visible" checked={visibility.clock} onCheckedChange={(c) => handleVisibilityChange('clock', c)} />
+                    <Switch id="clock-visible" checked={visibility.clock} onCheckedChange={(c) => handleVisibilitySwitch('clock', c)} />
                     <Label htmlFor="clock-visible">Clock</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="greeting-visible" checked={visibility.greeting} onCheckedChange={(c) => handleVisibilityChange('greeting', c)} />
+                    <Switch id="greeting-visible" checked={visibility.greeting} onCheckedChange={(c) => handleVisibilitySwitch('greeting', c)} />
                     <Label htmlFor="greeting-visible">Greeting</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="search-visible" checked={visibility.search} onCheckedChange={(c) => handleVisibilityChange('search', c)} />
+                    <Switch id="search-visible" checked={visibility.search} onCheckedChange={(c) => handleVisibilitySwitch('search', c)} />
                     <Label htmlFor="search-visible">Search</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="quicklinks-visible" checked={visibility.quickLinks} onCheckedChange={(c) => handleVisibilityChange('quickLinks', c)} />
+                    <Switch id="quicklinks-visible" checked={visibility.quickLinks} onCheckedChange={(c) => handleVisibilitySwitch('quickLinks', c)} />
                     <Label htmlFor="quicklinks-visible">Quick Links</Label>
                 </div>
                  <div className="flex items-center space-x-2">
-                    <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(c) => handleVisibilityChange('learn', c)} />
+                    <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(c) => handleVisibilitySwitch('learn', c)} />
                     <Label htmlFor="learn-visible">Learn Section</Label>
                 </div>
                  <div className="flex items-center space-x-2">
-                    <Switch id="weather-visible" checked={visibility.weather} onCheckedChange={(c) => handleVisibilityChange('weather', c)} />
+                    <Switch id="weather-visible" checked={visibility.weather} onCheckedChange={(c) => handleVisibilitySwitch('weather', c)} />
                     <Label htmlFor="weather-visible">Weather</Label>
                 </div>
             </div>

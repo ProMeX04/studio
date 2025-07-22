@@ -159,13 +159,12 @@ export default function Home() {
     handleGenerate(savedTopic, savedCount, savedLanguage);
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newLanguage: string, newVisibility: ComponentVisibility, newBg: string | null) => {
+  const onSettingsSave = (newTopic: string, newView: 'flashcards' | 'quiz', newCount: number, newLanguage: string, newBg: string | null) => {
     const topicChanged = newTopic !== topic;
     setTopic(newTopic);
     setView(newView);
     setCount(newCount);
     setLanguage(newLanguage);
-    setVisibility(newVisibility);
     
     if (newBg === null) {
       setBackgroundImage('');
@@ -181,6 +180,11 @@ export default function Home() {
     handleGenerate(newTopic, newCount, newLanguage, topicChanged);
   };
   
+  const handleVisibilityChange = (newVisibility: ComponentVisibility) => {
+    setVisibility(newVisibility);
+    localStorage.setItem('newTabVisibility', JSON.stringify(newVisibility));
+  };
+  
   const onGenerateNew = () => {
      handleGenerate(topic, count, language, true);
   }
@@ -189,7 +193,7 @@ export default function Home() {
   return (
     <main className={cn(
         "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8",
-        backgroundImage && 'text-white'
+        backgroundImage && 'text-primary-foreground'
     )}>
       {backgroundImage && (
         <div 
@@ -202,7 +206,7 @@ export default function Home() {
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
             {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
             {visibility.weather && <Weather hasBackground={!!backgroundImage} />}
-            <Settings onSettingsSave={onSettingsSave} />
+            <Settings onSettingsSave={onSettingsSave} onVisibilityChange={handleVisibilityChange} />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
         {visibility.clock && <Clock />}
