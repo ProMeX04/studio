@@ -44,7 +44,7 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
 
   if (!flashcardSet || flashcardSet.cards.length === 0) {
     return (
-      <div className="text-center text-muted-foreground h-48 flex items-center justify-center">
+      <div className="text-center h-48 flex items-center justify-center">
          Enter a topic in settings and click "Save" to create some flashcards.
       </div>
     );

@@ -63,7 +63,7 @@ export function Quiz({ quizSet }: QuizProps) {
 
   if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
     return (
-      <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
+      <div className="text-center h-64 flex items-center justify-center">
         Enter a topic in settings and click "Save" to create a quiz.
       </div>
     );
@@ -96,19 +96,19 @@ export function Quiz({ quizSet }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg text-foreground",
+                    "p-4 rounded-lg",
                      selectedAnswer === currentQuestion.answer ? "bg-primary/10" : "bg-destructive/10"
                  )}>
                     <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
                     <p className="text-base">{currentQuestion.explanation}</p>
                  </div>
             )}
-            <p className="text-center text-base text-muted-foreground pt-4">
+            <p className="text-center text-base pt-4">
               Question {currentQuestionIndex + 1} of {quizSet.questions.length}
             </p>
           </div>
         ) : (
-           <div className="text-center text-muted-foreground h-64 flex items-center justify-center">
+           <div className="text-center h-64 flex items-center justify-center">
             No quiz available.
           </div>
         )}
