@@ -23,6 +23,7 @@ const QuizQuestionSchema = z.object({
     question: z.string().describe('The question text.'),
     options: z.array(z.string()).describe('A list of possible answers.'),
     answer: z.string().describe('The correct answer.'),
+    explanation: z.string().describe('A brief explanation for the correct answer.'),
 });
 
 const GenerateQuizOutputSchema = z.array(QuizQuestionSchema);
@@ -37,21 +38,23 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options and a single correct answer.
+  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
 
-Return a JSON array of objects with "question", "options", and "answer" keys.
+Return a JSON array of objects with "question", "options", "answer", and "explanation" keys.
 
 For example:
 [
     {
         "question": "What is the powerhouse of the cell?",
         "options": ["Nucleus", "Ribosome", "Mitochondrion", "Endoplasmic Reticulum"],
-        "answer": "Mitochondrion"
+        "answer": "Mitochondrion",
+        "explanation": "The mitochondrion is known as the powerhouse of the cell because it generates most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy."
     },
     {
         "question": "What is the capital of Japan?",
         "options": ["Beijing", "Seoul", "Tokyo", "Bangkok"],
-        "answer": "Tokyo"
+        "answer": "Tokyo",
+        "explanation": "Tokyo is the capital and largest city of Japan. It is located on the eastern coast of the main island Honshu."
     }
 ]`,
 });

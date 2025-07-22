@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -12,6 +11,7 @@ interface QuizQuestion {
   question: string;
   options: string[];
   answer: string;
+  explanation: string;
 }
 
 export interface QuizSet {
@@ -28,7 +28,6 @@ export function Quiz({ quizSet }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Reset when the set changes
@@ -48,15 +47,13 @@ export function Quiz({ quizSet }: QuizProps) {
     resetQuestionState();
     setCurrentQuestionIndex((prev) => (prev + 1) % (quizSet?.questions.length || 1));
   };
-
-  const handleSubmitAnswer = () => {
-    if (!selectedAnswer) {
-        toast({ title: 'Oops!', description: 'Please select an answer.', variant: 'destructive' });
-        return;
-    }
+  
+  const handleAnswerSelect = (answer: string) => {
+    if (isAnswered) return;
+    setSelectedAnswer(answer);
     setIsAnswered(true);
   };
-  
+
   const getOptionClass = (option: string) => {
     if (!isAnswered) return '';
     if (option === currentQuestion?.answer) return 'bg-green-500/20 border-green-500';
@@ -76,20 +73,20 @@ export function Quiz({ quizSet }: QuizProps) {
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
-          <div className="w-full space-y-4">
-             <h3 className="text-lg font-semibold text-center">{currentQuestion.question}</h3>
+          <div className="w-full max-w-2xl mx-auto space-y-6">
+             <h3 className="text-xl font-semibold text-center">{currentQuestion.question}</h3>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
-                onValueChange={setSelectedAnswer}
+                onValueChange={handleAnswerSelect}
                 disabled={isAnswered}
-                className="space-y-2"
+                className="space-y-3"
             >
               {currentQuestion.options.map((option, index) => (
                 <Label
                   key={index}
                   className={cn(
-                    "flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-colors",
-                    isAnswered ? getOptionClass(option) : 'hover:bg-accent/50'
+                    "flex items-center gap-4 p-4 rounded-lg border transition-colors",
+                    isAnswered ? getOptionClass(option) : 'cursor-pointer hover:bg-accent/50'
                   )}
                 >
                   <RadioGroupItem value={option} id={`option-${index}`} />
@@ -97,7 +94,13 @@ export function Quiz({ quizSet }: QuizProps) {
                 </Label>
               ))}
             </RadioGroup>
-            <p className="text-center text-sm text-muted-foreground">
+            {isAnswered && (
+                 <div className="p-4 rounded-lg bg-secondary/70">
+                    <p className="font-bold">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
+                    <p className="text-sm text-secondary-foreground">{currentQuestion.explanation}</p>
+                 </div>
+            )}
+            <p className="text-center text-sm text-muted-foreground pt-4">
               Question {currentQuestionIndex + 1} of {quizSet.questions.length}
             </p>
           </div>
@@ -108,10 +111,9 @@ export function Quiz({ quizSet }: QuizProps) {
         )}
       </CardContent>
       <CardFooter className="flex-col !pt-0 gap-2">
-        {quizSet.questions.length > 0 && (
-          <div className="w-full flex gap-2">
-            <Button onClick={handleSubmitAnswer} className="w-full" disabled={isAnswered}>Submit</Button>
-            <Button onClick={handleNextQuestion} className="w-full" variant="secondary" disabled={!isAnswered}>Next Question</Button>
+        {quizSet.questions.length > 0 && isAnswered && (
+          <div className="w-full flex justify-center">
+            <Button onClick={handleNextQuestion} className="w-full max-w-xs" variant="secondary">Next Question</Button>
           </div>
         )}
       </CardFooter>
