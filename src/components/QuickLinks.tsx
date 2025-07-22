@@ -147,7 +147,7 @@ export function QuickLinks() {
             <div className="p-3 rounded-full text-foreground">
                 {getIconForLink(link.name)}
             </div>
-            <span className="text-sm font-medium truncate w-full text-center text-foreground">{link.name}</span>
+            <span className="text-sm font-medium truncate w-full text-center">{link.name}</span>
             </a>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
