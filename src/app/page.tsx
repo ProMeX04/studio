@@ -31,10 +31,11 @@ export default function Home() {
     }
     setIsGenerating(true);
     try {
-      await Promise.all([
-        addFlashcardsToDb({ topic }),
-        addQuizToDb({ topic })
-      ]);
+      // Generate flashcards first
+      await addFlashcardsToDb({ topic });
+      // Then generate the quiz
+      await addQuizToDb({ topic });
+
       toast({ title: 'Success', description: `Flashcards and quiz for "${topic}" created.` });
       setTopic('');
       setRefreshKey(prev => prev + 1); // Trigger a refresh
