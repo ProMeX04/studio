@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { FileQuestion } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from './ui/skeleton';
@@ -108,13 +107,9 @@ export function Quiz() {
   const progress = currentQuiz ? ((currentQuestionIndex) / currentQuiz.questions.length) * 100 : 0;
 
   return (
-    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm">
+    <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2 font-headline">
-            <div className="flex items-center gap-2">
-                <FileQuestion className="h-5 w-5" />
-                AI Quiz
-            </div>
+        <CardTitle className="flex items-center justify-end gap-2 font-headline">
             {currentQuiz && <span className="text-sm font-normal text-muted-foreground">{currentQuiz.topic}</span>}
         </CardTitle>
       </CardHeader>

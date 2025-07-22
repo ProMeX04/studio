@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from './ui/skeleton';
@@ -67,13 +66,9 @@ export function Flashcards() {
   const currentCard = useMemo(() => currentSet?.cards[currentCardIndex], [currentSet, currentCardIndex]);
 
   return (
-    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm">
+    <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2 font-headline">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            AI Flashcards
-          </div>
+        <CardTitle className="flex items-center justify-end gap-2 font-headline">
           {currentSet && <span className="text-sm font-normal text-muted-foreground">{currentSet.topic}</span>}
         </CardTitle>
       </CardHeader>
