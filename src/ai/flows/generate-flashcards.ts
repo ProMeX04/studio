@@ -4,16 +4,12 @@
  * @fileOverview Flashcard generation flow for a given topic.
  *
  * - generateFlashcards - A function that generates flashcards for a given topic.
- * - addFlashcardsToDb - A function that generates flashcards and adds them to Firestore.
  * - GenerateFlashcardsInput - The input type for the generateFlashcards function.
  * - GenerateFlashcardsOutput - The return type for the generateFlashcards function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
 
 const GenerateFlashcardsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate flashcards.'),
@@ -32,15 +28,6 @@ export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSc
 
 export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
   return generateFlashcardsFlow(input);
-}
-
-export async function addFlashcardsToDb(input: GenerateFlashcardsInput): Promise<void> {
-    const flashcards = await generateFlashcardsFlow(input);
-    await addDoc(collection(db, 'flashcards'), {
-        topic: input.topic,
-        cards: flashcards,
-        createdAt: serverTimestamp(),
-    });
 }
 
 const prompt = ai.definePrompt({

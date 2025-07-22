@@ -4,16 +4,12 @@
  * @fileOverview Quiz generation flow for a given topic.
  *
  * - generateQuiz - A function that generates a quiz for a given topic.
- * - addQuizToDb - A function that generates a quiz and adds it to Firestore.
  * - GenerateQuizInput - The input type for the generateQuiz function.
  * - GenerateQuizOutput - The return type for the generateQuiz function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
 
 const GenerateQuizInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a quiz.'),
@@ -33,15 +29,6 @@ export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
   return generateQuizFlow(input);
-}
-
-export async function addQuizToDb(input: GenerateQuizInput): Promise<void> {
-    const quiz = await generateQuizFlow(input);
-    await addDoc(collection(db, 'quizzes'), {
-        topic: input.topic,
-        questions: quiz,
-        createdAt: serverTimestamp(),
-    });
 }
 
 const prompt = ai.definePrompt({

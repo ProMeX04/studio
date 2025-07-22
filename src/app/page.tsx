@@ -5,13 +5,13 @@ import { Greeting } from '@/components/Greeting';
 import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
-import { Flashcards } from '@/components/Flashcards';
-import { Quiz } from '@/components/Quiz';
+import { Flashcards, FlashcardSet } from '@/components/Flashcards';
+import { Quiz, QuizSet } from '@/components/Quiz';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { addFlashcardsToDb } from '@/ai/flows/generate-flashcards';
-import { addQuizToDb } from '@/ai/flows/generate-quiz';
+import { generateFlashcards } from '@/ai/flows/generate-flashcards';
+import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
@@ -19,6 +19,8 @@ function Learn() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
+  const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
   const { toast } = useToast();
 
   const handleGenerate = async () => {
@@ -27,14 +29,17 @@ function Learn() {
       return;
     }
     setIsLoading(true);
+    setFlashcardSet(null);
+    setQuizSet(null);
+
     try {
-      // Run sequentially to avoid overloading the API
-      await addFlashcardsToDb({ topic });
-      await addQuizToDb({ topic });
+      const flashcards = await generateFlashcards({ topic });
+      setFlashcardSet({ id: 'local-flashcards', topic, cards: flashcards });
+
+      const quiz = await generateQuiz({ topic });
+      setQuizSet({ id: 'local-quiz', topic, questions: quiz });
 
       toast({ title: 'Success', description: `Content for "${topic}" generated successfully.` });
-      // Components will refetch data automatically
-      setTopic('');
     } catch (error) {
       console.error(error);
       toast({ title: 'Error', description: 'Failed to generate content. Please try again.', variant: 'destructive' });
@@ -51,6 +56,7 @@ function Learn() {
                     placeholder="Enter a topic to generate flashcards & quizzes..."
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
                     disabled={isLoading}
                 />
             </div>
@@ -65,7 +71,13 @@ function Learn() {
             </div>
         </div>
         <div>
-            {view === 'flashcards' ? <Flashcards /> : <Quiz />}
+            {isLoading && (
+              <div className="flex justify-center items-center h-48">
+                <Loader className="animate-spin" />
+              </div>
+            )}
+            {!isLoading && view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
+            {!isLoading && view === 'quiz' && <Quiz quizSet={quizSet} />}
         </div>
      </Card>
   );
