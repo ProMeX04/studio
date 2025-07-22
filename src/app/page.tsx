@@ -14,9 +14,10 @@ import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
-import { getDb, LabeledData, clearAllData, AppData } from '@/lib/idb';
+import { getDb, LabeledData, AppData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LearnProps {
   view: 'flashcards' | 'quiz';
@@ -42,10 +43,18 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew }: LearnP
   return (
      <Card className="w-full bg-transparent shadow-none border-none p-0 relative">
         {hasContent && (
-           <Button onClick={onGenerateNew} variant="outline" size="sm" className="absolute top-0 right-0 z-10">
-             <RefreshCcw className="mr-2" />
-             Generate New
-           </Button>
+           <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button onClick={onGenerateNew} variant="outline" size="icon" className="absolute top-0 right-0 z-10">
+                        <RefreshCcw />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Generate New</p>
+                </TooltipContent>
+            </Tooltip>
+           </TooltipProvider>
         )}
         <CardContent className="pt-8">
             {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
@@ -260,3 +269,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
