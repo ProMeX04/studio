@@ -56,14 +56,14 @@ export function Quiz({ quizSet }: QuizProps) {
   };
 
   const getOptionClass = (option: string) => {
-    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50';
+    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/20 backdrop-blur-lg';
 
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (isCorrect) return 'bg-primary/20 border-primary';
-    if (isSelectedWrong) return 'bg-destructive/20 border-destructive';
-    return 'border-border';
+    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur-lg';
+    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur-lg';
+    return 'border-border bg-background/20 backdrop-blur-lg';
   };
 
   if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
@@ -101,10 +101,10 @@ export function Quiz({ quizSet }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg",
+                    "p-4 rounded-lg backdrop-blur-lg",
                     selectedAnswer === currentQuestion.answer 
-                      ? "bg-primary/10"
-                      : "bg-destructive/10"
+                      ? "bg-primary/20"
+                      : "bg-destructive/20"
                  )}>
                     <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
                     <p className="text-base">{currentQuestion.explanation}</p>
