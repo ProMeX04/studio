@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,7 +14,7 @@ import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
-import { getDb, LabeledData, clearAllData } from '@/lib/idb';
+import { getDb, LabeledData, clearAllData, AppData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -81,6 +82,7 @@ export default function Home() {
     learn: true,
   });
   const [backgroundImage, setBackgroundImage] = useState('');
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
 
   const handleGenerate = useCallback(async (currentTopic: string, currentCount: number, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
@@ -91,7 +93,8 @@ export default function Home() {
 
     if (forceNew) {
       const db = await getDb();
-      await clearAllData(db);
+      await db.delete('data', 'flashcards');
+      await db.delete('data', 'quiz');
     }
     
     try {
@@ -103,7 +106,6 @@ export default function Home() {
         setFlashcardSet(flashcardData.data);
         setQuizSet(quizData.data);
       } else {
-        await clearAllData(db);
         setFlashcardSet(null);
         setQuizSet(null);
 
@@ -131,59 +133,79 @@ export default function Home() {
   }, [toast]);
 
   useEffect(() => {
-    const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
-    const savedTopic = localStorage.getItem('newTabTopic') || 'Roman History';
-    const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
-    const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
-    const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
-    const savedBg = localStorage.getItem('newTabBackground');
+    async function loadInitialData() {
+        const db = await getDb();
 
-    if (savedBg) {
-      setBackgroundImage(savedBg);
+        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Roman History';
+        const savedCount = (await db.get('data', 'count'))?.data as number || 5;
+        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
+        const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
+        const savedBg = (await db.get('data', 'background'))?.data as string;
+        const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+
+        if (savedBg) setBackgroundImage(savedBg);
+        setUploadedBackgrounds(savedUploadedBgs);
+        
+        setView(savedView);
+        setTopic(savedTopic);
+        setCount(savedCount);
+        setLanguage(savedLanguage);
+        setVisibility(savedVisibility ?? {
+            clock: true,
+            greeting: true,
+            search: true,
+            quickLinks: true,
+            learn: true,
+        });
+        
+        handleGenerate(savedTopic, savedCount, savedLanguage);
     }
-
-    setView(savedView);
-    setTopic(savedTopic);
-    setCount(savedCount);
-    setLanguage(savedLanguage);
-    setVisibility({
-        clock: savedVisibility.clock ?? true,
-        greeting: savedVisibility.greeting ?? true,
-        search: savedVisibility.search ?? true,
-        quickLinks: savedVisibility.quickLinks ?? true,
-        learn: savedVisibility.learn ?? true,
-    });
-    handleGenerate(savedTopic, savedCount, savedLanguage);
+    loadInitialData();
   }, [handleGenerate]);
 
-  const onSettingsSave = (newTopic: string, newCount: number, newLanguage: string, newBg: string | null) => {
-    const topicChanged = newTopic !== topic;
-    setTopic(newTopic);
-    setCount(newCount);
-    setLanguage(newLanguage);
-    
-    if (newBg === null) {
-      setBackgroundImage('');
-      localStorage.removeItem('newTabBackground');
-    } else if (newBg) {
-      setBackgroundImage(newBg);
-      localStorage.setItem('newTabBackground', newBg);
-    } else {
-        // This case handles when 'newBg' is '', meaning no change from a previous non-null value.
-        // We do nothing to keep the existing background.
-    }
-    
-    handleGenerate(newTopic, newCount, newLanguage, topicChanged);
+  const onSettingsSave = async (settings: {
+    topic: string;
+    count: number;
+    language: string;
+    background: string | null;
+    uploadedBackgrounds: string[];
+  }) => {
+      const { topic: newTopic, count: newCount, language: newLanguage, background: newBg, uploadedBackgrounds: newUploadedBgs } = settings;
+      
+      const topicChanged = newTopic !== topic;
+      setTopic(newTopic);
+      setCount(newCount);
+      setLanguage(newLanguage);
+      setUploadedBackgrounds(newUploadedBgs);
+
+      const db = await getDb();
+      await db.put('data', { id: 'topic', data: newTopic });
+      await db.put('data', { id: 'count', data: newCount });
+      await db.put('data', { id: 'language', data: newLanguage });
+      await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
+
+      if (newBg === null) {
+        setBackgroundImage('');
+        await db.delete('data', 'background');
+      } else if (newBg !== undefined) {
+        setBackgroundImage(newBg);
+        await db.put('data', { id: 'background', data: newBg });
+      }
+      
+      handleGenerate(newTopic, newCount, newLanguage, topicChanged);
   };
   
-  const handleVisibilityChange = (newVisibility: ComponentVisibility) => {
+  const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
     setVisibility(newVisibility);
-    localStorage.setItem('newTabVisibility', JSON.stringify(newVisibility));
+    const db = await getDb();
+    await db.put('data', { id: 'visibility', data: newVisibility });
   };
   
-  const handleViewChange = (newView: 'flashcards' | 'quiz') => {
+  const handleViewChange = async (newView: 'flashcards' | 'quiz') => {
     setView(newView);
-    localStorage.setItem('newTabView', newView);
+    const db = await getDb();
+    await db.put('data', { id: 'view', data: newView });
   }
 
   const onGenerateNew = () => {
@@ -206,7 +228,11 @@ export default function Home() {
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
             {visibility.greeting && <Greeting hasBackground={!!backgroundImage} />}
-            <Settings onSettingsSave={onSettingsSave} onVisibilityChange={handleVisibilityChange} onViewChange={handleViewChange} />
+            <Settings 
+              onSettingsSave={onSettingsSave} 
+              onVisibilityChange={handleVisibilityChange} 
+              onViewChange={handleViewChange} 
+            />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
         {visibility.clock && <Clock />}
@@ -235,3 +261,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

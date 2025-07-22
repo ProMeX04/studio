@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings as SettingsIcon, CheckCircle } from 'lucide-react';
+import { Settings as SettingsIcon, CheckCircle, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -22,9 +23,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
+import { getDb } from '@/lib/idb';
 
 interface SettingsProps {
-  onSettingsSave: (topic: string, count: number, language: string, bg: string | null) => void;
+  onSettingsSave: (settings: {
+    topic: string;
+    count: number;
+    language: string;
+    background: string | null | undefined; // undefined means no change
+    uploadedBackgrounds: string[];
+  }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
 }
@@ -48,6 +56,8 @@ const stockBackgrounds = [
     { id: '6', url: 'https://placehold.co/1920x1080.png', hint: 'ocean waves'},
 ];
 
+const MAX_UPLOADED_IMAGES = 5;
+
 export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
@@ -61,50 +71,49 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
     quickLinks: true,
     learn: true,
   });
-  const [selectedBackground, setSelectedBackground] = useState<string | null>('');
-  const [uploadedBackground, setUploadedBackground] = useState<string | null>(null);
+  const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      const savedTopic = localStorage.getItem('newTabTopic') || '';
-      const savedView = (localStorage.getItem('newTabView') as 'flashcards' | 'quiz') || 'flashcards';
-      const savedCount = parseInt(localStorage.getItem('newTabCount') || '5', 10);
-      const savedLanguage = localStorage.getItem('newTabLanguage') || 'English';
-      const savedVisibility = JSON.parse(localStorage.getItem('newTabVisibility') || '{}');
-      const savedBg = localStorage.getItem('newTabBackground');
-      
-      const savedUploadedBg = localStorage.getItem('newTabUploadedBackground');
-      
-      setUploadedBackground(savedUploadedBg);
-      setSelectedBackground(savedBg);
-      setTopic(savedTopic);
-      setView(savedView);
-      setCount(savedCount);
-      setLanguage(savedLanguage)
-      setVisibility({
-        clock: savedVisibility.clock ?? true,
-        greeting: savedVisibility.greeting ?? true,
-        search: savedVisibility.search ?? true,
-        quickLinks: savedVisibility.quickLinks ?? true,
-        learn: savedVisibility.learn ?? true,
-      });
+    async function loadSettings() {
+      if (isOpen) {
+        const db = await getDb();
+        const savedTopic = (await db.get('data', 'topic'))?.data as string || '';
+        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+        const savedCount = (await db.get('data', 'count'))?.data as number || 5;
+        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
+        const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
+        const savedBg = (await db.get('data', 'background'))?.data as string | null;
+        const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+        
+        setTopic(savedTopic);
+        setView(savedView);
+        setCount(savedCount);
+        setLanguage(savedLanguage);
+        setVisibility(savedVisibility ?? {
+          clock: true,
+          greeting: true,
+          search: true,
+          quickLinks: true,
+          learn: true,
+        });
+        setSelectedBackground(savedBg);
+        setUploadedBackgrounds(savedUploadedBgs);
+      }
     }
+    loadSettings();
   }, [isOpen]);
 
   const handleSave = () => {
-    localStorage.setItem('newTabTopic', topic);
-    localStorage.setItem('newTabCount', count.toString());
-    localStorage.setItem('newTabLanguage', language);
-    
-    if (uploadedBackground) {
-        localStorage.setItem('newTabUploadedBackground', uploadedBackground);
-    } else {
-        localStorage.removeItem('newTabUploadedBackground');
-    }
-
-    onSettingsSave(topic, count, language, selectedBackground);
+    onSettingsSave({
+        topic,
+        count,
+        language,
+        background: selectedBackground,
+        uploadedBackgrounds,
+    });
     setIsOpen(false);
   };
   
@@ -131,7 +140,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        setUploadedBackground(result);
+        const newUploadedBgs = [result, ...uploadedBackgrounds].slice(0, MAX_UPLOADED_IMAGES);
+        setUploadedBackgrounds(newUploadedBgs);
         setSelectedBackground(result);
       };
       reader.readAsDataURL(file);
@@ -140,9 +150,13 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
 
   const handleRemoveBackground = () => {
     setSelectedBackground(null);
-    setUploadedBackground(null);
-    localStorage.removeItem('newTabUploadedBackground');
-    onSettingsSave(topic, count, language, null);
+    onSettingsSave({
+      topic,
+      count,
+      language,
+      background: null, // Explicitly set to null to remove
+      uploadedBackgrounds,
+    });
   };
 
   return (
@@ -165,23 +179,11 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
             </div>
           <Separator />
           <p className="font-medium text-foreground">Background</p>
-            <div className="grid grid-cols-3 gap-2">
-                {stockBackgrounds.map(bg => (
-                    <div key={bg.id} className="relative cursor-pointer group" onClick={() => setSelectedBackground(bg.url)}>
-                        <Image src={bg.url} alt={`Background ${bg.id}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg.url && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} data-ai-hint={bg.hint} />
-                        {selectedBackground === bg.url && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
-                    </div>
-                ))}
-                 <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
-                    {uploadedBackground ? (
-                         <Image src={uploadedBackground} alt="Uploaded background" width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === uploadedBackground && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} />
-                    ) : (
-                        <div className="flex items-center justify-center w-full h-full aspect-video bg-muted rounded-md text-muted-foreground text-sm hover:bg-accent">
-                            Upload
-                        </div>
-                    )}
-                    {selectedBackground === uploadedBackground && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
-                 </div>
+            <div className="flex flex-col gap-4">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload an Image
+                </Button>
                  <input
                   type="file"
                   ref={fileInputRef}
@@ -189,6 +191,20 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                   className="hidden"
                   accept="image/*"
                 />
+                <div className="grid grid-cols-3 gap-2">
+                    {uploadedBackgrounds.map((bg, index) => (
+                        <div key={`uploaded-${index}`} className="relative cursor-pointer group" onClick={() => setSelectedBackground(bg)}>
+                             <Image src={bg} alt={`Uploaded background ${index + 1}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} />
+                            {selectedBackground === bg && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
+                        </div>
+                    ))}
+                    {stockBackgrounds.map(bg => (
+                        <div key={bg.id} className="relative cursor-pointer group" onClick={() => setSelectedBackground(bg.url)}>
+                            <Image src={bg.url} alt={`Background ${bg.id}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg.url && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} data-ai-hint={bg.hint} />
+                            {selectedBackground === bg.url && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
+                        </div>
+                    ))}
+                </div>
             </div>
              <div className="flex justify-end">
                 <Button variant="ghost" size="sm" onClick={handleRemoveBackground}>
@@ -293,3 +309,5 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
     </Sheet>
   );
 }
+
+    
