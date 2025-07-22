@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 export function Greeting() {
-  const [greeting, setGreeting] = useState('');
+  const [fullGreeting, setFullGreeting] = useState('');
+  const [typedGreeting, setTypedGreeting] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
 
   useEffect(() => {
     const today = new Date();
@@ -20,12 +23,27 @@ export function Greeting() {
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     const dateText = `, it's ${today.toLocaleDateString('en-US', options)}.`;
-    setGreeting(greetingText + dateText);
+    setFullGreeting(greetingText + dateText);
   }, []);
 
+  useEffect(() => {
+    if (fullGreeting && typedGreeting.length < fullGreeting.length) {
+      const timeoutId = setTimeout(() => {
+        setTypedGreeting(fullGreeting.slice(0, typedGreeting.length + 1));
+      }, 50);
+      return () => clearTimeout(timeoutId);
+    } else if (typedGreeting.length === fullGreeting.length && fullGreeting.length > 0) {
+        setIsTyping(false);
+    }
+  }, [fullGreeting, typedGreeting]);
+
   return (
-    <p className="text-xl text-muted-foreground animate-in fade-in duration-1000">
-      {greeting}
+    <p className="text-xl text-muted-foreground relative">
+      {typedGreeting}
+      <span className={cn(
+          'ml-1 h-5 w-0.5 bg-foreground inline-block', 
+          isTyping ? 'animate-pulse' : 'hidden'
+      )}></span>
     </p>
   );
 }
