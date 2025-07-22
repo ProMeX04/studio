@@ -56,14 +56,14 @@ export function Quiz({ quizSet }: QuizProps) {
   };
 
   const getOptionClass = (option: string) => {
-    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/20 backdrop-blur-lg';
+    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/20 backdrop-blur';
 
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur-lg';
-    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur-lg';
-    return 'border-border bg-background/20 backdrop-blur-lg';
+    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur';
+    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur';
+    return 'border-border bg-background/20 backdrop-blur';
   };
 
   if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
@@ -79,7 +79,7 @@ export function Quiz({ quizSet }: QuizProps) {
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
-             <h3 className="text-2xl font-semibold text-center">{currentQuestion.question}</h3>
+             <h3 className="text-2xl font-semibold text-center bg-background/10 backdrop-blur rounded-lg p-6">{currentQuestion.question}</h3>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
                 onValueChange={handleAnswerSelect}
@@ -101,7 +101,7 @@ export function Quiz({ quizSet }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg backdrop-blur-lg",
+                    "p-4 rounded-lg backdrop-blur",
                     selectedAnswer === currentQuestion.answer 
                       ? "bg-primary/20"
                       : "bg-destructive/20"
