@@ -3,29 +3,49 @@
 import { useState, useEffect } from 'react';
 
 export function Greeting() {
-  const [greeting, setGreeting] = useState('');
-  const [date, setDate] = useState('');
+  const [fullGreeting, setFullGreeting] = useState('');
+  const [displayedGreeting, setDisplayedGreeting] = useState('');
 
   useEffect(() => {
     const today = new Date();
     const hour = today.getHours();
     
+    let greetingText;
     if (hour < 12) {
-      setGreeting('Good Morning');
+      greetingText = 'Good Morning';
     } else if (hour < 18) {
-      setGreeting('Good Afternoon');
+      greetingText = 'Good Afternoon';
     } else {
-      setGreeting('Good Evening');
+      greetingText = 'Good Evening';
     }
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    setDate(`, it's ${today.toLocaleDateString('en-US', options)}.`);
+    const dateText = `, it's ${today.toLocaleDateString('en-US', options)}.`;
+    setFullGreeting(greetingText + dateText);
 
   }, []);
 
+  useEffect(() => {
+    if (fullGreeting) {
+      let i = 0;
+      setDisplayedGreeting('');
+      const typingInterval = setInterval(() => {
+        if (i < fullGreeting.length) {
+          setDisplayedGreeting(prev => prev + fullGreeting.charAt(i));
+          i++;
+        } else {
+          clearInterval(typingInterval);
+        }
+      }, 50); // Adjust typing speed here
+
+      return () => clearInterval(typingInterval);
+    }
+  }, [fullGreeting]);
+
+
   return (
-    <p className="text-xl text-muted-foreground -mt-6">
-      {greeting}{date}
+    <p className="text-xl text-muted-foreground">
+      {displayedGreeting}
     </p>
   );
 }
