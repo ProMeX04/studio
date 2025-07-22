@@ -5,7 +5,6 @@ import { Greeting } from '@/components/Greeting';
 import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
-import { Logo } from '@/components/Logo';
 import { Flashcards } from '@/components/Flashcards';
 import { Quiz } from '@/components/Quiz';
 import { Button } from '@/components/ui/button';
@@ -90,7 +89,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <Logo />
     </main>
   );
 }
