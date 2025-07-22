@@ -6,7 +6,6 @@ import { Logo } from '@/components/Logo';
 import { Flashcards } from '@/components/Flashcards';
 import { Quiz } from '@/components/Quiz';
 import { GeminiInteraction } from '@/components/GeminiInteraction';
-import { QuickNotes } from '@/components/QuickNotes';
 
 export default function Home() {
   return (
@@ -19,10 +18,9 @@ export default function Home() {
       <div className="w-full max-w-6xl space-y-8">
         <GeminiInteraction />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-4">
             <QuickLinks />
           </div>
-          <QuickNotes />
           <div className="lg:col-span-4">
             <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">
               Learn
