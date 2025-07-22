@@ -23,10 +23,9 @@ export interface QuizSet {
 
 interface QuizProps {
     quizSet: QuizSet | null;
-    hasBackground: boolean;
 }
 
-export function Quiz({ quizSet, hasBackground }: QuizProps) {
+export function Quiz({ quizSet }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -57,20 +56,14 @@ export function Quiz({ quizSet, hasBackground }: QuizProps) {
   };
 
   const getOptionClass = (option: string) => {
-    if (!isAnswered) return '';
+    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50';
 
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (hasBackground) {
-        if (isCorrect) return 'bg-green-500/30 border-green-500';
-        if (isSelectedWrong) return 'bg-red-500/30 border-red-500';
-        return 'border-white/20';
-    } else {
-        if (isCorrect) return 'bg-primary/20 border-primary';
-        if (isSelectedWrong) return 'bg-destructive/20 border-destructive';
-        return 'border-border';
-    }
+    if (isCorrect) return 'bg-primary/20 border-primary';
+    if (isSelectedWrong) return 'bg-destructive/20 border-destructive';
+    return 'border-border';
   };
 
   if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
@@ -98,8 +91,7 @@ export function Quiz({ quizSet, hasBackground }: QuizProps) {
                   key={index}
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-lg border transition-colors text-lg",
-                    !isAnswered && (hasBackground ? 'border-white/20 hover:bg-white/10' : 'cursor-pointer hover:bg-accent/50'),
-                    isAnswered && getOptionClass(option)
+                    getOptionClass(option)
                   )}
                 >
                   <RadioGroupItem value={option} id={`option-${index}`} />
@@ -111,8 +103,8 @@ export function Quiz({ quizSet, hasBackground }: QuizProps) {
                  <div className={cn(
                     "p-4 rounded-lg",
                     selectedAnswer === currentQuestion.answer 
-                      ? (hasBackground ? "bg-green-500/20" : "bg-primary/10")
-                      : (hasBackground ? "bg-red-500/20" : "bg-destructive/10")
+                      ? "bg-primary/10"
+                      : "bg-destructive/10"
                  )}>
                     <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Correct!" : "Incorrect."}</p>
                     <p className="text-base">{currentQuestion.explanation}</p>
