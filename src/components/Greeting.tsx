@@ -4,21 +4,28 @@ import { useState, useEffect } from 'react';
 
 export function Greeting() {
   const [greeting, setGreeting] = useState('');
+  const [date, setDate] = useState('');
 
   useEffect(() => {
-    const hour = new Date().getHours();
+    const today = new Date();
+    const hour = today.getHours();
+    
     if (hour < 12) {
-      setGreeting('Good morning');
+      setGreeting('Good Morning');
     } else if (hour < 18) {
-      setGreeting('Good afternoon');
+      setGreeting('Good Afternoon');
     } else {
-      setGreeting('Good evening');
+      setGreeting('Good Evening');
     }
+
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+    setDate(`, it's ${today.toLocaleDateString('en-US', options)}.`);
+
   }, []);
 
   return (
-    <h1 className="text-4xl md:text-5xl font-headline font-bold text-foreground/90">
-      {greeting}
-    </h1>
+    <p className="text-xl text-muted-foreground -mt-6">
+      {greeting}{date}
+    </p>
   );
 }

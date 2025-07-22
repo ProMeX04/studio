@@ -14,14 +14,14 @@ export function Search() {
   };
 
   return (
-    <form onSubmit={handleSearch} className="max-w-xl mx-auto">
+    <form onSubmit={handleSearch} className="w-full">
       <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="search"
           name="q"
           placeholder="Search the web..."
-          className="pl-10 h-12 text-lg bg-card/80 backdrop-blur-sm"
+          className="pl-12 h-14 text-base bg-secondary/70 rounded-full border-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
     </form>
