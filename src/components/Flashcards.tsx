@@ -52,13 +52,7 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2 font-headline">
-          <span className="text-lg">Flashcards</span>
-          {flashcardSet && <span className="text-sm font-normal text-muted-foreground">{flashcardSet.topic}</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow">
+      <CardContent className="flex-grow pt-8">
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {flashcardSet.cards.map((card, index) => (
             <FlashcardItem key={index} card={card} />

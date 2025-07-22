@@ -74,13 +74,7 @@ export function Quiz({ quizSet }: QuizProps) {
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2 font-headline">
-          <span className="text-lg">Quiz</span>
-          {quizSet && <span className="text-sm font-normal text-muted-foreground">{quizSet.topic}</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-center items-center">
+      <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full space-y-4">
              <h3 className="text-lg font-semibold text-center">{currentQuestion.question}</h3>
