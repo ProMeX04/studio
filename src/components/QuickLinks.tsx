@@ -154,7 +154,7 @@ export function QuickLinks() {
             <div className="p-3 rounded-full bg-secondary">
                 {getIconForLink(link)}
             </div>
-            <span className="text-sm font-medium truncate w-full text-center" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.4)' }}>{link.name}</span>
+            <span className="text-sm font-medium truncate w-full text-center">{link.name}</span>
             </a>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
