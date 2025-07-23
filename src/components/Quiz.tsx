@@ -44,18 +44,23 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
   const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false, explanations: {} };
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
-
+  
+  // Update state only when initialState changes, not when quizSet changes.
+  // This prevents jumping to the first question when new questions are loaded in the background.
   useEffect(() => {
-    if (quizSet) { // Only update state if there's a quizSet
-        const newInitialState = initialState || { currentQuestionIndex: 0, answers: {} };
-        setCurrentQuestionIndex(newInitialState.currentQuestionIndex);
-        setAnswers(newInitialState.answers);
-    } else {
-        // Reset if there is no quizSet
+    if (initialState) {
+        setCurrentQuestionIndex(initialState.currentQuestionIndex);
+        setAnswers(initialState.answers);
+    }
+  }, [initialState]);
+  
+  // Reset component state if the quizSet is removed.
+  useEffect(() => {
+    if (!quizSet) {
         setCurrentQuestionIndex(0);
         setAnswers({});
     }
-  }, [quizSet, initialState]);
+  }, [quizSet])
 
 
   useEffect(() => {
@@ -150,7 +155,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
-             <div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-2">
+             <div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
              </div>
             <RadioGroup 
