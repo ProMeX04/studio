@@ -155,28 +155,32 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
             >
               {currentQuestion.options.map((option, index) => (
                 <div key={index} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Label
+                    <Label
                         className={cn(
-                            "flex-grow flex items-center gap-4 p-4 rounded-lg border transition-colors text-lg",
+                            "flex-grow flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors text-lg",
                             getOptionClass(option)
                         )}
-                        >
-                            <RadioGroupItem value={option} id={`option-${index}`} />
-                            {option}
-                        </Label>
+                    >
+                        <div className="flex items-center gap-4">
+                           <RadioGroupItem value={option} id={`option-${index}`} />
+                           {option}
+                        </div>
                         {isAnswered && (
-                            <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                onClick={() => handleExplain(option)}
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleExplain(option);
+                                }}
                                 disabled={isExplaining !== null}
                                 className="shrink-0"
                             >
                                 {isExplaining === option ? <Loader className="animate-spin" /> : <HelpCircle />}
                             </Button>
                         )}
-                    </div>
+                    </Label>
+
                      {currentAnswerState.explanations?.[option] && (
                         <Alert variant="default" className="bg-secondary/20 backdrop-blur">
                             <HelpCircle className="h-4 w-4" />
