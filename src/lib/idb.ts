@@ -1,7 +1,7 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { FlashcardSet } from '@/components/Flashcards';
-import { QuizSet } from '@/components/Quiz';
+import { QuizSet, QuizState } from '@/components/Quiz';
 import { ComponentVisibility } from '@/app/page';
 
 const DB_PREFIX = 'NewTabAI-DB';
@@ -11,6 +11,7 @@ const STORE_NAME = 'data';
 export type DataKey =
   | 'flashcards'
   | 'quiz'
+  | 'quizState'
   | 'topic'
   | 'language'
   | 'view'
@@ -25,6 +26,7 @@ export type DataKey =
 export type StoredData =
   | LabeledData<FlashcardSet>
   | LabeledData<QuizSet>
+  | AppData<QuizState>
   | AppData<string>
   | AppData<number>
   | AppData<'flashcards' | 'quiz'>

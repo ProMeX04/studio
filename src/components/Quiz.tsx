@@ -22,28 +22,46 @@ export interface QuizSet {
   questions: QuizQuestion[];
 }
 
-interface AnswerState {
-    [questionIndex: number]: {
-        selected: string | null;
-        isAnswered: boolean;
-    }
+export interface AnswerState {
+  [questionIndex: number]: {
+      selected: string | null;
+      isAnswered: boolean;
+  }
+}
+
+export interface QuizState {
+  currentQuestionIndex: number;
+  answers: AnswerState;
 }
 
 interface QuizProps {
-    quizSet: QuizSet | null;
+  quizSet: QuizSet | null;
+  initialState: QuizState | null;
+  onStateChange: (newState: QuizState) => void;
 }
 
-export function Quiz({ quizSet }: QuizProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<AnswerState>({});
+export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialState?.currentQuestionIndex || 0);
+  const [answers, setAnswers] = useState<AnswerState>(initialState?.answers || {});
 
   const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false };
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
 
   useEffect(() => {
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-  }, [quizSet]);
+    if (initialState) {
+        setCurrentQuestionIndex(initialState.currentQuestionIndex);
+        setAnswers(initialState.answers);
+    } else {
+        // Reset if quizSet changes and there's no initial state for it
+        setCurrentQuestionIndex(0);
+        setAnswers({});
+    }
+  }, [quizSet, initialState]);
+
+  useEffect(() => {
+    onStateChange({ currentQuestionIndex, answers });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, answers]);
 
 
   const currentQuestion = useMemo(() => quizSet?.questions[currentQuestionIndex], [quizSet, currentQuestionIndex]);

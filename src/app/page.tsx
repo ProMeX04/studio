@@ -7,14 +7,14 @@ import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
 import { Flashcards, FlashcardSet } from '@/components/Flashcards';
-import { Quiz, QuizSet } from '@/components/Quiz';
+import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
-import { getDb, LabeledData, AppData, clearAllData } from '@/lib/idb';
+import { getDb, LabeledData, AppData, StoredData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -27,13 +27,15 @@ interface LearnProps {
   isLoading: boolean;
   flashcardSet: FlashcardSet | null;
   quizSet: QuizSet | null;
+  quizState: QuizState | null;
   onGenerateNew: (forceNew: boolean) => void;
   generationProgress: number;
   targetCount: number;
   displayCount: number;
+  onQuizStateChange: (newState: QuizState) => void;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress, targetCount, displayCount }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange }: LearnProps) {
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
 
@@ -80,7 +82,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
                  </div>
             )}
             {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} />}
-            {view === 'quiz' && <Quiz quizSet={quizSet} />}
+            {view === 'quiz' && <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />}
         </CardContent>
      </Card>
   );
@@ -106,6 +108,7 @@ export default function Home() {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
+  const [quizState, setQuizState] = useState<QuizState | null>(null);
   const { toast } = useToast();
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
@@ -133,8 +136,10 @@ export default function Home() {
     if (forceNew) {
       setFlashcardSet(null);
       setQuizSet(null);
+      setQuizState(null);
       await db.delete('data', 'flashcards');
       await db.delete('data', 'quiz');
+      await db.delete('data', 'quizState');
     } else {
       const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
       const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
@@ -208,6 +213,7 @@ export default function Home() {
   }, [toast, user, flashcardMax, quizMax]);
 
   const loadInitialData = useCallback(async () => {
+        if (authLoading) return;
         const db = await getDb(user?.uid);
 
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
@@ -223,6 +229,7 @@ export default function Home() {
         
         const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
         const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
+        const quizStateData = await db.get('data', 'quizState') as AppData<QuizState>;
 
         if (savedBg) setBackgroundImage(savedBg);
         setUploadedBackgrounds(savedUploadedBgs);
@@ -253,7 +260,13 @@ export default function Home() {
         } else {
             setQuizSet(null);
         }
-  }, [user]);
+
+        if (quizData && quizData.topic === savedTopic && quizStateData) {
+            setQuizState(quizStateData.data);
+        } else {
+            setQuizState(null);
+        }
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -325,6 +338,12 @@ export default function Home() {
     await db.put('data', { id: 'view', data: newView });
   }
 
+  const handleQuizStateChange = async (newState: QuizState) => {
+    setQuizState(newState);
+    const db = await getDb(user?.uid);
+    await db.put('data', { id: 'quizState', data: newState });
+  };
+
   const onGenerateNew = (forceNew: boolean) => {
      handleGenerate(topic, language, forceNew);
   }
@@ -372,10 +391,12 @@ export default function Home() {
                     isLoading={isLoading}
                     flashcardSet={flashcardSet}
                     quizSet={displayedQuizSet}
+                    quizState={quizState}
                     onGenerateNew={onGenerateNew}
                     generationProgress={generationProgress}
                     targetCount={targetCount}
                     displayCount={displayCount}
+                    onQuizStateChange={handleQuizStateChange}
                  />
               </div>
           )}

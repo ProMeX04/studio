@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Shuffle } from 'lucide-react';
 
 interface Flashcard {
   front: string;
@@ -47,14 +47,17 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 
 export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
   const [currentPage, setCurrentPage] = useState(0);
+  const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([]);
 
-  const cards = flashcardSet?.cards || [];
-  const totalPages = Math.ceil(cards.length / (displayCount > 0 ? displayCount : 1));
-  
+  const originalCards = useMemo(() => flashcardSet?.cards || [], [flashcardSet]);
+
   useEffect(() => {
+    setDisplayedCards(originalCards);
     setCurrentPage(0);
-  }, [flashcardSet]);
+  }, [originalCards]);
 
+  const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? displayCount : 1));
+  
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1);
@@ -67,7 +70,13 @@ export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
     }
   };
 
-  if (!flashcardSet || cards.length === 0) {
+  const handleShuffle = () => {
+    const shuffled = [...displayedCards].sort(() => Math.random() - 0.5);
+    setDisplayedCards(shuffled);
+    setCurrentPage(0);
+  };
+
+  if (!flashcardSet || originalCards.length === 0) {
     return (
       <div className="text-center h-48 flex items-center justify-center">
          Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một số thẻ flashcard.
@@ -77,14 +86,14 @@ export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
 
   const startIndex = currentPage * displayCount;
   const endIndex = startIndex + displayCount;
-  const currentCards = cards.slice(startIndex, endIndex);
+  const currentCards = displayedCards.slice(startIndex, endIndex);
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow pt-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {currentCards.map((card, index) => (
-            <FlashcardItem key={`${flashcardSet.id}-${startIndex + index}`} card={card} />
+            <FlashcardItem key={`${flashcardSet.id}-${card.front}-${startIndex + index}`} card={card} />
           ))}
         </div>
       </CardContent>
@@ -93,6 +102,9 @@ export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
             <div className="flex items-center justify-center w-full gap-4">
                 <Button onClick={handlePrevPage} disabled={currentPage === 0} variant="outline" size="icon">
                     <ChevronLeft />
+                </Button>
+                <Button onClick={handleShuffle} variant="outline" size="icon">
+                    <Shuffle />
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   Trang {currentPage + 1} / {totalPages}
