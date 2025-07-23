@@ -43,13 +43,15 @@ export function Greeting() {
 
   useEffect(() => {
     // Reset typing effect when greeting changes (e.g., after login)
-    setTypedGreeting('');
-    setIsTyping(true);
-  }, [fullGreeting]);
+    if (isMounted) {
+      setTypedGreeting('');
+      setIsTyping(true);
+    }
+  }, [fullGreeting, isMounted]);
 
 
   useEffect(() => {
-    if (isTyping && fullGreeting && typedGreeting.length < fullGreeting.length) {
+    if (isMounted && isTyping && fullGreeting && typedGreeting.length < fullGreeting.length) {
       const timeoutId = setTimeout(() => {
         setTypedGreeting(fullGreeting.slice(0, typedGreeting.length + 1));
       }, 50);
@@ -57,7 +59,7 @@ export function Greeting() {
     } else if (typedGreeting.length === fullGreeting.length && fullGreeting.length > 0) {
         setIsTyping(false);
     }
-  }, [fullGreeting, typedGreeting, isTyping]);
+  }, [fullGreeting, typedGreeting, isTyping, isMounted]);
 
   if (!isMounted) {
     return null;

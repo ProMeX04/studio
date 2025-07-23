@@ -18,7 +18,7 @@ import { getDb, LabeledData, AppData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
-import { AIAssistant } from '@/components/AIAssistant';
+import { ChatAssistant } from '@/components/ChatAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
 
 const BATCH_SIZE = 10;
@@ -129,6 +129,11 @@ export default function Home() {
   const [backgroundImage, setBackgroundImage] = useState('');
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
   const { user, loading: authLoading } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleGenerate = useCallback(async (currentTopic: string, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
@@ -282,10 +287,10 @@ export default function Home() {
   }, [user, authLoading]);
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && isMounted) {
       loadInitialData();
     }
-  }, [authLoading, loadInitialData]);
+  }, [authLoading, isMounted, loadInitialData]);
 
   const onSettingsSave = useCallback(async (settings: {
     topic: string;
@@ -398,6 +403,10 @@ export default function Home() {
 
   const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions } : null;
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
       {backgroundImage && (
@@ -451,8 +460,12 @@ export default function Home() {
               </div>
           )}
         </div>
+        {visibility.learn && (
+            <div className="lg:col-span-4">
+                <ChatAssistant context={getAssistantContext()} />
+            </div>
+        )}
       </div>
-       {visibility.learn && <AIAssistant context={getAssistantContext()} />}
     </main>
   );
 }

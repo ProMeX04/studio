@@ -283,13 +283,17 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 <Label htmlFor="view" className="text-right">
                     Chế độ
                 </Label>
-                <div className="col-span-3 flex gap-1 bg-muted p-1 rounded-md">
-                    <Button onClick={() => onViewChange('flashcards')} variant={currentView === 'flashcards' ? 'secondary' : 'ghost'} className="flex-1 gap-2">
-                       <BookOpen /> Flashcard
-                    </Button>
-                    <Button onClick={() => onViewChange('quiz')} variant={currentView === 'quiz' ? 'secondary' : 'ghost'} className="flex-1 gap-2">
-                       <BrainCircuit /> Trắc nghiệm
-                    </Button>
+                 <div className="col-span-3">
+                    <Tabs defaultValue={currentView} onValueChange={(v) => onViewChange(v as 'flashcards' | 'quiz')} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="flashcards" className="gap-2">
+                            <BookOpen /> Flashcard
+                        </TabsTrigger>
+                        <TabsTrigger value="quiz" className="gap-2">
+                            <BrainCircuit /> Trắc nghiệm
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                 </div>
             </div>
             <Tabs defaultValue={currentView} className="w-full">

@@ -71,33 +71,21 @@ export const ExplainQuizOptionOutputSchema = z.object({
 export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
 
 
-// Live Tutor
+// Chat Assistant
 export const ChatMessageSchema = z.object({
   role: z.enum(['user', 'model']),
   text: z.string(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
-export const LiveTutorInputSchema = z.object({
-  audioDataUri: z.string().describe("The user's speech as a WebM audio data URI."),
+export const AskQuestionInputSchema = z.object({
   context: z.string().describe("The context of the conversation (e.g., topic, current quiz question)."),
+  question: z.string().describe("The user's question."),
   history: z.array(ChatMessageSchema).describe("The history of the conversation so far."),
 });
-export type LiveTutorInput = z.infer<typeof LiveTutorInputSchema>;
+export type AskQuestionInput = z.infer<typeof AskQuestionInputSchema>;
 
-export const LiveTutorOutputSchema = z.object({
-    responseText: z.string().describe("The AI tutor's response text."),
-    updatedHistory: z.array(ChatMessageSchema).describe("The updated conversation history."),
+export const AskQuestionOutputSchema = z.object({
+    answer: z.string().describe("The AI tutor's response text."),
 });
-export type LiveTutorOutput = z.infer<typeof LiveTutorOutputSchema>;
-
-// Text to Speech
-export const TextToSpeechInputSchema = z.object({
-    text: z.string().describe('The text to synthesize.'),
-});
-export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
-
-export const TextToSpeechOutputSchema = z.object({
-  audioDataUri: z.string().describe("The synthesized speech as a base64-encoded WAV data URI."),
-});
-export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
+export type AskQuestionOutput = z.infer<typeof AskQuestionOutputSchema>;
