@@ -37,7 +37,7 @@ export function Greeting() {
     }
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    const dateText = `. Hôm nay là ${today.toLocaleDateString('vi-VN', options)}.`;
+    const dateText = `. ${today.toLocaleDateString('vi-VN', options)}.`;
     setFullGreeting(greetingText + dateText);
   }, [user, isMounted]);
 
