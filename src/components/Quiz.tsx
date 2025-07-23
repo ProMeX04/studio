@@ -48,18 +48,22 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
 
   useEffect(() => {
-    if (initialState) {
-        setCurrentQuestionIndex(initialState.currentQuestionIndex);
-        setAnswers(initialState.answers);
+    if (quizSet) { // Only update state if there's a quizSet
+        const newInitialState = initialState || { currentQuestionIndex: 0, answers: {} };
+        setCurrentQuestionIndex(newInitialState.currentQuestionIndex);
+        setAnswers(newInitialState.answers);
     } else {
-        // Reset if quizSet changes and there's no initial state for it
+        // Reset if there is no quizSet
         setCurrentQuestionIndex(0);
         setAnswers({});
     }
   }, [quizSet, initialState]);
 
+
   useEffect(() => {
-    onStateChange({ currentQuestionIndex, answers });
+    if (quizSet) { // Only call onStateChange if there is a quizSet to avoid writing null state
+        onStateChange({ currentQuestionIndex, answers });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex, answers]);
 

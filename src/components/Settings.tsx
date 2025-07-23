@@ -40,6 +40,7 @@ interface SettingsProps {
   onViewChange: (view: 'flashcards' | 'quiz') => void;
   onBackgroundChange: (background: string | null) => void;
   onUploadedBackgroundsChange: (backgrounds: string[]) => void;
+  onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void;
 }
 
 const languages = [
@@ -65,7 +66,7 @@ function GoogleIcon() {
     )
 }
 
-export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -74,6 +75,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
   const [quizMax, setQuizMax] = useState(50);
   const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
   const [quizDisplayMax, setQuizDisplayMax] = useState(10);
+  const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
     greeting: true,
@@ -97,6 +99,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
       const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
       const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
       const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
+      const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
       const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
       const savedBg = (await db.get('data', 'background'))?.data as string | null;
       const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -108,6 +111,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
       setQuizMax(savedQuizMax);
       setFlashcardDisplayMax(savedFlashcardDisplayMax);
       setQuizDisplayMax(savedQuizDisplayMax);
+      setFlashcardIsRandom(savedFlashcardIsRandom);
       setVisibility(savedVisibility ?? {
         clock: true,
         greeting: true,
@@ -135,6 +139,11 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
   const handleViewChange = (newView: 'flashcards' | 'quiz') => {
     setView(newView);
     onViewChange(newView);
+  }
+
+  const handleFlashcardRandomToggle = (isRandom: boolean) => {
+    setFlashcardIsRandom(isRandom);
+    onFlashcardSettingsChange({ isRandom });
   }
   
   const handleSelectBackground = (url: string) => {
@@ -284,6 +293,18 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
               </TabsList>
               <TabsContent value="flashcards" className="space-y-4 pt-4">
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="flashcardIsRandom" className="text-right">
+                    Ngẫu nhiên
+                    </Label>
+                    <div className="col-span-3">
+                        <Switch
+                            id="flashcardIsRandom"
+                            checked={flashcardIsRandom}
+                            onCheckedChange={handleFlashcardRandomToggle}
+                        />
+                    </div>
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="flashcardMax" className="text-right">
                     Số lượng tối đa
@@ -323,19 +344,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     onChange={(e) => setQuizMax(Number(e.target.value))}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
-                    />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="quizDisplayMax" className="text-right">
-                    Số lượng hiển thị
-                    </Label>
-                    <Input
-                    id="quizDisplayMax"
-                    type="number"
-                    value={quizDisplayMax}
-                    onChange={(e) => setQuizDisplayMax(Number(e.target.value))}
-                    className="col-span-3"
-                    placeholder="ví dụ: 10"
                     />
                 </div>
               </TabsContent>

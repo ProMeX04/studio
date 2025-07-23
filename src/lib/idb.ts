@@ -21,7 +21,9 @@ export type DataKey =
   | 'flashcardMax'
   | 'quizMax'
   | 'flashcardDisplayMax'
-  | 'quizDisplayMax';
+  | 'quizDisplayMax'
+  | 'flashcardIsRandom'
+  | 'flashcardCurrentPage';
 
 export type StoredData =
   | LabeledData<FlashcardSet>
@@ -29,6 +31,7 @@ export type StoredData =
   | AppData<QuizState>
   | AppData<string>
   | AppData<number>
+  | AppData<boolean>
   | AppData<'flashcards' | 'quiz'>
   | AppData<ComponentVisibility>
   | AppData<string[]>

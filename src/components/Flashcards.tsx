@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -21,6 +21,9 @@ export interface FlashcardSet {
 interface FlashcardsProps {
   flashcardSet: FlashcardSet | null;
   displayCount: number;
+  isRandom: boolean;
+  onPageChange: (page: number) => void;
+  initialPage: number;
 }
 
 function FlashcardItem({ card }: { card: Flashcard }) {
@@ -44,17 +47,30 @@ function FlashcardItem({ card }: { card: Flashcard }) {
   );
 }
 
-
-export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
+export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange, initialPage }: FlashcardsProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([]);
 
   const originalCards = useMemo(() => flashcardSet?.cards || [], [flashcardSet]);
 
+  const shuffleCards = useCallback((cards: Flashcard[]) => {
+    return [...cards].sort(() => Math.random() - 0.5);
+  }, []);
+
   useEffect(() => {
-    setDisplayedCards(originalCards);
-    setCurrentPage(0);
-  }, [originalCards]);
+    if (isRandom) {
+      setDisplayedCards(shuffleCards(originalCards));
+    } else {
+      setDisplayedCards(originalCards);
+    }
+    setCurrentPage(isRandom ? 0 : initialPage);
+  }, [originalCards, isRandom, shuffleCards, initialPage]);
+  
+  useEffect(() => {
+    if (!isRandom) {
+      onPageChange(currentPage);
+    }
+  }, [currentPage, isRandom, onPageChange]);
 
   const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? displayCount : 1));
   
@@ -71,8 +87,7 @@ export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
   };
 
   const handleShuffle = () => {
-    const shuffled = [...displayedCards].sort(() => Math.random() - 0.5);
-    setDisplayedCards(shuffled);
+    setDisplayedCards(shuffleCards(displayedCards));
     setCurrentPage(0);
   };
 
@@ -103,9 +118,11 @@ export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
                 <Button onClick={handlePrevPage} disabled={currentPage === 0} variant="outline" size="icon">
                     <ChevronLeft />
                 </Button>
-                <Button onClick={handleShuffle} variant="outline" size="icon">
-                    <Shuffle />
-                </Button>
+                {!isRandom && (
+                  <Button onClick={handleShuffle} variant="outline" size="icon">
+                      <Shuffle />
+                  </Button>
+                )}
                 <p className="text-center text-sm text-muted-foreground">
                   Trang {currentPage + 1} / {totalPages}
                 </p>

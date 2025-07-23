@@ -33,9 +33,12 @@ interface LearnProps {
   targetCount: number;
   displayCount: number;
   onQuizStateChange: (newState: QuizState) => void;
+  flashcardIsRandom: boolean;
+  onFlashcardPageChange: (page: number) => void;
+  flashcardCurrentPage: number;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage }: LearnProps) {
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
 
@@ -81,7 +84,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
                     <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
                  </div>
             )}
-            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} />}
+            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />}
             {view === 'quiz' && <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />}
         </CardContent>
      </Card>
@@ -104,6 +107,8 @@ export default function Home() {
   const [quizMax, setQuizMax] = useState(50);
   const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
   const [quizDisplayMax, setQuizDisplayMax] = useState(10);
+  const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
+  const [flashcardCurrentPage, setFlashcardCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
@@ -223,6 +228,8 @@ export default function Home() {
         const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
         const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
         const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
+        const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
+        const savedFlashcardCurrentPage = (await db.get('data', 'flashcardCurrentPage'))?.data as number || 0;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -241,6 +248,8 @@ export default function Home() {
         setQuizMax(savedQuizMax);
         setFlashcardDisplayMax(savedFlashcardDisplayMax);
         setQuizDisplayMax(savedQuizDisplayMax);
+        setFlashcardIsRandom(savedFlashcardIsRandom);
+        setFlashcardCurrentPage(savedFlashcardCurrentPage);
         setVisibility(savedVisibility ?? {
             clock: true,
             greeting: true,
@@ -307,7 +316,7 @@ export default function Home() {
       } else if (countsChanged) {
         handleGenerate(newTopic, newLanguage, false);
       }
-  }, [topic, language, flashcardMax, quizMax, handleGenerate, user?.uid]);
+  }, [topic, language, flashcardMax, quizMax, handleGenerate, user?.uid, flashcardDisplayMax, quizDisplayMax]);
 
   const handleBackgroundChange = useCallback(async (newBg: string | null) => {
     const db = await getDb(user?.uid);
@@ -348,6 +357,18 @@ export default function Home() {
      handleGenerate(topic, language, forceNew);
   }, [handleGenerate, topic, language]);
 
+  const handleFlashcardSettingsChange = useCallback(async (settings: { isRandom: boolean }) => {
+    setFlashcardIsRandom(settings.isRandom);
+    const db = await getDb(user?.uid);
+    await db.put('data', { id: 'flashcardIsRandom', data: settings.isRandom });
+  }, [user?.uid]);
+
+  const handleFlashcardPageChange = useCallback(async (page: number) => {
+    setFlashcardCurrentPage(page);
+    const db = await getDb(user?.uid);
+    await db.put('data', { id: 'flashcardCurrentPage', data: page });
+  }, [user?.uid]);
+
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
 
@@ -371,6 +392,7 @@ export default function Home() {
               onViewChange={handleViewChange}
               onBackgroundChange={handleBackgroundChange}
               onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
+              onFlashcardSettingsChange={handleFlashcardSettingsChange}
             />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
@@ -397,6 +419,9 @@ export default function Home() {
                     targetCount={targetCount}
                     displayCount={displayCount}
                     onQuizStateChange={handleQuizStateChange}
+                    flashcardIsRandom={flashcardIsRandom}
+                    onFlashcardPageChange={handleFlashcardPageChange}
+                    flashcardCurrentPage={flashcardCurrentPage}
                  />
               </div>
           )}
