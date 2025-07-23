@@ -445,7 +445,7 @@ export default function Home() {
                     displayCount={displayCount}
                     onQuizStateChange={handleQuizStateChange}
                     flashcardIsRandom={flashcardIsRandom}
-                    onFlashcardPageChange={onFlashcardPageChange}
+                    onFlashcardPageChange={handleFlashcardPageChange}
                     flashcardCurrentPage={flashcardCurrentPage}
                 />
               </div>
