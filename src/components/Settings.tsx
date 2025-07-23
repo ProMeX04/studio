@@ -90,38 +90,37 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSettings = useCallback(async () => {
-    if (!authLoading) {
-      const db = await getDb(user?.uid);
-      const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
-      const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
-      const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
-      const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
-      const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
-      const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
-      const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
-      const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
-      const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
-      const savedBg = (await db.get('data', 'background'))?.data as string | null;
-      const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
-      
-      setTopic(savedTopic);
-      setView(savedView);
-      setLanguage(savedLanguage);
-      setFlashcardMax(savedFlashcardMax);
-      setQuizMax(savedQuizMax);
-      setFlashcardDisplayMax(savedFlashcardDisplayMax);
-      setQuizDisplayMax(savedQuizDisplayMax);
-      setFlashcardIsRandom(savedFlashcardIsRandom);
-      setVisibility(savedVisibility ?? {
-        clock: true,
-        greeting: true,
-        search: true,
-        quickLinks: true,
-        learn: true,
-      });
-      setSelectedBackground(savedBg);
-      setUploadedBackgrounds(savedUploadedBgs);
-    }
+    if (authLoading) return;
+    const db = await getDb(user?.uid);
+    const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
+    const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+    const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
+    const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
+    const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
+    const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
+    const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
+    const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
+    const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
+    const savedBg = (await db.get('data', 'background'))?.data as string | null;
+    const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+    
+    setTopic(savedTopic);
+    setView(savedView);
+    setLanguage(savedLanguage);
+    setFlashcardMax(savedFlashcardMax);
+    setQuizMax(savedQuizMax);
+    setFlashcardDisplayMax(savedFlashcardDisplayMax);
+    setQuizDisplayMax(savedQuizDisplayMax);
+    setFlashcardIsRandom(savedFlashcardIsRandom);
+    setVisibility(savedVisibility ?? {
+      clock: true,
+      greeting: true,
+      search: true,
+      quickLinks: true,
+      learn: true,
+    });
+    setSelectedBackground(savedBg);
+    setUploadedBackgrounds(savedUploadedBgs);
   }, [authLoading, user?.uid]);
 
   useEffect(() => {

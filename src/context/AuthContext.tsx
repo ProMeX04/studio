@@ -49,7 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         signInWithGoogle,
         signOut: handleSignOut,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [user, loading]);
 
     return (
