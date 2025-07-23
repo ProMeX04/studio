@@ -75,7 +75,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
    const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
   
@@ -140,8 +140,8 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur-sm';
-    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur-sm';
+    if (isCorrect) return 'bg-primary/50 border-primary backdrop-blur-sm';
+    if (isSelectedWrong) return 'bg-destructive/50 border-destructive backdrop-blur-sm';
     return 'border-border bg-background/80 backdrop-blur-sm';
   };
 
