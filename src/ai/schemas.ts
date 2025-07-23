@@ -67,7 +67,6 @@ export type ExplainQuizOptionInput = z.infer<typeof ExplainQuizOptionInputSchema
 
 export const ExplainQuizOptionOutputSchema = z.object({
     explanation: z.string().describe('The detailed explanation for the selected option.'),
-    audio: z.string().describe('The audio data URI of the explanation.'),
 });
 export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
 

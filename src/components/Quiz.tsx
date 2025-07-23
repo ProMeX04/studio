@@ -39,7 +39,6 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const [answers, setAnswers] = useState<AnswerState>(initialState?.answers || {});
   const [isExplaining, setIsExplaining] = useState<string | null>(null); // Option being explained
   const { toast } = useToast();
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false, explanations: {} };
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
@@ -92,10 +91,6 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
     // Do not fetch again if explanation already exists
     if (currentAnswerState.explanations?.[option]) {
-        if (audioRef.current && currentAnswerState.explanations[option].audio) {
-            audioRef.current.src = currentAnswerState.explanations[option].audio;
-            audioRef.current.play();
-        }
         return;
     }
 
@@ -116,11 +111,6 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                 explanations: newExplanations
             }
         }));
-
-        if (audioRef.current && result.audio) {
-            audioRef.current.src = result.audio;
-            audioRef.current.play();
-        }
 
     } catch (error) {
         console.error("Failed to get explanation", error);
@@ -155,7 +145,6 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-      <audio ref={audioRef} className="hidden" />
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
