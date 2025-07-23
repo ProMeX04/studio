@@ -30,26 +30,35 @@ export async function explainQuizOption(input: ExplainQuizOptionInput): Promise<
   return explainQuizOptionFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'explainQuizOptionPrompt',
+const correctAnswerPrompt = ai.definePrompt({
+  name: 'correctAnswerPrompt',
   input: {schema: ExplainQuizOptionInputSchema},
   output: {schema: ExplainQuizOptionOutputSchema},
-  prompt: `You are a helpful quiz tutor. The user has answered a question and now wants a more detailed explanation for one of the answer options.
+  prompt: `You are a helpful quiz tutor. The user has chosen the CORRECT answer and wants a more detailed explanation.
 
 Topic: {{{topic}}}
 Question: "{{{question}}}"
 Correct Answer: "{{{correctAnswer}}}"
-Option to Explain: "{{{selectedOption}}}"
 
-{{#if (eq selectedOption correctAnswer)}}
-The user has chosen the CORRECT answer and wants a more detailed explanation. Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer. You can provide additional context or interesting facts related to the topic.
-{{else}}
-The user has chosen an INCORRECT answer and wants to know why it's wrong. Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}".
-{{/if}}
-
-Please provide a clear and concise explanation.
+Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}". You can provide additional context or interesting facts related to the topic.
 `,
 });
+
+const incorrectAnswerPrompt = ai.definePrompt({
+    name: 'incorrectAnswerPrompt',
+    input: {schema: ExplainQuizOptionInputSchema},
+    output: {schema: ExplainQuizOptionOutputSchema},
+    prompt: `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
+
+Topic: {{{topic}}}
+Question: "{{{question}}}"
+Correct Answer: "{{{correctAnswer}}}"
+The Incorrect Option to Explain: "{{{selectedOption}}}"
+
+Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}".
+`,
+});
+
 
 const explainQuizOptionFlow = ai.defineFlow(
   {
@@ -58,7 +67,12 @@ const explainQuizOptionFlow = ai.defineFlow(
     outputSchema: ExplainQuizOptionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    if (input.selectedOption === input.correctAnswer) {
+        const {output} = await correctAnswerPrompt(input);
+        return output!;
+    } else {
+        const {output} = await incorrectAnswerPrompt(input);
+        return output!;
+    }
   }
 );
