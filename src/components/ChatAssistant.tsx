@@ -11,6 +11,9 @@ import { askQuestion } from '@/ai/flows/ask-question';
 import { type ChatMessage } from '@/ai/schemas';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 
 interface ChatAssistantProps {
   context: string;
@@ -114,13 +117,13 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
                 )}
                 <div
                   className={cn(
-                    "rounded-lg p-3 max-w-[80%]",
+                    "rounded-lg p-3 max-w-[80%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
                     message.role === 'user'
                       ? "bg-primary/80 text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
-                  <p className="text-sm">{message.text}</p>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
                 </div>
                  {message.role === 'user' && (
                   <div className="p-2 bg-muted rounded-full text-muted-foreground">

@@ -20,6 +20,25 @@ export default {
         body: ['PT Sans', 'sans-serif'],
         headline: ['Poppins', 'sans-serif'],
       },
+      typography: (theme: any) => ({
+        DEFAULT: {
+          css: {
+            h1: { color: theme('colors.foreground') },
+            h2: { color: theme('colors.foreground') },
+            h3: { color: theme('colors.foreground') },
+            h4: { color: theme('colors.foreground') },
+            h5: { color: theme('colors.foreground') },
+            h6: { color: theme('colors.foreground') },
+            strong: { color: theme('colors.foreground') },
+            code: { color: theme('colors.foreground') },
+            figcaption: { color: theme('colors.muted.foreground') },
+            blockquote: { 
+              color: theme('colors.muted.foreground'),
+              borderLeftColor: theme('colors.border'),
+            },
+          }
+        }
+      }),
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -76,5 +95,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')],
 } satisfies Config;

@@ -12,6 +12,8 @@ import { explainQuizOption } from '@/ai/flows/explain-quiz-option';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { QuizQuestion, QuizSet } from '@/ai/schemas';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface AnswerState {
   [questionIndex: number]: {
@@ -86,6 +88,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
   const handleExplain = useCallback(async (option: string) => {
     if (!quizSet || !currentQuestion) return;
+
+    // Do not fetch again if explanation already exists
+    if (currentAnswerState.explanations?.[option]) return;
 
     setIsExplaining(option);
     try {
@@ -176,8 +181,10 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                         <Alert variant="default" className="bg-secondary/20 backdrop-blur">
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
-                            <AlertDescription>
-                                {currentAnswerState.explanations[option]}
+                            <AlertDescription className="prose dark:prose-invert prose-p:my-0">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {currentAnswerState.explanations[option]}
+                                </ReactMarkdown>
                             </AlertDescription>
                         </Alert>
                     )}
@@ -186,12 +193,12 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg backdrop-blur",
+                    "p-4 rounded-lg backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1",
                     selectedAnswer === currentQuestion.answer 
                       ? "bg-primary/20"
                       : "bg-destructive/20"
                  )}>
-                    <p className="font-bold text-base">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
+                    <p className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
                     <p className="text-base">{currentQuestion.explanation}</p>
                  </div>
             )}
