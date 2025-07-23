@@ -8,26 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-
-export const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model']),
-  text: z.string(),
-});
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
-
-export const LiveTutorInputSchema = z.object({
-  audioDataUri: z.string().describe("The user's speech as a WebM audio data URI."),
-  context: z.string().describe("The context of the conversation (e.g., topic, current quiz question)."),
-  history: z.array(ChatMessageSchema).describe("The history of the conversation so far."),
-});
-export type LiveTutorInput = z.infer<typeof LiveTutorInputSchema>;
-
-export const LiveTutorOutputSchema = z.object({
-    responseText: z.string().describe("The AI tutor's response text."),
-    updatedHistory: z.array(ChatMessageSchema).describe("The updated conversation history."),
-});
-export type LiveTutorOutput = z.infer<typeof LiveTutorOutputSchema>;
+import { LiveTutorInputSchema, LiveTutorOutputSchema, type LiveTutorInput, type LiveTutorOutput, type ChatMessage } from '@/ai/schemas';
 
 export async function liveTutor(input: LiveTutorInput): Promise<LiveTutorOutput> {
     const { audioDataUri, context, history } = input;

@@ -11,19 +11,7 @@ import { ChevronLeft, ChevronRight, HelpCircle, Loader } from 'lucide-react';
 import { explainQuizOption } from '@/ai/flows/explain-quiz-option';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  answer: string;
-  explanation: string;
-}
-
-export interface QuizSet {
-  id: string;
-  topic: string;
-  questions: QuizQuestion[];
-}
+import { QuizQuestion, QuizSet } from '@/ai/schemas';
 
 export interface AnswerState {
   [questionIndex: number]: {

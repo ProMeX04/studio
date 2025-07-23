@@ -4,31 +4,10 @@
  * @fileOverview Flashcard generation flow for a given topic.
  *
  * - generateFlashcards - A function that generates flashcards for a given topic.
- * - GenerateFlashcardsInput - The input type for the generateFlashcards function.
- * - GenerateFlashcardsOutput - The return type for the generateFlashcards function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const FlashcardSchema = z.object({
-    front: z.string().describe('The front side of the flashcard.'),
-    back: z.string().describe('The back side of the flashcard.'),
-});
-
-const GenerateFlashcardsInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate flashcards.'),
-  count: z.number().describe('The number of flashcards to generate.'),
-  language: z.string().describe('The language for the flashcards.'),
-  existingCards: z.array(FlashcardSchema).optional().describe('An array of existing flashcards to avoid duplication.'),
-});
-
-export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
-
-
-const GenerateFlashcardsOutputSchema = z.array(FlashcardSchema);
-
-export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
+import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsInput, GenerateFlashcardsOutput } from '@/ai/schemas';
 
 export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
   return generateFlashcardsFlow(input);

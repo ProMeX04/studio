@@ -4,32 +4,10 @@
  * @fileOverview Quiz generation flow for a given topic.
  *
  * - generateQuiz - A function that generates a quiz for a given topic.
- * - GenerateQuizInput - The input type for the generateQuiz function.
- * - GenerateQuizOutput - The return type for the generateQuiz function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const QuizQuestionSchema = z.object({
-    question: z.string().describe('The question text.'),
-    options: z.array(z.string()).describe('A list of possible answers.'),
-    answer: z.string().describe('The correct answer.'),
-    explanation: z.string().describe('A brief explanation for the correct answer.'),
-});
-
-const GenerateQuizInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate a quiz.'),
-  count: z.number().describe('The number of questions to generate.'),
-  language: z.string().describe('The language for the quiz.'),
-  existingQuestions: z.array(QuizQuestionSchema).optional().describe('An array of existing questions to avoid duplication.'),
-});
-
-export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
-
-const GenerateQuizOutputSchema = z.array(QuizQuestionSchema);
-
-export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
+import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizInput, GenerateQuizOutput } from '@/ai/schemas';
 
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
   return generateQuizFlow(input);

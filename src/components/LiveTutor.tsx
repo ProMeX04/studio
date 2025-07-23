@@ -7,8 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { RefreshCcw, Mic, MicOff, Loader, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
-import { liveTutor, ChatMessage } from '@/ai/flows/live-tutor';
-import { QuizQuestion } from './Quiz';
+import { liveTutor } from '@/ai/flows/live-tutor';
+import { QuizQuestion, ChatMessage } from '@/ai/schemas';
 
 interface LiveTutorProps {
   topic: string;
@@ -47,7 +47,7 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
         const source = audioContextRef.current.createMediaStreamSource(stream);
         source.connect(analyserRef.current);
 
-        mediaRecorderRef.current = new MediaRecorder(stream);
+        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
         mediaRecorderRef.current.ondataavailable = (event) => {
           if (event.data.size > 0) {
             audioChunksRef.current.push(event.data);
@@ -259,7 +259,7 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-4 w-full max-w-2xl mx-auto">
-        <div className="w-full h-64 bg-secondary/30 rounded-lg p-4 overflow-y-auto space-y-4">
+        <div className="w-full h-64 bg-secondary/30 rounded-lg p-4 overflow-y-auto flex flex-col gap-2">
             {conversationHistory.length === 0 && (
                  <div className="flex items-center justify-center h-full text-muted-foreground">
                     Nhấn nút micro để bắt đầu cuộc trò chuyện với gia sư AI.

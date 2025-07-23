@@ -4,27 +4,10 @@
  * @fileOverview Flow to explain a specific quiz answer option.
  *
  * - explainQuizOption - A function that generates an explanation for a given quiz option.
- * - ExplainQuizOptionInput - The input type for the explainQuizOption function.
- * - ExplainQuizOptionOutput - The return type for the explainQuizOption function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const ExplainQuizOptionInputSchema = z.object({
-  topic: z.string().describe('The general topic of the quiz.'),
-  question: z.string().describe('The quiz question.'),
-  selectedOption: z.string().describe('The answer option the user wants an explanation for.'),
-  correctAnswer: z.string().describe('The correct answer to the question.'),
-});
-
-export type ExplainQuizOptionInput = z.infer<typeof ExplainQuizOptionInputSchema>;
-
-const ExplainQuizOptionOutputSchema = z.object({
-    explanation: z.string().describe('The detailed explanation for the selected option.')
-});
-
-export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
+import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutputSchema, type ExplainQuizOptionInput, type ExplainQuizOptionOutput } from '@/ai/schemas';
 
 export async function explainQuizOption(input: ExplainQuizOptionInput): Promise<ExplainQuizOptionOutput> {
   return explainQuizOptionFlow(input);

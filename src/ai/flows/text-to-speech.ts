@@ -4,20 +4,10 @@
  * @fileOverview A flow for synthesizing speech from text.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/googleai';
-
-
-const TextToSpeechOutputSchema = z.object({
-  audioDataUri: z.string().describe("The synthesized speech as a base64-encoded WAV data URI."),
-});
-export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
-
-const TextToSpeechInputSchema = z.object({
-    text: z.string().describe('The text to synthesize.'),
-});
-export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
+import { TextToSpeechInputSchema, TextToSpeechOutputSchema, type TextToSpeechInput, type TextToSpeechOutput } from '@/ai/schemas';
 
 
 async function toWav(
@@ -47,13 +37,8 @@ async function toWav(
   });
 }
 
-export const textToSpeech = ai.defineFlow(
-  {
-    name: 'textToSpeech',
-    inputSchema: TextToSpeechInputSchema,
-    outputSchema: TextToSpeechOutputSchema,
-  },
-  async ({text}) => {
+export async function textToSpeech(input: TextToSpeechInput): Promise<TextToSpeechOutput> {
+    const { text } = input;
     if (!text || text.trim() === '') {
         return { audioDataUri: '' };
     }
@@ -85,5 +70,4 @@ export const textToSpeech = ai.defineFlow(
     return {
       audioDataUri: 'data:audio/wav;base64,' + wavBase64,
     };
-  }
-);
+}
