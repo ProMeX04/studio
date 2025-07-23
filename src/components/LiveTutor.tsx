@@ -28,7 +28,7 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(...);
+  const analyserRef = useRef<AnalyserNode | null>(null);
 
   const startListening = useCallback(() => {
     async function setupMedia() {
