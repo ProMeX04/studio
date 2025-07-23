@@ -1,13 +1,16 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, Loader } from 'lucide-react';
+import { explainQuizOption } from '@/ai/flows/explain-quiz-option';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface QuizQuestion {
   question: string;
@@ -26,6 +29,7 @@ export interface AnswerState {
   [questionIndex: number]: {
       selected: string | null;
       isAnswered: boolean;
+      explanations?: { [option: string]: string };
   }
 }
 
@@ -43,8 +47,10 @@ interface QuizProps {
 export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialState?.currentQuestionIndex || 0);
   const [answers, setAnswers] = useState<AnswerState>(initialState?.answers || {});
+  const [isExplaining, setIsExplaining] = useState<string | null>(null); // Option being explained
+  const { toast } = useToast();
 
-  const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false };
+  const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false, explanations: {} };
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
 
   useEffect(() => {
@@ -78,7 +84,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
    const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
   
@@ -86,9 +92,42 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     if (isAnswered) return;
      setAnswers({
         ...answers,
-        [currentQuestionIndex]: { selected: answer, isAnswered: true }
+        [currentQuestionIndex]: { ...currentAnswerState, selected: answer, isAnswered: true }
     });
   };
+
+  const handleExplain = useCallback(async (option: string) => {
+    if (!quizSet || !currentQuestion) return;
+
+    setIsExplaining(option);
+    try {
+        const result = await explainQuizOption({
+            topic: quizSet.topic,
+            question: currentQuestion.question,
+            selectedOption: option,
+            correctAnswer: currentQuestion.answer,
+        });
+
+        const newExplanations = { ...(currentAnswerState.explanations || {}), [option]: result.explanation };
+        setAnswers(prev => ({
+            ...prev,
+            [currentQuestionIndex]: {
+                ...prev[currentQuestionIndex],
+                explanations: newExplanations
+            }
+        }));
+
+    } catch (error) {
+        console.error("Failed to get explanation", error);
+        toast({
+            title: "Lỗi",
+            description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
+            variant: "destructive"
+        })
+    } finally {
+        setIsExplaining(null);
+    }
+  }, [quizSet, currentQuestion, currentAnswerState, currentQuestionIndex, toast]);
 
   const getOptionClass = (option: string) => {
     if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/20 backdrop-blur';
@@ -122,16 +161,39 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                 className="space-y-3"
             >
               {currentQuestion.options.map((option, index) => (
-                <Label
-                  key={index}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-lg border transition-colors text-lg",
-                    getOptionClass(option)
-                  )}
-                >
-                  <RadioGroupItem value={option} id={`option-${index}`} />
-                  {option}
-                </Label>
+                <div key={index} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <Label
+                        className={cn(
+                            "flex-grow flex items-center gap-4 p-4 rounded-lg border transition-colors text-lg",
+                            getOptionClass(option)
+                        )}
+                        >
+                            <RadioGroupItem value={option} id={`option-${index}`} />
+                            {option}
+                        </Label>
+                        {isAnswered && (
+                            <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                onClick={() => handleExplain(option)}
+                                disabled={isExplaining !== null}
+                                className="shrink-0"
+                            >
+                                {isExplaining === option ? <Loader className="animate-spin" /> : <HelpCircle />}
+                            </Button>
+                        )}
+                    </div>
+                     {currentAnswerState.explanations?.[option] && (
+                        <Alert variant="default" className="bg-secondary/20 backdrop-blur">
+                            <HelpCircle className="h-4 w-4" />
+                            <AlertTitle>Giải thích chi tiết</AlertTitle>
+                            <AlertDescription>
+                                {currentAnswerState.explanations[option]}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </div>
               ))}
             </RadioGroup>
             {isAnswered && (
