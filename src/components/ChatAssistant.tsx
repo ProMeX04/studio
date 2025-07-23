@@ -143,17 +143,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 
   return (
     <Card className="w-full max-w-6xl mx-auto shadow-xl bg-background/50 backdrop-blur-lg">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2">
-            <Sparkles className="text-primary" />
-            <CardTitle>Trợ lý AI</CardTitle>
-        </div>
-        <Button onClick={resetChat} variant="ghost" size="icon">
-            <RefreshCcw className="h-5 w-5"/>
-            <span className="sr-only">Làm mới cuộc trò chuyện</span>
-        </Button>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <ScrollArea className="h-64 w-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             {messages.map((message, index) => (
