@@ -11,7 +11,7 @@ import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
-import { Loader, Plus, RefreshCcw } from 'lucide-react';
+import { Loader, Plus, RefreshCcw, BookOpen, BrainCircuit, MessageSquare } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, AppData, StoredData } from '@/lib/idb';
@@ -19,11 +19,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LiveTutor } from '@/components/LiveTutor';
 
 const BATCH_SIZE = 10;
 
 interface LearnProps {
-  view: 'flashcards' | 'quiz';
+  view: 'flashcards' | 'quiz' | 'tutor';
   isLoading: boolean;
   flashcardSet: FlashcardSet | null;
   quizSet: QuizSet | null;
@@ -36,12 +38,13 @@ interface LearnProps {
   flashcardIsRandom: boolean;
   onFlashcardPageChange: (page: number) => void;
   flashcardCurrentPage: number;
+  topic: string;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage, topic }: LearnProps) {
     const { toast } = useToast();
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
-    const canGenerateMore = currentCount < targetCount;
+    const canGenerateMore = view !== 'tutor' && currentCount < targetCount;
 
     const handleGenerateClick = () => {
         if (canGenerateMore) {
@@ -53,13 +56,13 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
              });
         }
     }
+    
+    const hasLearnContent = (view === 'flashcards' && flashcardSet && flashcardSet.cards.length > 0) || 
+                            (view === 'quiz' && quizSet && quizSet.questions.length > 0);
 
-    const hasContent = (view === 'flashcards' && flashcardSet && flashcardSet.cards.length > 0) || 
-                       (view === 'quiz' && quizSet && quizSet.questions.length > 0);
-  
     return (
-     <Card className="w-full bg-transparent shadow-none border-none p-0 relative">
-        {(hasContent || isLoading) && (
+     <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px]">
+        {(hasLearnContent || (isLoading && view !== 'tutor')) && (
            <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -75,13 +78,13 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
             </Tooltip>
            </TooltipProvider>
         )}
-         {hasContent && !isLoading && (
+         {hasLearnContent && !isLoading && (
             <div className="absolute top-2 right-12 text-sm text-muted-foreground z-10">
                 ({currentCount}/{targetCount})
             </div>
         )}
         <CardContent className="pt-8">
-            {isLoading && !hasContent && (
+            {isLoading && !hasLearnContent && view !== 'tutor' && (
                  <div className="flex flex-col justify-center items-center h-48">
                     <Loader className="animate-spin mb-4" />
                     <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
@@ -89,6 +92,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
             )}
             {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />}
             {view === 'quiz' && <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />}
+            {view === 'tutor' && <LiveTutor topic={topic} quizContext={quizSet?.questions[quizState?.currentQuestionIndex ?? 0]} />}
         </CardContent>
      </Card>
   );
@@ -103,7 +107,7 @@ export interface ComponentVisibility {
 }
 
 export default function Home() {
-  const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
+  const [view, setView] = useState<'flashcards' | 'quiz' | 'tutor'>('flashcards');
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('English');
   const [flashcardMax, setFlashcardMax] = useState(50);
@@ -224,7 +228,7 @@ export default function Home() {
         if (authLoading) return;
         const db = await getDb(user?.uid);
 
-        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' | 'tutor' || 'flashcards';
         const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
@@ -344,7 +348,7 @@ export default function Home() {
     await db.put('data', { id: 'visibility', data: newVisibility });
   }, [user?.uid]);
   
-  const handleViewChange = useCallback(async (newView: 'flashcards' | 'quiz') => {
+  const handleViewChange = useCallback(async (newView: 'flashcards' | 'quiz' | 'tutor') => {
     setView(newView);
     const db = await getDb(user?.uid);
     await db.put('data', { id: 'view', data: newView });
@@ -411,21 +415,67 @@ export default function Home() {
           )}
           {visibility.learn && (
              <div className="lg:col-span-4 relative">
-                 <Learn 
-                    view={view}
-                    isLoading={isLoading}
-                    flashcardSet={flashcardSet}
-                    quizSet={displayedQuizSet}
-                    quizState={quizState}
-                    onGenerateNew={onGenerateNew}
-                    generationProgress={generationProgress}
-                    targetCount={targetCount}
-                    displayCount={displayCount}
-                    onQuizStateChange={handleQuizStateChange}
-                    flashcardIsRandom={flashcardIsRandom}
-                    onFlashcardPageChange={handleFlashcardPageChange}
-                    flashcardCurrentPage={flashcardCurrentPage}
-                 />
+                <Tabs value={view} onValueChange={(v) => handleViewChange(v as any)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="flashcards" className="gap-2"><BookOpen/> Flashcard</TabsTrigger>
+                    <TabsTrigger value="quiz" className="gap-2"><BrainCircuit/> Trắc nghiệm</TabsTrigger>
+                    <TabsTrigger value="tutor" className="gap-2"><MessageSquare/> Gia sư AI</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="flashcards">
+                      <Learn 
+                          view="flashcards"
+                          isLoading={isLoading}
+                          flashcardSet={flashcardSet}
+                          quizSet={null}
+                          quizState={null}
+                          onGenerateNew={onGenerateNew}
+                          generationProgress={generationProgress}
+                          targetCount={flashcardMax}
+                          displayCount={flashcardDisplayMax}
+                          onQuizStateChange={handleQuizStateChange}
+                          flashcardIsRandom={flashcardIsRandom}
+                          onFlashcardPageChange={handleFlashcardPageChange}
+                          flashcardCurrentPage={flashcardCurrentPage}
+                          topic={topic}
+                      />
+                  </TabsContent>
+                   <TabsContent value="quiz">
+                       <Learn 
+                          view="quiz"
+                          isLoading={isLoading}
+                          flashcardSet={null}
+                          quizSet={displayedQuizSet}
+                          quizState={quizState}
+                          onGenerateNew={onGenerateNew}
+                          generationProgress={generationProgress}
+                          targetCount={quizMax}
+                          displayCount={quizDisplayMax}
+                          onQuizStateChange={handleQuizStateChange}
+                          flashcardIsRandom={flashcardIsRandom}
+                          onFlashcardPageChange={handleFlashcardPageChange}
+                          flashcardCurrentPage={flashcardCurrentPage}
+                          topic={topic}
+                       />
+                  </TabsContent>
+                  <TabsContent value="tutor">
+                        <Learn 
+                          view="tutor"
+                          isLoading={isLoading}
+                          flashcardSet={null}
+                          quizSet={displayedQuizSet}
+                          quizState={quizState}
+                          onGenerateNew={onGenerateNew}
+                          generationProgress={generationProgress}
+                          targetCount={0}
+                          displayCount={0}
+                          onQuizStateChange={handleQuizStateChange}
+                          flashcardIsRandom={flashcardIsRandom}
+                          onFlashcardPageChange={handleFlashcardPageChange}
+                          flashcardCurrentPage={flashcardCurrentPage}
+                          topic={topic}
+                        />
+                  </TabsContent>
+                </Tabs>
               </div>
           )}
         </div>

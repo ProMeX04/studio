@@ -37,7 +37,7 @@ interface SettingsProps {
     quizDisplayMax: number;
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
-  onViewChange: (view: 'flashcards' | 'quiz') => void;
+  onViewChange: (view: 'flashcards' | 'quiz' | 'tutor') => void;
   onBackgroundChange: (background: string | null) => void;
   onUploadedBackgroundsChange: (backgrounds: string[]) => void;
   onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void;
@@ -69,7 +69,7 @@ function GoogleIcon() {
 export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
-  const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
+  const [view, setView] = useState<'flashcards' | 'quiz' | 'tutor'>('flashcards');
   const [language, setLanguage] = useState('Vietnamese');
   const [flashcardMax, setFlashcardMax] = useState(50);
   const [quizMax, setQuizMax] = useState(50);
@@ -93,7 +93,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     if (authLoading) return;
     const db = await getDb(user?.uid);
     const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
-    const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+    const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' | 'tutor' || 'flashcards';
     const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
     const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
     const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
@@ -135,7 +135,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     onVisibilityChange(newVisibility);
   };
 
-  const handleViewChange = (newView: 'flashcards' | 'quiz') => {
+  const handleViewChange = (newView: 'flashcards' | 'quiz' | 'tutor') => {
     setView(newView);
     onViewChange(newView);
   }
@@ -286,7 +286,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
-            <Tabs value={view} onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')} className="w-full">
+            <Tabs value={view} onValueChange={(value) => handleViewChange(value as any)} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
                 <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
