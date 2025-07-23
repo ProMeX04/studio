@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Separator } from './ui/separator';
 import type { ComponentVisibility } from '@/app/page';
 import { Switch } from './ui/switch';
@@ -26,6 +25,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { getDb } from '@/lib/idb';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface SettingsProps {
   onSettingsSave: (settings: {
@@ -248,7 +248,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
           <Separator />
            <div className="space-y-4">
             <Label className="font-medium text-foreground">Cài đặt học tập</Label>
-            <div className="grid grid-cols-4 items-center gap-4">
+             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="topic" className="text-right">
                 Chủ đề
                 </Label>
@@ -258,58 +258,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 onChange={(e) => setTopic(e.target.value)}
                 className="col-span-3"
                 placeholder="ví dụ: Lịch sử La Mã"
-                />
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="flashcardMax" className="text-right">
-                Số lượng Flashcard tối đa
-                </Label>
-                <Input
-                id="flashcardMax"
-                type="number"
-                value={flashcardMax}
-                onChange={(e) => setFlashcardMax(Number(e.target.value))}
-                className="col-span-3"
-                placeholder="ví dụ: 50"
-                />
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="flashcardDisplayMax" className="text-right">
-                Số Flashcard hiển thị
-                </Label>
-                <Input
-                id="flashcardDisplayMax"
-                type="number"
-                value={flashcardDisplayMax}
-                onChange={(e) => setFlashcardDisplayMax(Number(e.target.value))}
-                className="col-span-3"
-                placeholder="ví dụ: 10"
-                />
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="quizMax" className="text-right">
-                Số lượng Quiz tối đa
-                </Label>
-                <Input
-                id="quizMax"
-                type="number"
-                value={quizMax}
-                onChange={(e) => setQuizMax(Number(e.target.value))}
-                className="col-span-3"
-                placeholder="ví dụ: 50"
-                />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="quizDisplayMax" className="text-right">
-                Số Quiz hiển thị
-                </Label>
-                <Input
-                id="quizDisplayMax"
-                type="number"
-                value={quizDisplayMax}
-                onChange={(e) => setQuizDisplayMax(Number(e.target.value))}
-                className="col-span-3"
-                placeholder="ví dụ: 10"
                 />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -327,23 +275,68 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Chế độ xem</Label>
-                <RadioGroup 
-                value={view}
-                onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')}
-                className="col-span-3 flex gap-4"
-                >
-                <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="flashcards" id="flashcards" />
-                    <Label htmlFor="flashcards">Flashcard</Label>
+            <Tabs value={view} onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+                <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+              </TabsList>
+              <TabsContent value="flashcards" className="space-y-4 pt-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="flashcardMax" className="text-right">
+                    Số lượng tối đa
+                    </Label>
+                    <Input
+                    id="flashcardMax"
+                    type="number"
+                    value={flashcardMax}
+                    onChange={(e) => setFlashcardMax(Number(e.target.value))}
+                    className="col-span-3"
+                    placeholder="ví dụ: 50"
+                    />
                 </div>
-                <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="quiz" id="quiz" />
-                    <Label htmlFor="quiz">Trắc nghiệm</Label>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="flashcardDisplayMax" className="text-right">
+                    Số lượng hiển thị
+                    </Label>
+                    <Input
+                    id="flashcardDisplayMax"
+                    type="number"
+                    value={flashcardDisplayMax}
+                    onChange={(e) => setFlashcardDisplayMax(Number(e.target.value))}
+                    className="col-span-3"
+                    placeholder="ví dụ: 10"
+                    />
                 </div>
-                </RadioGroup>
-            </div>
+              </TabsContent>
+              <TabsContent value="quiz" className="space-y-4 pt-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="quizMax" className="text-right">
+                    Số lượng tối đa
+                    </Label>
+                    <Input
+                    id="quizMax"
+                    type="number"
+                    value={quizMax}
+                    onChange={(e) => setQuizMax(Number(e.target.value))}
+                    className="col-span-3"
+                    placeholder="ví dụ: 50"
+                    />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="quizDisplayMax" className="text-right">
+                    Số lượng hiển thị
+                    </Label>
+                    <Input
+                    id="quizDisplayMax"
+                    type="number"
+                    value={quizDisplayMax}
+                    onChange={(e) => setQuizDisplayMax(Number(e.target.value))}
+                    className="col-span-3"
+                    placeholder="ví dụ: 10"
+                    />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
            <Separator />
             <div className="space-y-2">
@@ -384,5 +377,3 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
-
-    
