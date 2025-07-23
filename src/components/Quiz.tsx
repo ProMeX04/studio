@@ -212,17 +212,17 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
               ))}
             </RadioGroup>
             {isAnswered && (
-                 <div className={cn(
-                    "p-4 rounded-lg backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-base",
+                 <Alert className={cn(
+                    "backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-base",
                     selectedAnswer === currentQuestion.answer 
                       ? "bg-success/20"
                       : "bg-destructive/20"
                  )}>
-                    <p className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
-                    <div className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
+                    <AlertTitle className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</AlertTitle>
+                    <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.explanation}</ReactMarkdown>
-                    </div>
-                 </div>
+                    </AlertDescription>
+                 </Alert>
             )}
           </div>
         ) : (
