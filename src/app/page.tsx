@@ -399,7 +399,7 @@ export default function Home() {
   }
 
   return (
-    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
+    <main className="relative min-h-screen w-full lg:grid lg:grid-cols-2 lg:gap-8">
       {backgroundImage && (
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -408,7 +408,10 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/60"></div>
         </div>
       )}
-      <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
+
+      {/* Left Column */}
+      <div className="relative flex flex-col justify-between p-4 sm:p-8 md:p-12">
+        <div className="flex justify-between items-start">
             {visibility.greeting && <Greeting />}
             <Settings 
               onSettingsSave={onSettingsSave} 
@@ -420,20 +423,22 @@ export default function Home() {
               currentView={view}
             />
         </div>
-      <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
-        {visibility.clock && <Clock />}
-        {visibility.search && <Search />}
+
+        <div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
+            {visibility.clock && <Clock />}
+            {visibility.search && <Search />}
+        </div>
+
+        <div className="w-full">
+          {visibility.quickLinks && <QuickLinks />}
+        </div>
       </div>
-      <div className="w-full max-w-6xl space-y-8 z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {visibility.quickLinks && (
-            <div className="lg:col-span-4">
-              <QuickLinks />
-            </div>
-          )}
-          {visibility.learn && (
-             <div className="lg:col-span-4 relative">
-                <Learn 
+      
+      {/* Right Column */}
+      {visibility.learn && (
+          <div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12">
+             <div className="flex-grow">
+                 <Learn 
                     view={view}
                     isLoading={isLoading}
                     flashcardSet={displayedFlashcardSet}
@@ -448,15 +453,13 @@ export default function Home() {
                     onFlashcardPageChange={handleFlashcardPageChange}
                     flashcardCurrentPage={flashcardCurrentPage}
                 />
-              </div>
-          )}
-        </div>
-        {visibility.learn && (
-            <div className="lg:col-span-4">
+             </div>
+             <div>
                 <ChatAssistant context={assistantContext} />
-            </div>
-        )}
-      </div>
+             </div>
+          </div>
+      )}
+
     </main>
   );
 }
