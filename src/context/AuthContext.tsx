@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithRedirect, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 
@@ -44,12 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const value = {
+    const value = useMemo(() => ({
         user,
         loading,
         signInWithGoogle,
         signOut: handleSignOut,
-    };
+    }), [user, loading]);
 
     return (
         <AuthContext.Provider value={value}>
