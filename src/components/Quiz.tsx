@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface QuizQuestion {
   question: string;
@@ -21,38 +22,50 @@ export interface QuizSet {
   questions: QuizQuestion[];
 }
 
+interface AnswerState {
+    [questionIndex: number]: {
+        selected: string | null;
+        isAnswered: boolean;
+    }
+}
+
 interface QuizProps {
     quizSet: QuizSet | null;
 }
 
 export function Quiz({ quizSet }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
+  const [answers, setAnswers] = useState<AnswerState>({});
+
+  const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false };
+  const { selected: selectedAnswer, isAnswered } = currentAnswerState;
 
   useEffect(() => {
-    // Reset when the set changes
-    resetQuestionState();
     setCurrentQuestionIndex(0);
+    setAnswers({});
   }, [quizSet]);
 
 
   const currentQuestion = useMemo(() => quizSet?.questions[currentQuestionIndex], [quizSet, currentQuestionIndex]);
 
-  const resetQuestionState = () => {
-    setSelectedAnswer(null);
-    setIsAnswered(false);
+  const handleNextQuestion = () => {
+    if (quizSet && currentQuestionIndex < quizSet.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
   };
 
-  const handleNextQuestion = () => {
-    resetQuestionState();
-    setCurrentQuestionIndex((prev) => (prev + 1) % (quizSet?.questions.length || 1));
+   const handlePrevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
   };
   
   const handleAnswerSelect = (answer: string) => {
     if (isAnswered) return;
-    setSelectedAnswer(answer);
-    setIsAnswered(true);
+     setAnswers({
+        ...answers,
+        [currentQuestionIndex]: { selected: answer, isAnswered: true }
+    });
   };
 
   const getOptionClass = (option: string) => {
@@ -110,9 +123,6 @@ export function Quiz({ quizSet }: QuizProps) {
                     <p className="text-base">{currentQuestion.explanation}</p>
                  </div>
             )}
-            <p className="text-center text-base pt-4">
-              Câu hỏi {currentQuestionIndex + 1} trên {quizSet.questions.length}
-            </p>
           </div>
         ) : (
            <div className="text-center h-64 flex items-center justify-center">
@@ -121,9 +131,17 @@ export function Quiz({ quizSet }: QuizProps) {
         )}
       </CardContent>
       <CardFooter className="flex-col !pt-0 gap-2">
-        {quizSet.questions.length > 0 && isAnswered && (
-          <div className="w-full flex justify-center">
-            <Button onClick={handleNextQuestion} className="w-full max-w-xs" variant="secondary">Câu hỏi tiếp theo</Button>
+         {quizSet.questions.length > 0 && (
+          <div className="flex items-center justify-center w-full gap-4">
+            <Button onClick={handlePrevQuestion} disabled={currentQuestionIndex === 0} variant="outline" size="icon">
+              <ChevronLeft />
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Câu hỏi {currentQuestionIndex + 1} trên {quizSet.questions.length}
+            </p>
+            <Button onClick={handleNextQuestion} disabled={currentQuestionIndex === quizSet.questions.length - 1} variant="outline" size="icon">
+              <ChevronRight />
+            </Button>
           </div>
         )}
       </CardFooter>
