@@ -131,6 +131,7 @@ export default function Home() {
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
   const { user, loading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
+  const [assistantContext, setAssistantContext] = useState('');
 
   useEffect(() => {
     setIsMounted(true);
@@ -379,28 +380,33 @@ export default function Home() {
     await db.put('data', { id: 'flashcardCurrentPage', data: page });
   }, [user?.uid]);
 
-  const getAssistantContext = (): string => {
-    let context = `Người dùng đang học về chủ đề: ${topic}.`;
-    if (view === 'quiz' && quizSet && quizState) {
-        const currentQuestion: QuizQuestion | undefined = quizSet.questions[quizState.currentQuestionIndex];
-        if (currentQuestion) {
-            context += ` Họ đang ở câu hỏi trắc nghiệm: "${currentQuestion.question}" với các lựa chọn: ${currentQuestion.options.join(', ')}. Câu trả lời đúng là ${currentQuestion.answer}.`;
-            const userAnswer = quizState.answers[quizState.currentQuestionIndex]?.selected;
-            if (userAnswer) {
-                 context += ` Người dùng đã chọn "${userAnswer}".`;
+  useEffect(() => {
+    const getAssistantContext = (): string => {
+        let context = `Người dùng đang học về chủ đề: ${topic}.`;
+        if (view === 'quiz' && quizSet && quizState) {
+            const currentQuestion: QuizQuestion | undefined = quizSet.questions[quizState.currentQuestionIndex];
+            if (currentQuestion) {
+                context += ` Họ đang ở câu hỏi trắc nghiệm: "${currentQuestion.question}" với các lựa chọn: ${currentQuestion.options.join(', ')}. Câu trả lời đúng là ${currentQuestion.answer}.`;
+                const userAnswer = quizState.answers[quizState.currentQuestionIndex]?.selected;
+                if (userAnswer) {
+                     context += ` Người dùng đã chọn "${userAnswer}".`;
+                }
+            }
+        } else if (view === 'flashcards' && flashcardSet && flashcardDisplayMax > 0) {
+            const startIndex = flashcardCurrentPage * flashcardDisplayMax;
+            const endIndex = startIndex + flashcardDisplayMax;
+            const currentCards = flashcardSet.cards.slice(startIndex, endIndex);
+            if (currentCards.length > 0) {
+                const cardContext = currentCards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
+                context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
             }
         }
-    } else if (view === 'flashcards' && flashcardSet) {
-        const startIndex = flashcardCurrentPage * flashcardDisplayMax;
-        const endIndex = startIndex + flashcardDisplayMax;
-        const currentCards = flashcardSet.cards.slice(startIndex, endIndex);
-        if (currentCards.length > 0) {
-            const cardContext = currentCards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
-            context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
-        }
-    }
-    return context;
-  }
+        return context;
+      }
+
+      setAssistantContext(getAssistantContext());
+
+  }, [view, topic, flashcardSet, quizSet, quizState, flashcardCurrentPage, flashcardDisplayMax]);
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
@@ -495,12 +501,14 @@ export default function Home() {
         </div>
         {visibility.learn && (
             <div className="lg:col-span-4">
-                <ChatAssistant context={getAssistantContext()} />
+                <ChatAssistant context={assistantContext} />
             </div>
         )}
       </div>
     </main>
   );
 }
+
+    
 
     
