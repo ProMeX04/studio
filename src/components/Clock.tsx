@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -19,7 +20,7 @@ export function Clock() {
   }, []);
 
   return (
-    <h1 className="text-8xl font-bold tracking-tighter">
+    <h1 className="text-8xl font-bold tracking-tighter" style={{ textShadow: '0px 2px 4px rgba(0,0,0,0.5)' }}>
       {time}
     </h1>
   );

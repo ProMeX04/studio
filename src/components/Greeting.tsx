@@ -59,7 +59,7 @@ export function Greeting() {
   }
 
   return (
-    <p className="text-xl relative text-foreground/80">
+    <p className="text-xl relative text-foreground/80" style={{ textShadow: '0px 1px 3px rgba(0,0,0,0.5)' }}>
       {typedGreeting}
       <span className={cn(
           'ml-1 h-5 w-0.5 bg-current inline-block', 
