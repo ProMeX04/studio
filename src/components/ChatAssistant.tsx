@@ -13,6 +13,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { ScrollArea } from './ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 
 interface ChatAssistantProps {
@@ -173,7 +175,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
                              {"max-w-full": message.role === 'model'}
                         )}
                         >
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{message.text}</ReactMarkdown>
                     </div>
                      {message.role === 'model' && message.suggestions && message.suggestions.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-2">

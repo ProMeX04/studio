@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
+import 'katex/dist/katex.min.css';
 
 export const metadata: Metadata = {
   title: 'AI Tab Mới',

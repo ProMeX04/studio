@@ -8,6 +8,8 @@ import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight, Shuffle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface Flashcard {
   front: string;
@@ -41,13 +43,13 @@ function FlashcardItem({ card }: { card: Flashcard }) {
             {/* Front of the card */}
             <div className="flashcard-front absolute w-full h-full backface-hidden flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm">
                 <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{card.front}</ReactMarkdown>
                 </div>
             </div>
             {/* Back of the card */}
             <div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm">
                 <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.back}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{card.back}</ReactMarkdown>
                 </div>
             </div>
         </div>

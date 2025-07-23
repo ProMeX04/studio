@@ -14,6 +14,8 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { QuizQuestion, QuizSet, ExplainQuizOptionOutput } from '@/ai/schemas';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 export interface AnswerState {
   [questionIndex: number]: {
@@ -149,7 +151,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
              <div className="text-2xl font-semibold text-center bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-2">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.question}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
              </div>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
@@ -168,7 +170,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                     >
                         <div className="flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0">
                            <RadioGroupItem value={option} id={`option-${index}`} />
-                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{option}</ReactMarkdown>
+                           <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</ReactMarkdown>
                         </div>
                         <Button
                             size="icon"
@@ -192,7 +194,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
                             <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                     {currentAnswerState.explanations[option].explanation}
                                 </ReactMarkdown>
                             </AlertDescription>
@@ -210,7 +212,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                  )}>
                     <AlertTitle className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</AlertTitle>
                     <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.explanation}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.explanation}</ReactMarkdown>
                     </AlertDescription>
                  </Alert>
             )}
