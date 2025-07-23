@@ -4,15 +4,14 @@ import { FlashcardSet } from '@/components/Flashcards';
 import { QuizSet } from '@/components/Quiz';
 import { ComponentVisibility } from '@/app/page';
 
-const DB_NAME = 'NewTabAI-DB';
-const DB_VERSION = 2; // Incremented version
+const DB_PREFIX = 'NewTabAI-DB';
+const DB_VERSION = 2;
 const STORE_NAME = 'data';
 
 export type DataKey =
   | 'flashcards'
   | 'quiz'
   | 'topic'
-  | 'count'
   | 'language'
   | 'view'
   | 'visibility'
@@ -46,34 +45,27 @@ interface MyDB extends DBSchema {
   };
 }
 
-let dbPromise: Promise<IDBPDatabase<MyDB>> | null = null;
+const dbInstances: { [key: string]: Promise<IDBPDatabase<MyDB>> } = {};
 
-export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
-    if (!dbPromise) {
-        dbPromise = openDB<MyDB>(DB_NAME, DB_VERSION, {
+export const getDb = (userId: string | undefined | null): Promise<IDBPDatabase<MyDB>> => {
+    const dbName = userId ? `${DB_PREFIX}-${userId}` : `${DB_PREFIX}-guest`;
+    
+    if (!dbInstances[dbName]) {
+        dbInstances[dbName] = openDB<MyDB>(dbName, DB_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: 'id' });
                 }
-                // Future migrations can go here
-                // if (oldVersion < 2) { ... }
             },
         });
     }
-    return dbPromise;
+    return dbInstances[dbName];
 };
+
 
 export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    // Keep settings data
-    const keys = await store.getAllKeys();
-    for (const key of keys) {
-        if (key !== 'topic' && key !== 'count' && key !== 'language' && key !== 'view' && key !== 'visibility' && key !== 'background' && key !== 'uploadedBackgrounds') {
-            await store.delete(key);
-        }
-    }
+    await store.clear();
     await tx.done;
 }
-
-    

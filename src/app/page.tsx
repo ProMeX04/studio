@@ -14,10 +14,11 @@ import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { Loader, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
-import { getDb, LabeledData, AppData } from '@/lib/idb';
+import { getDb, LabeledData, AppData, clearAllData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/context/AuthContext';
 
 const GENERATION_TARGET = 50;
 const BATCH_SIZE = 10;
@@ -36,8 +37,6 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
     const canGenerateMore = currentCount < GENERATION_TARGET;
 
     const handleGenerateClick = () => {
-        // If we have content, clicking the button should either generate more or force a full reset.
-        // If we don't have content, it should always start a new generation.
         if (currentCount > 0) {
              onGenerateNew(!canGenerateMore);
         } else {
@@ -112,6 +111,7 @@ export default function Home() {
   });
   const [backgroundImage, setBackgroundImage] = useState('');
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
+  const { user, loading: authLoading } = useAuth();
 
   const handleGenerate = useCallback(async (currentTopic: string, currentLanguage: string, forceNew: boolean = false) => {
     if (!currentTopic.trim()) {
@@ -120,12 +120,14 @@ export default function Home() {
     
     setIsLoading(true);
     setGenerationProgress(0);
-    const db = await getDb();
+    const db = await getDb(user?.uid);
 
     let currentFlashcards: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: [] };
     let currentQuiz: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: [] };
 
     if (forceNew) {
+      setFlashcardSet(null);
+      setQuizSet(null);
       await db.delete('data', 'flashcards');
       await db.delete('data', 'quiz');
     } else {
@@ -182,11 +184,10 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, user]);
 
-  useEffect(() => {
-    async function loadInitialData() {
-        const db = await getDb();
+  const loadInitialData = useCallback(async () => {
+        const db = await getDb(user?.uid);
 
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
         const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Roman History';
@@ -214,14 +215,22 @@ export default function Home() {
         
         if (flashcardData && flashcardData.topic === savedTopic) {
             setFlashcardSet(flashcardData.data);
+        } else {
+            setFlashcardSet(null);
         }
 
         if (quizData && quizData.topic === savedTopic) {
             setQuizSet(quizData.data);
+        } else {
+            setQuizSet(null);
         }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      loadInitialData();
     }
-    loadInitialData();
-  }, []);
+  }, [authLoading, loadInitialData]);
 
   const onSettingsSave = async (settings: {
     topic: string;
@@ -236,7 +245,7 @@ export default function Home() {
       setLanguage(newLanguage);
       setUploadedBackgrounds(newUploadedBgs);
 
-      const db = await getDb();
+      const db = await getDb(user?.uid);
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
       await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
@@ -256,13 +265,13 @@ export default function Home() {
   
   const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
     setVisibility(newVisibility);
-    const db = await getDb();
+    const db = await getDb(user?.uid);
     await db.put('data', { id: 'visibility', data: newVisibility });
   };
   
   const handleViewChange = async (newView: 'flashcards' | 'quiz') => {
     setView(newView);
-    const db = await getDb();
+    const db = await getDb(user?.uid);
     await db.put('data', { id: 'view', data: newView });
   }
 
@@ -271,9 +280,7 @@ export default function Home() {
   }
 
   return (
-    <main className={cn(
-        "relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8"
-    )}>
+    <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
       {backgroundImage && (
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -318,5 +325,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
