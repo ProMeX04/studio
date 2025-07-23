@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings as SettingsIcon, CheckCircle, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,41 +87,44 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    async function loadSettings() {
-      if (isOpen && !authLoading) {
-        const db = await getDb(user?.uid);
-        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
-        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
-        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
-        const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
-        const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
-        const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
-        const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
-        const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
-        const savedBg = (await db.get('data', 'background'))?.data as string | null;
-        const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
-        
-        setTopic(savedTopic);
-        setView(savedView);
-        setLanguage(savedLanguage);
-        setFlashcardMax(savedFlashcardMax);
-        setQuizMax(savedQuizMax);
-        setFlashcardDisplayMax(savedFlashcardDisplayMax);
-        setQuizDisplayMax(savedQuizDisplayMax);
-        setVisibility(savedVisibility ?? {
-          clock: true,
-          greeting: true,
-          search: true,
-          quickLinks: true,
-          learn: true,
-        });
-        setSelectedBackground(savedBg);
-        setUploadedBackgrounds(savedUploadedBgs);
-      }
+  const loadSettings = useCallback(async () => {
+    if (!authLoading) {
+      const db = await getDb(user?.uid);
+      const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
+      const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+      const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
+      const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
+      const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
+      const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
+      const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
+      const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
+      const savedBg = (await db.get('data', 'background'))?.data as string | null;
+      const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+      
+      setTopic(savedTopic);
+      setView(savedView);
+      setLanguage(savedLanguage);
+      setFlashcardMax(savedFlashcardMax);
+      setQuizMax(savedQuizMax);
+      setFlashcardDisplayMax(savedFlashcardDisplayMax);
+      setQuizDisplayMax(savedQuizDisplayMax);
+      setVisibility(savedVisibility ?? {
+        clock: true,
+        greeting: true,
+        search: true,
+        quickLinks: true,
+        learn: true,
+      });
+      setSelectedBackground(savedBg);
+      setUploadedBackgrounds(savedUploadedBgs);
     }
-    loadSettings();
-  }, [isOpen, user, authLoading]);
+  }, [authLoading, user?.uid]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadSettings();
+    }
+  }, [isOpen, loadSettings]);
 
   const handleVisibilitySwitch = (component: keyof ComponentVisibility, checked: boolean) => {
     const newVisibility = { ...visibility, [component]: checked };

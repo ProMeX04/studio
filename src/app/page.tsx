@@ -274,7 +274,7 @@ export default function Home() {
     }
   }, [authLoading, loadInitialData]);
 
-  const onSettingsSave = async (settings: {
+  const onSettingsSave = useCallback(async (settings: {
     topic: string;
     language: string;
     flashcardMax: number;
@@ -307,9 +307,9 @@ export default function Home() {
       } else if (countsChanged) {
         handleGenerate(newTopic, newLanguage, false);
       }
-  };
+  }, [topic, language, flashcardMax, quizMax, handleGenerate, user?.uid]);
 
-  const handleBackgroundChange = async (newBg: string | null) => {
+  const handleBackgroundChange = useCallback(async (newBg: string | null) => {
     const db = await getDb(user?.uid);
     if (newBg) {
       setBackgroundImage(newBg);
@@ -318,40 +318,40 @@ export default function Home() {
       setBackgroundImage('');
       await db.delete('data', 'background');
     }
-  };
+  }, [user?.uid]);
 
-  const handleUploadedBackgroundsChange = async (newUploadedBgs: string[]) => {
+  const handleUploadedBackgroundsChange = useCallback(async (newUploadedBgs: string[]) => {
     setUploadedBackgrounds(newUploadedBgs);
     const db = await getDb(user?.uid);
     await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
-  };
+  }, [user?.uid]);
   
-  const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
+  const handleVisibilityChange = useCallback(async (newVisibility: ComponentVisibility) => {
     setVisibility(newVisibility);
     const db = await getDb(user?.uid);
     await db.put('data', { id: 'visibility', data: newVisibility });
-  };
+  }, [user?.uid]);
   
-  const handleViewChange = async (newView: 'flashcards' | 'quiz') => {
+  const handleViewChange = useCallback(async (newView: 'flashcards' | 'quiz') => {
     setView(newView);
     const db = await getDb(user?.uid);
     await db.put('data', { id: 'view', data: newView });
-  }
+  }, [user?.uid]);
 
-  const handleQuizStateChange = async (newState: QuizState) => {
+  const handleQuizStateChange = useCallback(async (newState: QuizState) => {
     setQuizState(newState);
     const db = await getDb(user?.uid);
     await db.put('data', { id: 'quizState', data: newState });
-  };
+  }, [user?.uid]);
 
-  const onGenerateNew = (forceNew: boolean) => {
+  const onGenerateNew = useCallback((forceNew: boolean) => {
      handleGenerate(topic, language, forceNew);
-  }
+  }, [handleGenerate, topic, language]);
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
 
-  const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions.slice(0, displayCount) } : null;
+  const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions } : null;
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
