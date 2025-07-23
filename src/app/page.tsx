@@ -153,7 +153,7 @@ export default function Home() {
         const flashcardsNeeded = flashcardMax - currentFlashcards.cards.length;
         const quizNeeded = quizMax - currentQuiz.questions.length;
 
-        if (flashcardsNeeded <= 0 && quizNeeded <= 0) {
+        if (flashcardsNeeded <= 0 && quizNeeded <= 0 && !forceNew) {
             setIsLoading(false);
             return;
         }
@@ -163,7 +163,7 @@ export default function Home() {
         const totalBatches = Math.max(flashcardBatches, quizBatches);
 
 
-        if (totalBatches <= 0) {
+        if (totalBatches <= 0 && !forceNew) {
             setIsLoading(false);
             return;
         }
@@ -279,37 +279,26 @@ export default function Home() {
   const onSettingsSave = useCallback(async (settings: {
     topic: string;
     language: string;
-    flashcardMax: number;
-    quizMax: number;
-    flashcardDisplayMax: number;
-    quizDisplayMax: number;
   }) => {
-      const { topic: newTopic, language: newLanguage, flashcardMax: newFlashcardMax, quizMax: newQuizMax, flashcardDisplayMax: newFlashcardDisplayMax, quizDisplayMax: newQuizDisplayMax } = settings;
-      
+      const { topic: newTopic, language: newLanguage } = settings;
       const topicChanged = newTopic !== topic || newLanguage !== language;
-      const countsChanged = newFlashcardMax !== flashcardMax || newQuizMax !== quizMax;
       
       setTopic(newTopic);
       setLanguage(newLanguage);
-      setFlashcardMax(newFlashcardMax);
-      setQuizMax(newQuizMax);
-      setFlashcardDisplayMax(newFlashcardDisplayMax);
-      setQuizDisplayMax(newQuizDisplayMax);
-
+      
       const db = await getDb();
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
-      await db.put('data', { id: 'flashcardMax', data: newFlashcardMax });
-      await db.put('data', { id: 'quizMax', data: newQuizMax });
-      await db.put('data', { id: 'flashcardDisplayMax', data: newFlashcardDisplayMax });
-      await db.put('data', { id: 'quizDisplayMax', data: newQuizDisplayMax });
       
       if (topicChanged) {
         handleGenerate(newTopic, newLanguage, true);
-      } else if (countsChanged) {
-        handleGenerate(newTopic, newLanguage, false);
       }
-  }, [topic, language, flashcardMax, quizMax, handleGenerate, flashcardDisplayMax, quizDisplayMax]);
+  }, [topic, language, handleGenerate]);
+
+  useEffect(() => {
+    handleGenerate(topic, language, false);
+  }, [flashcardMax, quizMax, handleGenerate, topic, language]);
+
 
   const handleBackgroundChange = useCallback(async (newBg: string | null) => {
     const db = await getDb();
@@ -363,6 +352,18 @@ export default function Home() {
   }, []);
 
   const currentQuizAnswer = quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null;
+
+  const createInstantUpdater = <T,>(setter: (value: T) => void, dbKey: string) => {
+      return useCallback(async (value: T) => {
+        setter(value);
+        const db = await getDb();
+        await db.put('data', { id: dbKey, data: value });
+      }, [setter, dbKey]);
+  };
+  
+  const handleFlashcardMaxChange = createInstantUpdater(setFlashcardMax, 'flashcardMax');
+  const handleQuizMaxChange = createInstantUpdater(setQuizMax, 'quizMax');
+  const handleFlashcardDisplayMaxChange = createInstantUpdater(setFlashcardDisplayMax, 'flashcardDisplayMax');
 
   useEffect(() => {
     const getAssistantContext = (): string => {
@@ -420,7 +421,17 @@ export default function Home() {
               onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
               onFlashcardSettingsChange={handleFlashcardSettingsChange}
               onViewChange={handleViewChange}
+              onFlashcardMaxChange={handleFlashcardMaxChange}
+              onQuizMaxChange={handleQuizMaxChange}
+              onFlashcardDisplayMaxChange={handleFlashcardDisplayMaxChange}
               currentView={view}
+              visibility={visibility}
+              uploadedBackgrounds={uploadedBackgrounds}
+              currentBackgroundImage={backgroundImage}
+              flashcardMax={flashcardMax}
+              quizMax={quizMax}
+              flashcardDisplayMax={flashcardDisplayMax}
+              flashcardIsRandom={flashcardIsRandom}
             />
         </div>
 

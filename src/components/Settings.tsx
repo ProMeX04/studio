@@ -28,17 +28,24 @@ interface SettingsProps {
   onSettingsSave: (settings: {
     topic: string;
     language: string;
-    flashcardMax: number;
-    quizMax: number;
-    flashcardDisplayMax: number;
-    quizDisplayMax: number;
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onBackgroundChange: (background: string | null) => void;
   onUploadedBackgroundsChange: (backgrounds: string[]) => void;
   onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
+  onFlashcardMaxChange: (value: number) => void;
+  onQuizMaxChange: (value: number) => void;
+  onFlashcardDisplayMaxChange: (value: number) => void;
+  
   currentView: 'flashcards' | 'quiz';
+  visibility: ComponentVisibility;
+  uploadedBackgrounds: string[];
+  currentBackgroundImage: string | null;
+  flashcardMax: number;
+  quizMax: number;
+  flashcardDisplayMax: number;
+  flashcardIsRandom: boolean;
 }
 
 const languages = [
@@ -53,63 +60,45 @@ const languages = [
 
 const MAX_UPLOADED_IMAGES = 6;
 
-export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange, onViewChange, currentView }: SettingsProps) {
+export function Settings({ 
+    onSettingsSave, 
+    onVisibilityChange, 
+    onBackgroundChange, 
+    onUploadedBackgroundsChange, 
+    onFlashcardSettingsChange, 
+    onViewChange,
+    onFlashcardMaxChange,
+    onQuizMaxChange,
+    onFlashcardDisplayMaxChange,
+    currentView,
+    visibility,
+    uploadedBackgrounds,
+    currentBackgroundImage,
+    flashcardMax,
+    quizMax,
+    flashcardDisplayMax,
+    flashcardIsRandom,
+}: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // State for properties that are not updated instantly
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('Vietnamese');
-  const [flashcardMax, setFlashcardMax] = useState(50);
-  const [quizMax, setQuizMax] = useState(50);
-  const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
-  const [quizDisplayMax, setQuizDisplayMax] = useState(10);
-  const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
-  const [visibility, setVisibility] = useState<ComponentVisibility>({
-    clock: true,
-    greeting: true,
-    search: true,
-    quickLinks: true,
-    learn: true,
-  });
-  const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
-  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadSettings = useCallback(async () => {
+  const loadSettingsForEdit = useCallback(async () => {
     const db = await getDb();
     const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
     const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
-    const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
-    const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
-    const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
-    const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
-    const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
-    const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
-    const savedBg = (await db.get('data', 'background'))?.data as string | null;
-    const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
-    
     setTopic(savedTopic);
     setLanguage(savedLanguage);
-    setFlashcardMax(savedFlashcardMax);
-    setQuizMax(savedQuizMax);
-    setFlashcardDisplayMax(savedFlashcardDisplayMax);
-    setQuizDisplayMax(savedQuizDisplayMax);
-    setFlashcardIsRandom(savedFlashcardIsRandom);
-    setVisibility(savedVisibility ?? {
-      clock: true,
-      greeting: true,
-      search: true,
-      quickLinks: true,
-      learn: true,
-    });
-    setSelectedBackground(savedBg);
-    setUploadedBackgrounds(savedUploadedBgs);
   }, []);
 
   useEffect(() => {
     if (isOpen) {
-      loadSettings();
+      loadSettingsForEdit();
     }
-  }, [isOpen, loadSettings]);
+  }, [isOpen, loadSettingsForEdit]);
   
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,32 +107,16 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
       reader.onload = (event) => {
         const result = event.target?.result as string;
         const newUploadedBgs = [result, ...uploadedBackgrounds].slice(0, MAX_UPLOADED_IMAGES);
-        setUploadedBackgrounds(newUploadedBgs);
-        setSelectedBackground(result);
+        onUploadedBackgroundsChange(newUploadedBgs);
+        onBackgroundChange(result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveBackground = () => {
-    setSelectedBackground(null);
-  };
-
   const handleFinalSave = () => {
-     onSettingsSave({
-      topic,
-      language,
-      flashcardMax: Number(flashcardMax),
-      quizMax: Number(quizMax),
-      flashcardDisplayMax: Number(flashcardDisplayMax),
-      quizDisplayMax: Number(quizDisplayMax),
-    });
-    onVisibilityChange(visibility);
-    onBackgroundChange(selectedBackground);
-    onUploadedBackgroundsChange(uploadedBackgrounds);
-    onFlashcardSettingsChange({ isRandom: flashcardIsRandom });
-    onViewChange(currentView);
-    setIsOpen(false);
+     onSettingsSave({ topic, language });
+     setIsOpen(false);
   }
 
   return (
@@ -167,7 +140,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                     <Upload className="mr-2 h-4 w-4" />
                     Tải ảnh lên
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleRemoveBackground} aria-label="Xóa hình nền">
+                <Button variant="ghost" size="icon" onClick={() => onBackgroundChange(null)} aria-label="Xóa hình nền">
                   <Trash2 className="h-4 w-4" />
                 </Button>
             </div>
@@ -180,9 +153,9 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
             />
             <div className="grid grid-cols-3 gap-2">
                 {uploadedBackgrounds.map((bg, index) => (
-                    <div key={`uploaded-${index}`} className="relative cursor-pointer group" onClick={() => setSelectedBackground(bg)}>
-                         <Image src={bg} alt={`Uploaded background ${index + 1}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} />
-                        {selectedBackground === bg && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
+                    <div key={`uploaded-${index}`} className="relative cursor-pointer group" onClick={() => onBackgroundChange(bg)}>
+                         <Image src={bg} alt={`Uploaded background ${index + 1}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", currentBackgroundImage === bg && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} />
+                        {currentBackgroundImage === bg && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
                     </div>
                 ))}
             </div>
@@ -246,7 +219,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                         <Switch
                             id="flashcardIsRandom"
                             checked={flashcardIsRandom}
-                            onCheckedChange={setFlashcardIsRandom}
+                            onCheckedChange={(checked) => onFlashcardSettingsChange({isRandom: checked})}
                         />
                     </div>
                 </div>
@@ -258,7 +231,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                     id="flashcardMax"
                     type="number"
                     value={flashcardMax}
-                    onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
+                    onChange={(e) => onFlashcardMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
                     />
@@ -271,7 +244,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                     id="flashcardDisplayMax"
                     type="number"
                     value={flashcardDisplayMax}
-                    onChange={(e) => setFlashcardDisplayMax(parseInt(e.target.value) || 0)}
+                    onChange={(e) => onFlashcardDisplayMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 10"
                     />
@@ -286,7 +259,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                     id="quizMax"
                     type="number"
                     value={quizMax}
-                    onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
+                    onChange={(e) => onQuizMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
                     />
@@ -299,34 +272,29 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                 <Label className="font-medium text-foreground">Thành phần hiển thị</Label>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
                     <div className="flex items-center space-x-2">
-                        <Switch id="clock-visible" checked={visibility.clock} onCheckedChange={(checked) => setVisibility(v => ({ ...v, clock: checked }))} />
+                        <Switch id="clock-visible" checked={visibility.clock} onCheckedChange={(checked) => onVisibilityChange({ ...visibility, clock: checked })} />
                         <Label htmlFor="clock-visible">Đồng hồ</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="greeting-visible" checked={visibility.greeting} onCheckedChange={(checked) => setVisibility(v => ({ ...v, greeting: checked }))} />
+                        <Switch id="greeting-visible" checked={visibility.greeting} onCheckedChange={(checked) => onVisibilityChange({ ...visibility, greeting: checked })} />
                         <Label htmlFor="greeting-visible">Lời chào</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="search-visible" checked={visibility.search} onCheckedChange={(checked) => setVisibility(v => ({ ...v, search: checked }))} />
+                        <Switch id="search-visible" checked={visibility.search} onCheckedChange={(checked) => onVisibilityChange({ ...visibility, search: checked })} />
                         <Label htmlFor="search-visible">Tìm kiếm</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="quicklinks-visible" checked={visibility.quickLinks} onCheckedChange={(checked) => setVisibility(v => ({ ...v, quickLinks: checked }))} />
+                        <Switch id="quicklinks-visible" checked={visibility.quickLinks} onCheckedChange={(checked) => onVisibilityChange({ ...visibility, quickLinks: checked })} />
                         <Label htmlFor="quicklinks-visible">Liên kết nhanh</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(checked) => setVisibility(v => ({ ...v, learn: checked }))} />
+                        <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(checked) => onVisibilityChange({ ...visibility, learn: checked })} />
                         <Label htmlFor="learn-visible">Phần học tập</Label>
                     </div>
                 </div>
             </div>
         </div>
         <SheetFooter>
-          <SheetClose asChild>
-            <Button type="button" variant="secondary">
-              Hủy
-            </Button>
-          </SheetClose>
           <Button onClick={handleFinalSave}>Lưu thay đổi</Button>
         </SheetFooter>
       </SheetContent>
