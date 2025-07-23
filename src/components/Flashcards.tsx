@@ -36,15 +36,15 @@ function FlashcardItem({ card }: { card: Flashcard }) {
   }, [card]);
 
   return (
-    <div className="flashcard-container h-48 perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
-      <div className={cn("flashcard relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
-        <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden bg-primary/20 backdrop-blur">
-          <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
+    <div className="flashcard-container w-full min-h-[12rem] perspective-1000 flex flex-col" onClick={() => setIsFlipped(!isFlipped)}>
+      <div className={cn("flashcard relative w-full flex-grow cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
+        <div className="flashcard-front absolute w-full h-full flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg backface-hidden bg-primary/20 backdrop-blur">
+          <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
              <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
           </div>
         </div>
-        <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden rotate-y-180 bg-secondary/20 backdrop-blur">
-           <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0">
+        <div className="flashcard-back absolute w-full h-full flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg backface-hidden rotate-y-180 bg-secondary/20 backdrop-blur">
+           <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
              <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.back}</ReactMarkdown>
           </div>
         </div>
@@ -78,7 +78,7 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
     }
   }, [currentPage, isRandom, onPageChange]);
 
-  const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? displayCount : 1));
+  const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? 1 : 1));
   
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
@@ -112,7 +112,7 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow pt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
           {currentCards.map((card, index) => (
             <FlashcardItem key={`${flashcardSet.id}-${card.front}-${startIndex + index}`} card={card} />
           ))}
