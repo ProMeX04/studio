@@ -3,11 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 export function Greeting() {
   const [fullGreeting, setFullGreeting] = useState('');
   const [typedGreeting, setTypedGreeting] = useState('');
   const [isTyping, setIsTyping] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const today = new Date();
@@ -22,13 +24,25 @@ export function Greeting() {
       greetingText = 'Chào buổi tối';
     }
 
+    const userName = user?.displayName?.split(' ')[0];
+    if (userName) {
+        greetingText += `, ${userName}`;
+    }
+
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    const dateText = `, hôm nay là ${today.toLocaleDateString('vi-VN', options)}.`;
+    const dateText = `. Hôm nay là ${today.toLocaleDateString('vi-VN', options)}.`;
     setFullGreeting(greetingText + dateText);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (fullGreeting && typedGreeting.length < fullGreeting.length) {
+    // Reset typing effect when greeting changes (e.g., after login)
+    setTypedGreeting('');
+    setIsTyping(true);
+  }, [fullGreeting]);
+
+
+  useEffect(() => {
+    if (isTyping && fullGreeting && typedGreeting.length < fullGreeting.length) {
       const timeoutId = setTimeout(() => {
         setTypedGreeting(fullGreeting.slice(0, typedGreeting.length + 1));
       }, 50);
@@ -36,7 +50,7 @@ export function Greeting() {
     } else if (typedGreeting.length === fullGreeting.length && fullGreeting.length > 0) {
         setIsTyping(false);
     }
-  }, [fullGreeting, typedGreeting]);
+  }, [fullGreeting, typedGreeting, isTyping]);
 
   return (
     <p className="text-xl relative text-foreground/80">
