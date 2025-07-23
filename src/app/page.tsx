@@ -11,13 +11,10 @@ import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
-import { Loader, Plus } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, AppData } from '@/lib/idb';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useAuth } from '@/context/AuthContext';
 import { ChatAssistant } from '@/components/ChatAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
 
@@ -112,7 +109,6 @@ export default function Home() {
   });
   const [backgroundImage, setBackgroundImage] = useState('');
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
-  const { user, loading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [assistantContext, setAssistantContext] = useState('');
 
@@ -127,7 +123,7 @@ export default function Home() {
     
     setIsLoading(true);
     setGenerationProgress(0);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
 
     let currentFlashcards: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: [] };
     let currentQuiz: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: [] };
@@ -212,11 +208,10 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user, flashcardMax, quizMax]);
+  }, [toast, flashcardMax, quizMax]);
 
   const loadInitialData = useCallback(async () => {
-        if (authLoading) return;
-        const db = await getDb(user?.uid);
+        const db = await getDb();
 
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
         const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
@@ -273,15 +268,13 @@ export default function Home() {
         if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
            handleGenerate(savedTopic, savedLanguage, false);
         }
-
-
-  }, [user, authLoading, handleGenerate]);
+  }, [handleGenerate]);
 
   useEffect(() => {
-    if (!authLoading && isMounted) {
+    if (isMounted) {
       loadInitialData();
     }
-  }, [authLoading, isMounted, loadInitialData]);
+  }, [isMounted, loadInitialData]);
 
   const onSettingsSave = useCallback(async (settings: {
     topic: string;
@@ -303,7 +296,7 @@ export default function Home() {
       setFlashcardDisplayMax(newFlashcardDisplayMax);
       setQuizDisplayMax(newQuizDisplayMax);
 
-      const db = await getDb(user?.uid);
+      const db = await getDb();
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
       await db.put('data', { id: 'flashcardMax', data: newFlashcardMax });
@@ -316,10 +309,10 @@ export default function Home() {
       } else if (countsChanged) {
         handleGenerate(newTopic, newLanguage, false);
       }
-  }, [topic, language, flashcardMax, quizMax, handleGenerate, user?.uid, flashcardDisplayMax, quizDisplayMax]);
+  }, [topic, language, flashcardMax, quizMax, handleGenerate, flashcardDisplayMax, quizDisplayMax]);
 
   const handleBackgroundChange = useCallback(async (newBg: string | null) => {
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     if (newBg) {
       setBackgroundImage(newBg);
       await db.put('data', { id: 'background', data: newBg });
@@ -327,31 +320,31 @@ export default function Home() {
       setBackgroundImage('');
       await db.delete('data', 'background');
     }
-  }, [user?.uid]);
+  }, []);
 
   const handleUploadedBackgroundsChange = useCallback(async (newUploadedBgs: string[]) => {
     setUploadedBackgrounds(newUploadedBgs);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
-  }, [user?.uid]);
+  }, []);
   
   const handleVisibilityChange = useCallback(async (newVisibility: ComponentVisibility) => {
     setVisibility(newVisibility);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'visibility', data: newVisibility });
-  }, [user?.uid]);
+  }, []);
   
   const handleViewChange = useCallback(async (newView: 'flashcards' | 'quiz') => {
     setView(newView);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'view', data: newView });
-  }, [user?.uid]);
+  }, []);
 
   const handleQuizStateChange = useCallback(async (newState: QuizState) => {
     setQuizState(newState);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'quizState', data: newState });
-  }, [user?.uid]);
+  }, []);
 
   const onGenerateNew = useCallback((forceNew: boolean) => {
      handleGenerate(topic, language, forceNew);
@@ -359,15 +352,15 @@ export default function Home() {
 
   const handleFlashcardSettingsChange = useCallback(async (settings: { isRandom: boolean }) => {
     setFlashcardIsRandom(settings.isRandom);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'flashcardIsRandom', data: settings.isRandom });
-  }, [user?.uid]);
+  }, []);
 
   const handleFlashcardPageChange = useCallback(async (page: number) => {
     setFlashcardCurrentPage(page);
-    const db = await getDb(user?.uid);
+    const db = await getDb();
     await db.put('data', { id: 'flashcardCurrentPage', data: page });
-  }, [user?.uid]);
+  }, []);
 
   const currentQuizAnswer = quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null;
 

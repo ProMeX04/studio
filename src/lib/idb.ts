@@ -4,7 +4,7 @@ import { FlashcardSet } from '@/components/Flashcards';
 import { QuizSet, QuizState } from '@/components/Quiz';
 import { ComponentVisibility } from '@/app/page';
 
-const DB_PREFIX = 'NewTabAI-DB';
+const DB_NAME = 'NewTabAI-DB-guest';
 const DB_VERSION = 2;
 const STORE_NAME = 'data';
 
@@ -54,13 +54,11 @@ interface MyDB extends DBSchema {
   };
 }
 
-const dbInstances: { [key: string]: Promise<IDBPDatabase<MyDB>> } = {};
+let dbInstance: Promise<IDBPDatabase<MyDB>> | null = null;
 
-export const getDb = (userId: string | undefined | null): Promise<IDBPDatabase<MyDB>> => {
-    const dbName = userId ? `${DB_PREFIX}-${userId}` : `${DB_PREFIX}-guest`;
-    
-    if (!dbInstances[dbName]) {
-        dbInstances[dbName] = openDB<MyDB>(dbName, DB_VERSION, {
+export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
+    if (!dbInstance) {
+        dbInstance = openDB<MyDB>(DB_NAME, DB_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -68,7 +66,7 @@ export const getDb = (userId: string | undefined | null): Promise<IDBPDatabase<M
             },
         });
     }
-    return dbInstances[dbName];
+    return dbInstance;
 };
 
 
