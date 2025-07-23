@@ -26,8 +26,6 @@ interface FlashcardsProps {
   flashcardSet: FlashcardSet | null;
   displayCount: number;
   isRandom: boolean;
-  onPageChange: (page: number) => void;
-  initialPage: number;
 }
 
 function FlashcardItem({ card }: { card: Flashcard }) {
@@ -57,31 +55,23 @@ function FlashcardItem({ card }: { card: Flashcard }) {
   );
 }
 
-export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange, initialPage }: FlashcardsProps) {
+export function Flashcards({ flashcardSet, displayCount, isRandom }: FlashcardsProps) {
   const [currentPage, setCurrentPage] = useState(0);
-  const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([]);
 
-  const originalCards = useMemo(() => flashcardSet?.cards || [], [flashcardSet]);
-
-  const shuffleCards = useCallback((cards: Flashcard[]) => {
+  const shuffle = useCallback((cards: Flashcard[]) => {
     return [...cards].sort(() => Math.random() - 0.5);
   }, []);
 
-  useEffect(() => {
-    if (isRandom) {
-      setDisplayedCards(shuffleCards(originalCards));
-    } else {
-      setDisplayedCards(originalCards);
-    }
-    setCurrentPage(isRandom ? 0 : initialPage);
-  }, [originalCards, isRandom, shuffleCards, initialPage]);
-  
-  useEffect(() => {
-    if (!isRandom) {
-      onPageChange(currentPage);
-    }
-  }, [currentPage, isRandom, onPageChange]);
+  const displayedCards = useMemo(() => {
+    if (!flashcardSet?.cards) return [];
+    return isRandom ? shuffle(flashcardSet.cards) : flashcardSet.cards;
+  }, [flashcardSet, isRandom, shuffle]);
 
+  useEffect(() => {
+    // Reset to first page whenever the cards or randomness change
+    setCurrentPage(0);
+  }, [displayedCards]);
+  
   const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? displayCount : 1));
   
   const handleNextPage = () => {
@@ -96,12 +86,7 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
     }
   };
 
-  const handleShuffle = () => {
-    setDisplayedCards(shuffleCards(displayedCards));
-    setCurrentPage(0);
-  };
-
-  if (!flashcardSet || originalCards.length === 0) {
+  if (!flashcardSet || flashcardSet.cards.length === 0) {
     return (
       <div className="text-center h-48 flex items-center justify-center">
          Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một số thẻ flashcard.
@@ -128,11 +113,6 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
                 <Button onClick={handlePrevPage} disabled={currentPage === 0} variant="outline" size="icon">
                     <ChevronLeft />
                 </Button>
-                {!isRandom && (
-                  <Button onClick={handleShuffle} variant="outline" size="icon">
-                      <Shuffle />
-                  </Button>
-                )}
                 <p className="text-center text-sm text-muted-foreground">
                   Trang {currentPage + 1} / {totalPages}
                 </p>
@@ -145,3 +125,5 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
     </Card>
   );
 }
+
+    

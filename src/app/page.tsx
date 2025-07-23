@@ -32,11 +32,9 @@ interface LearnProps {
   displayCount: number;
   onQuizStateChange: (newState: QuizState) => void;
   flashcardIsRandom: boolean;
-  onFlashcardPageChange: (page: number) => void;
-  flashcardCurrentPage: number;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, displayCount, onQuizStateChange, flashcardIsRandom }: LearnProps) {
     const { toast } = useToast();
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
@@ -66,7 +64,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
             )}
             
             {view === 'flashcards' && (
-                <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />
+                <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} />
             )}
             {view === 'quiz' && (
                 <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
@@ -93,7 +91,6 @@ export default function Home() {
   const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
   const [quizDisplayMax, setQuizDisplayMax] = useState(10);
   const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
-  const [flashcardCurrentPage, setFlashcardCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
@@ -185,7 +182,10 @@ export default function Home() {
                  promises.push(Promise.resolve([]));
             }
             
-            const [newFlashcards, newQuiz] = await Promise.all(promises);
+            const [newFlashcards, newQuiz] = await Promise.all([
+                promises[0] as Promise<any[]>,
+                promises[1] as Promise<any[]>
+            ]);
 
             if (newFlashcards.length > 0) {
               currentFlashcards.cards.push(...newFlashcards);
@@ -221,7 +221,6 @@ export default function Home() {
         const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
         const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
         const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
-        const savedFlashcardCurrentPage = (await db.get('data', 'flashcardCurrentPage'))?.data as number || 0;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -241,7 +240,6 @@ export default function Home() {
         setFlashcardDisplayMax(savedFlashcardDisplayMax);
         setQuizDisplayMax(savedQuizDisplayMax);
         setFlashcardIsRandom(savedFlashcardIsRandom);
-        setFlashcardCurrentPage(savedFlashcardCurrentPage);
         setVisibility(savedVisibility ?? {
             clock: true,
             greeting: true,
@@ -296,8 +294,11 @@ export default function Home() {
   }, [topic, language, handleGenerate]);
 
   useEffect(() => {
-    handleGenerate(topic, language, false);
-  }, [flashcardMax, quizMax, handleGenerate, topic, language]);
+    if(topic && language) {
+        handleGenerate(topic, language, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flashcardMax, quizMax]);
 
 
   const handleBackgroundChange = useCallback(async (newBg: string | null) => {
@@ -345,12 +346,6 @@ export default function Home() {
     await db.put('data', { id: 'flashcardIsRandom', data: settings.isRandom });
   }, []);
 
-  const handleFlashcardPageChange = useCallback(async (page: number) => {
-    setFlashcardCurrentPage(page);
-    const db = await getDb();
-    await db.put('data', { id: 'flashcardCurrentPage', data: page });
-  }, []);
-
   const currentQuizAnswer = quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null;
 
   const createInstantUpdater = <T,>(setter: (value: T) => void, dbKey: string) => {
@@ -386,7 +381,7 @@ export default function Home() {
 
       setAssistantContext(getAssistantContext());
 
-  }, [view, topic, flashcardSet, quizSet, quizState?.currentQuestionIndex, currentQuizAnswer]);
+  }, [view, topic, flashcardSet, quizSet, quizState, currentQuizAnswer]);
 
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
@@ -461,8 +456,6 @@ export default function Home() {
                     displayCount={displayCount}
                     onQuizStateChange={handleQuizStateChange}
                     flashcardIsRandom={flashcardIsRandom}
-                    onFlashcardPageChange={handleFlashcardPageChange}
-                    flashcardCurrentPage={flashcardCurrentPage}
                 />
              </div>
              <div className="flex-shrink-0">
@@ -474,3 +467,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

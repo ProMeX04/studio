@@ -22,8 +22,7 @@ export type DataKey =
   | 'quizMax'
   | 'flashcardDisplayMax'
   | 'quizDisplayMax'
-  | 'flashcardIsRandom'
-  | 'flashcardCurrentPage';
+  | 'flashcardIsRandom';
 
 export type StoredData =
   | LabeledData<FlashcardSet>
@@ -76,5 +75,7 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     await store.clear();
     await tx.done;
 }
+
+    
 
     
