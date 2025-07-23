@@ -56,8 +56,8 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
                             (view === 'quiz' && quizSet && quizSet.questions.length > 0);
 
     return (
-     <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px]">
-        <CardContent className="pt-8">
+     <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
+        <CardContent className="pt-8 flex-grow">
             {isLoading && !hasLearnContent && (
                  <div className="flex flex-col justify-center items-center h-48">
                     <Loader className="animate-spin mb-4" />
@@ -436,8 +436,8 @@ export default function Home() {
       
       {/* Right Column */}
       {visibility.learn && (
-          <div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12">
-             <div className="flex-grow">
+          <div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
+             <div className="flex-grow overflow-y-auto">
                  <Learn 
                     view={view}
                     isLoading={isLoading}
@@ -454,7 +454,7 @@ export default function Home() {
                     flashcardCurrentPage={flashcardCurrentPage}
                 />
              </div>
-             <div>
+             <div className="flex-shrink-0">
                 <ChatAssistant context={assistantContext} />
              </div>
           </div>
