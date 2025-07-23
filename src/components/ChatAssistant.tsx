@@ -82,6 +82,35 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
     toast({ title: "Cuộc trò chuyện đã được làm mới."})
   }
 
+  const ChatInputForm = ({ className }: { className?: string }) => (
+     <form onSubmit={handleSubmit} className={cn("flex w-full items-center gap-2", className)}>
+        <Textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Hỏi AI về flashcard hoặc câu hỏi trắc nghiệm này..."
+        className="min-h-0 resize-none"
+        rows={1}
+        disabled={isLoading}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                handleSubmit(e);
+            }
+        }}
+        />
+        <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+        {isLoading ? <Loader className="animate-spin" /> : <Send />}
+        </Button>
+    </form>
+  )
+
+  if (messages.length === 0) {
+    return (
+        <div className="w-full max-w-6xl mx-auto">
+            <ChatInputForm />
+        </div>
+    )
+  }
+
   return (
     <Card className="w-full max-w-6xl mx-auto shadow-xl bg-background/50 backdrop-blur-lg">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -97,11 +126,6 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
       <CardContent>
         <ScrollArea className="h-64 w-full pr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
-            {messages.length === 0 && (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Có câu hỏi nào về nội dung học tập này không? Hãy hỏi tôi!
-                </div>
-            )}
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -146,24 +170,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
         </ScrollArea>
       </CardContent>
       <CardFooter>
-        <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Hỏi AI về flashcard hoặc câu hỏi trắc nghiệm này..."
-            className="min-h-0 resize-none"
-            rows={1}
-            disabled={isLoading}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    handleSubmit(e);
-                }
-            }}
-          />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-            {isLoading ? <Loader className="animate-spin" /> : <Send />}
-          </Button>
-        </form>
+        <ChatInputForm />
       </CardFooter>
     </Card>
   );
