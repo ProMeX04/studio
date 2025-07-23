@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/context/AuthContext';
 import { ChatAssistant } from '@/components/ChatAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const BATCH_SIZE = 10;
 
@@ -390,9 +391,12 @@ export default function Home() {
             }
         }
     } else if (view === 'flashcards' && flashcardSet) {
-        const currentCard = flashcardSet.cards[flashcardCurrentPage * flashcardDisplayMax]; // This is an approximation
-        if (currentCard) {
-            context += ` Họ đang xem một flashcard với mặt trước là: "${currentCard.front}" và mặt sau là: "${currentCard.back}".`;
+        const startIndex = flashcardCurrentPage * flashcardDisplayMax;
+        const endIndex = startIndex + flashcardDisplayMax;
+        const currentCards = flashcardSet.cards.slice(startIndex, endIndex);
+        if (currentCards.length > 0) {
+            const cardContext = currentCards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
+            context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
         }
     }
     return context;
@@ -442,21 +446,50 @@ export default function Home() {
           )}
           {visibility.learn && (
              <div className="lg:col-span-4 relative">
-                <Learn 
-                    view={view}
-                    isLoading={isLoading}
-                    flashcardSet={flashcardSet}
-                    quizSet={displayedQuizSet}
-                    quizState={quizState}
-                    onGenerateNew={onGenerateNew}
-                    generationProgress={generationProgress}
-                    targetCount={targetCount}
-                    displayCount={displayCount}
-                    onQuizStateChange={handleQuizStateChange}
-                    flashcardIsRandom={flashcardIsRandom}
-                    onFlashcardPageChange={handleFlashcardPageChange}
-                    flashcardCurrentPage={flashcardCurrentPage}
-                />
+                 <Tabs 
+                    value={view} 
+                    onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+                        <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="flashcards">
+                        <Learn 
+                            view="flashcards"
+                            isLoading={isLoading}
+                            flashcardSet={flashcardSet}
+                            quizSet={null}
+                            quizState={null}
+                            onGenerateNew={onGenerateNew}
+                            generationProgress={generationProgress}
+                            targetCount={targetCount}
+                            displayCount={displayCount}
+                            onQuizStateChange={handleQuizStateChange}
+                            flashcardIsRandom={flashcardIsRandom}
+                            onFlashcardPageChange={handleFlashcardPageChange}
+                            flashcardCurrentPage={flashcardCurrentPage}
+                        />
+                    </TabsContent>
+                    <TabsContent value="quiz">
+                         <Learn 
+                            view="quiz"
+                            isLoading={isLoading}
+                            flashcardSet={null}
+                            quizSet={displayedQuizSet}
+                            quizState={quizState}
+                            onGenerateNew={onGenerateNew}
+                            generationProgress={generationProgress}
+                            targetCount={targetCount}
+                            displayCount={displayCount}
+                            onQuizStateChange={handleQuizStateChange}
+                            flashcardIsRandom={flashcardIsRandom}
+                            onFlashcardPageChange={handleFlashcardPageChange}
+                            flashcardCurrentPage={flashcardCurrentPage}
+                        />
+                    </TabsContent>
+                </Tabs>
               </div>
           )}
         </div>
@@ -469,3 +502,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
