@@ -72,7 +72,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
    const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
   
