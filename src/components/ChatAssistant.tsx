@@ -19,6 +19,37 @@ interface ChatAssistantProps {
   context: string;
 }
 
+interface ChatInputFormProps {
+    input: string;
+    setInput: (value: string) => void;
+    handleSubmit: (e: React.FormEvent) => Promise<void>;
+    isLoading: boolean;
+    className?: string;
+}
+
+function ChatInputForm({ input, setInput, handleSubmit, isLoading, className }: ChatInputFormProps) {
+    return (
+         <form onSubmit={handleSubmit} className={cn("flex w-full items-center gap-2", className)}>
+            <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Hỏi AI về flashcard hoặc câu hỏi trắc nghiệm này..."
+                className="min-h-0 resize-none"
+                rows={1}
+                disabled={isLoading}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        handleSubmit(e);
+                    }
+                }}
+            />
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                {isLoading ? <Loader className="animate-spin" /> : <Send />}
+            </Button>
+        </form>
+    )
+}
+
 export function ChatAssistant({ context }: ChatAssistantProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -82,31 +113,18 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
     toast({ title: "Cuộc trò chuyện đã được làm mới."})
   }
 
-  const ChatInputForm = ({ className }: { className?: string }) => (
-     <form onSubmit={handleSubmit} className={cn("flex w-full items-center gap-2", className)}>
-        <Textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Hỏi AI về flashcard hoặc câu hỏi trắc nghiệm này..."
-        className="min-h-0 resize-none"
-        rows={1}
-        disabled={isLoading}
-        onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                handleSubmit(e);
-            }
-        }}
-        />
-        <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-        {isLoading ? <Loader className="animate-spin" /> : <Send />}
-        </Button>
-    </form>
-  )
+  const chatInputProps = {
+    input,
+    setInput,
+    handleSubmit,
+    isLoading,
+  };
+
 
   if (messages.length === 0) {
     return (
         <div className="w-full max-w-6xl mx-auto">
-            <ChatInputForm />
+            <ChatInputForm {...chatInputProps} />
         </div>
     )
   }
@@ -170,7 +188,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
         </ScrollArea>
       </CardContent>
       <CardFooter>
-        <ChatInputForm />
+        <ChatInputForm {...chatInputProps} />
       </CardFooter>
     </Card>
   );
