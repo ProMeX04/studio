@@ -20,7 +20,8 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
 
-Use Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords or code snippets for code.
+Use standard Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords or code snippets for code.
+For mathematical notations, use Unicode characters (e.g., √, ², ≠, →) instead of LaTeX syntax like \\(...\\) or $...$. Ensure explanations are well-structured with clear paragraphs and line breaks using standard Markdown.
 
 {{#if existingQuestions}}
 You have already generated the following questions. Do not repeat them or create questions with very similar content.

@@ -27,6 +27,7 @@ Question: "{{{question}}}"
 Correct Answer: "{{{correctAnswer}}}"
 
 Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}". You can provide additional context or interesting facts related to the topic.
+Use standard Markdown for formatting. For mathematical notations, use Unicode characters (e.g., √, ², ≠, →) instead of LaTeX syntax like \\(...\\) or $...$. Ensure the explanation is well-structured with clear paragraphs.
 `,
 });
 
@@ -42,6 +43,7 @@ Correct Answer: "{{{correctAnswer}}}"
 The Incorrect Option to Explain: "{{{selectedOption}}}"
 
 Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}".
+Use standard Markdown for formatting. For mathematical notations, use Unicode characters (e.g., √, ², ≠, →) instead of LaTeX syntax like \\(...\\) or $...$. Ensure the explanation is well-structured with clear paragraphs.
 `,
 });
 
