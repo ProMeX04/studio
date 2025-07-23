@@ -279,15 +279,25 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                 <Label className="text-right">Chế độ</Label>
+                 <div className="col-span-3">
+                    <Tabs 
+                        value={currentView} 
+                        onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')}
+                        className="w-full"
+                    >
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+                            <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                 </div>
+            </div>
             <Tabs 
-                value={currentView} 
-                onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')}
+                value={currentView}
                 className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-                <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-              </TabsList>
               <TabsContent value="flashcards" className="space-y-4 pt-4">
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="flashcardIsRandom" className="text-right">

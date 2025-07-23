@@ -20,7 +20,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/context/AuthContext';
 import { ChatAssistant } from '@/components/ChatAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const BATCH_SIZE = 10;
 
@@ -89,8 +88,11 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
                     <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
                  </div>
             )}
-            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />}
-            {view === 'quiz' && <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />}
+            {view === 'flashcards' ?
+                <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />
+                :
+                <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
+            }
         </CardContent>
      </Card>
   );
@@ -410,7 +412,8 @@ export default function Home() {
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
-
+  
+  const displayedFlashcardSet = flashcardSet ? { ...flashcardSet, cards: flashcardSet.cards } : null;
   const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions } : null;
 
   if (!isMounted) {
@@ -452,50 +455,21 @@ export default function Home() {
           )}
           {visibility.learn && (
              <div className="lg:col-span-4 relative">
-                 <Tabs 
-                    value={view} 
-                    onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')}
-                    className="w-full"
-                >
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-                        <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="flashcards">
-                        <Learn 
-                            view="flashcards"
-                            isLoading={isLoading}
-                            flashcardSet={flashcardSet}
-                            quizSet={null}
-                            quizState={null}
-                            onGenerateNew={onGenerateNew}
-                            generationProgress={generationProgress}
-                            targetCount={targetCount}
-                            displayCount={displayCount}
-                            onQuizStateChange={handleQuizStateChange}
-                            flashcardIsRandom={flashcardIsRandom}
-                            onFlashcardPageChange={handleFlashcardPageChange}
-                            flashcardCurrentPage={flashcardCurrentPage}
-                        />
-                    </TabsContent>
-                    <TabsContent value="quiz">
-                         <Learn 
-                            view="quiz"
-                            isLoading={isLoading}
-                            flashcardSet={null}
-                            quizSet={displayedQuizSet}
-                            quizState={quizState}
-                            onGenerateNew={onGenerateNew}
-                            generationProgress={generationProgress}
-                            targetCount={targetCount}
-                            displayCount={displayCount}
-                            onQuizStateChange={handleQuizStateChange}
-                            flashcardIsRandom={flashcardIsRandom}
-                            onFlashcardPageChange={handleFlashcardPageChange}
-                            flashcardCurrentPage={flashcardCurrentPage}
-                        />
-                    </TabsContent>
-                </Tabs>
+                <Learn 
+                    view={view}
+                    isLoading={isLoading}
+                    flashcardSet={displayedFlashcardSet}
+                    quizSet={displayedQuizSet}
+                    quizState={quizState}
+                    onGenerateNew={onGenerateNew}
+                    generationProgress={generationProgress}
+                    targetCount={targetCount}
+                    displayCount={displayCount}
+                    onQuizStateChange={handleQuizStateChange}
+                    flashcardIsRandom={flashcardIsRandom}
+                    onFlashcardPageChange={handleFlashcardPageChange}
+                    flashcardCurrentPage={flashcardCurrentPage}
+                />
               </div>
           )}
         </div>
@@ -508,7 +482,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
-
-    
