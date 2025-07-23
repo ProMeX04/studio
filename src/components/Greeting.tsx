@@ -10,8 +10,15 @@ export function Greeting() {
   const [typedGreeting, setTypedGreeting] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const { user } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const today = new Date();
     const hour = today.getHours();
     
@@ -32,7 +39,7 @@ export function Greeting() {
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     const dateText = `. Hôm nay là ${today.toLocaleDateString('vi-VN', options)}.`;
     setFullGreeting(greetingText + dateText);
-  }, [user]);
+  }, [user, isMounted]);
 
   useEffect(() => {
     // Reset typing effect when greeting changes (e.g., after login)
@@ -51,6 +58,10 @@ export function Greeting() {
         setIsTyping(false);
     }
   }, [fullGreeting, typedGreeting, isTyping]);
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <p className="text-xl relative text-foreground/80">
