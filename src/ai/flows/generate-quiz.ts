@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -19,6 +20,8 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
 
+Use Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords or code snippets for code.
+
 {{#if existingQuestions}}
 You have already generated the following questions. Do not repeat them or create questions with very similar content.
 
@@ -29,22 +32,7 @@ Existing Questions:
 {{/if}}
 
 Return a JSON array of objects with "question", "options", "answer", and "explanation" keys.
-
-For example:
-[
-    {
-        "question": "What is the powerhouse of the cell?",
-        "options": ["Nucleus", "Ribosome", "Mitochondrion", "Endoplasmic Reticulum"],
-        "answer": "Mitochondrion",
-        "explanation": "The mitochondrion is known as the powerhouse of the cell because it generates most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy."
-    },
-    {
-        "question": "What is the capital of Japan?",
-        "options": ["Beijing", "Seoul", "Tokyo", "Bangkok"],
-        "answer": "Tokyo",
-        "explanation": "Tokyo is the capital and largest city of Japan. It is located on the eastern coast of the main island Honshu."
-    }
-]`,
+`,
 });
 
 const generateQuizFlow = ai.defineFlow(

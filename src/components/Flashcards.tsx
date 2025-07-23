@@ -6,6 +6,8 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight, Shuffle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Flashcard {
   front: string;
@@ -37,10 +39,14 @@ function FlashcardItem({ card }: { card: Flashcard }) {
     <div className="flashcard-container h-48 perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
       <div className={cn("flashcard relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
         <div className="flashcard-front absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden bg-primary/20 backdrop-blur">
-          <p className="text-lg font-semibold">{card.front}</p>
+          <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
+             <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
+          </div>
         </div>
         <div className="flashcard-back absolute w-full h-full flex items-center justify-center p-4 text-center rounded-lg border shadow-lg backface-hidden rotate-y-180 bg-secondary/20 backdrop-blur">
-          <p className="text-lg">{card.back}</p>
+           <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0">
+             <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.back}</ReactMarkdown>
+          </div>
         </div>
       </div>
     </div>

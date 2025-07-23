@@ -146,7 +146,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
-             <h3 className="text-2xl font-semibold text-center bg-background/10 backdrop-blur rounded-lg p-6">{currentQuestion.question}</h3>
+             <div className="text-2xl font-semibold text-center bg-background/10 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-2">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.question}</ReactMarkdown>
+             </div>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
                 onValueChange={handleAnswerSelect}
@@ -162,9 +164,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                             getOptionClass(option)
                         )}
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0">
                            <RadioGroupItem value={option} id={`option-${index}`} />
-                           {option}
+                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{option}</ReactMarkdown>
                         </div>
                         {isAnswered && (
                             <Button
@@ -204,7 +206,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                       : "bg-destructive/20"
                  )}>
                     <p className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
-                    <p className="text-base">{currentQuestion.explanation}</p>
+                    <div className="prose dark:prose-invert max-w-none prose-p:my-0">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.explanation}</ReactMarkdown>
+                    </div>
                  </div>
             )}
           </div>

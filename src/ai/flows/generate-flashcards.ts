@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -19,6 +20,8 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateFlashcardsOutputSchema},
   prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a front and back.
 
+Use Markdown for formatting, such as bolding for keywords or code snippets for code. For example: '**What** is the capital of France?' or 'What does \`console.log()\` do?'.
+
 {{#if existingCards}}
 You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
 
@@ -29,19 +32,6 @@ Existing Flashcards:
 {{/if}}
 
 Return a JSON array of objects with "front" and "back" keys.
-
-For example:
-
-[
-  {
-    "front": "What is the capital of France?",
-    "back": "Paris"
-  },
-  {
-    "front": "What is the highest mountain in the world?",
-    "back": "Mount Everest"
-  }
-]
 `,
 });
 
