@@ -11,7 +11,7 @@ import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
-import { Loader, RefreshCcw } from 'lucide-react';
+import { Loader, Plus, RefreshCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, AppData, StoredData } from '@/lib/idb';
@@ -39,14 +39,18 @@ interface LearnProps {
 }
 
 function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, generationProgress, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage }: LearnProps) {
+    const { toast } = useToast();
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
 
     const handleGenerateClick = () => {
-        if (currentCount > 0) {
-             onGenerateNew(!canGenerateMore);
+        if (canGenerateMore) {
+             onGenerateNew(false); // Never force new, always append
         } else {
-             onGenerateNew(true);
+             toast({
+                title: "Đã đạt số lượng tối đa",
+                description: "Vui lòng tăng số lượng tối đa trong cài đặt để tạo thêm.",
+             });
         }
     }
 
@@ -60,14 +64,13 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button onClick={handleGenerateClick} variant="outline" size="icon" className="absolute top-0 right-0 z-10" disabled={isLoading}>
-                        {isLoading ? <Loader className="animate-spin" /> : <RefreshCcw />}
+                        {isLoading ? <Loader className="animate-spin" /> : <Plus />}
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                      {isLoading && <p>Đang tạo...</p>}
-                     {!isLoading && hasContent && !canGenerateMore && <p>Bắt đầu chủ đề mới</p>}
-                     {!isLoading && hasContent && canGenerateMore && <p>Tạo thêm</p>}
-                     {!isLoading && !hasContent && <p>Tạo</p>}
+                     {!isLoading && canGenerateMore && <p>Thêm nội dung</p>}
+                     {!isLoading && !canGenerateMore && <p>Tăng số lượng tối đa trong cài đặt</p>}
                 </TooltipContent>
             </Tooltip>
            </TooltipProvider>
