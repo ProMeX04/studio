@@ -99,6 +99,8 @@ export default function Home() {
   const [language, setLanguage] = useState('English');
   const [flashcardMax, setFlashcardMax] = useState(50);
   const [quizMax, setQuizMax] = useState(50);
+  const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
+  const [quizDisplayMax, setQuizDisplayMax] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
@@ -212,6 +214,8 @@ export default function Home() {
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
         const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
+        const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
+        const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -227,6 +231,8 @@ export default function Home() {
         setLanguage(savedLanguage);
         setFlashcardMax(savedFlashcardMax);
         setQuizMax(savedQuizMax);
+        setFlashcardDisplayMax(savedFlashcardDisplayMax);
+        setQuizDisplayMax(savedQuizDisplayMax);
         setVisibility(savedVisibility ?? {
             clock: true,
             greeting: true,
@@ -259,8 +265,10 @@ export default function Home() {
     language: string;
     flashcardMax: number;
     quizMax: number;
+    flashcardDisplayMax: number;
+    quizDisplayMax: number;
   }) => {
-      const { topic: newTopic, language: newLanguage, flashcardMax: newFlashcardMax, quizMax: newQuizMax } = settings;
+      const { topic: newTopic, language: newLanguage, flashcardMax: newFlashcardMax, quizMax: newQuizMax, flashcardDisplayMax: newFlashcardDisplayMax, quizDisplayMax: newQuizDisplayMax } = settings;
       
       const topicChanged = newTopic !== topic || newLanguage !== language;
       const countsChanged = newFlashcardMax !== flashcardMax || newQuizMax !== quizMax;
@@ -269,12 +277,16 @@ export default function Home() {
       setLanguage(newLanguage);
       setFlashcardMax(newFlashcardMax);
       setQuizMax(newQuizMax);
+      setFlashcardDisplayMax(newFlashcardDisplayMax);
+      setQuizDisplayMax(newQuizDisplayMax);
 
       const db = await getDb(user?.uid);
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
       await db.put('data', { id: 'flashcardMax', data: newFlashcardMax });
       await db.put('data', { id: 'quizMax', data: newQuizMax });
+      await db.put('data', { id: 'flashcardDisplayMax', data: newFlashcardDisplayMax });
+      await db.put('data', { id: 'quizDisplayMax', data: newQuizDisplayMax });
       
       if (topicChanged) {
         handleGenerate(newTopic, newLanguage, true);
@@ -317,6 +329,10 @@ export default function Home() {
   }
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
+  const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
+
+  const displayedFlashcardSet = flashcardSet ? { ...flashcardSet, cards: flashcardSet.cards.slice(0, displayCount) } : null;
+  const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions.slice(0, displayCount) } : null;
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
@@ -354,8 +370,8 @@ export default function Home() {
                  <Learn 
                     view={view}
                     isLoading={isLoading}
-                    flashcardSet={flashcardSet}
-                    quizSet={quizSet}
+                    flashcardSet={displayedFlashcardSet}
+                    quizSet={displayedQuizSet}
                     onGenerateNew={onGenerateNew}
                     generationProgress={generationProgress}
                     targetCount={targetCount}
@@ -367,3 +383,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

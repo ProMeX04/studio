@@ -33,6 +33,8 @@ interface SettingsProps {
     language: string;
     flashcardMax: number;
     quizMax: number;
+    flashcardDisplayMax: number;
+    quizDisplayMax: number;
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
@@ -70,6 +72,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
   const [language, setLanguage] = useState('Vietnamese');
   const [flashcardMax, setFlashcardMax] = useState(50);
   const [quizMax, setQuizMax] = useState(50);
+  const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
+  const [quizDisplayMax, setQuizDisplayMax] = useState(10);
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
     greeting: true,
@@ -92,6 +96,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
         const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
+        const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
+        const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string | null;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -101,6 +107,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
         setLanguage(savedLanguage);
         setFlashcardMax(savedFlashcardMax);
         setQuizMax(savedQuizMax);
+        setFlashcardDisplayMax(savedFlashcardDisplayMax);
+        setQuizDisplayMax(savedQuizDisplayMax);
         setVisibility(savedVisibility ?? {
           clock: true,
           greeting: true,
@@ -156,7 +164,9 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
       topic,
       language,
       flashcardMax: Number(flashcardMax),
-      quizMax: Number(quizMax)
+      quizMax: Number(quizMax),
+      flashcardDisplayMax: Number(flashcardDisplayMax),
+      quizDisplayMax: Number(quizDisplayMax),
     });
     setIsOpen(false);
   }
@@ -252,7 +262,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="flashcardMax" className="text-right">
-                Số lượng Flashcard
+                Số lượng Flashcard tối đa
                 </Label>
                 <Input
                 id="flashcardMax"
@@ -264,8 +274,21 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="flashcardDisplayMax" className="text-right">
+                Số Flashcard hiển thị
+                </Label>
+                <Input
+                id="flashcardDisplayMax"
+                type="number"
+                value={flashcardDisplayMax}
+                onChange={(e) => setFlashcardDisplayMax(Number(e.target.value))}
+                className="col-span-3"
+                placeholder="ví dụ: 10"
+                />
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="quizMax" className="text-right">
-                Số lượng Quiz
+                Số lượng Quiz tối đa
                 </Label>
                 <Input
                 id="quizMax"
@@ -274,6 +297,19 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 onChange={(e) => setQuizMax(Number(e.target.value))}
                 className="col-span-3"
                 placeholder="ví dụ: 50"
+                />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quizDisplayMax" className="text-right">
+                Số Quiz hiển thị
+                </Label>
+                <Input
+                id="quizDisplayMax"
+                type="number"
+                value={quizDisplayMax}
+                onChange={(e) => setQuizDisplayMax(Number(e.target.value))}
+                className="col-span-3"
+                placeholder="ví dụ: 10"
                 />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -348,3 +384,5 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
+
+    
