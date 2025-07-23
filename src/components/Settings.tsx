@@ -40,6 +40,8 @@ interface SettingsProps {
   onBackgroundChange: (background: string | null) => void;
   onUploadedBackgroundsChange: (backgrounds: string[]) => void;
   onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void;
+  onViewChange: (view: 'flashcards' | 'quiz') => void;
+  currentView: 'flashcards' | 'quiz';
 }
 
 const languages = [
@@ -65,7 +67,7 @@ function GoogleIcon() {
     )
 }
 
-export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange, onViewChange, currentView }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('Vietnamese');
@@ -276,6 +278,17 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
                         ))}
                     </SelectContent>
                 </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Chế độ</Label>
+                <div className='col-span-3'>
+                    <Tabs value={currentView} onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+                            <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
             </div>
             
             <Tabs 

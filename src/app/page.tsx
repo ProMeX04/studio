@@ -20,7 +20,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/context/AuthContext';
 import { ChatAssistant } from '@/components/ChatAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const BATCH_SIZE = 10;
 
@@ -38,10 +37,9 @@ interface LearnProps {
   flashcardIsRandom: boolean;
   onFlashcardPageChange: (page: number) => void;
   flashcardCurrentPage: number;
-  onViewChange: (view: 'flashcards' | 'quiz') => void;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage, onViewChange }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, displayCount, onQuizStateChange, flashcardIsRandom, onFlashcardPageChange, flashcardCurrentPage }: LearnProps) {
     const { toast } = useToast();
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
@@ -90,18 +88,13 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
                     <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
                  </div>
             )}
-            <Tabs value={view} onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-                    <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-                </TabsList>
-                <TabsContent value="flashcards">
-                    <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />
-                </TabsContent>
-                <TabsContent value="quiz">
-                     <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
-                </TabsContent>
-            </Tabs>
+            
+            {view === 'flashcards' && (
+                <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} onPageChange={onFlashcardPageChange} initialPage={flashcardCurrentPage} />
+            )}
+            {view === 'quiz' && (
+                <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
+            )}
         </CardContent>
      </Card>
   );
@@ -391,7 +384,9 @@ export default function Home() {
     await db.put('data', { id: 'flashcardCurrentPage', data: page });
   }, [user?.uid]);
 
-    useEffect(() => {
+  const currentQuizAnswer = quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null;
+
+  useEffect(() => {
     const getAssistantContext = (): string => {
         let context = `Người dùng đang học về chủ đề: ${topic}.`;
         if (view === 'quiz' && quizSet && quizState) {
@@ -412,7 +407,7 @@ export default function Home() {
 
       setAssistantContext(getAssistantContext());
 
-  }, [view, topic, flashcardSet, quizSet, quizState?.currentQuestionIndex, quizState?.answers[quizState?.currentQuestionIndex]]);
+  }, [view, topic, flashcardSet, quizSet, quizState?.currentQuestionIndex, currentQuizAnswer]);
 
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
@@ -443,6 +438,8 @@ export default function Home() {
               onBackgroundChange={handleBackgroundChange}
               onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
               onFlashcardSettingsChange={handleFlashcardSettingsChange}
+              onViewChange={handleViewChange}
+              currentView={view}
             />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
@@ -472,7 +469,6 @@ export default function Home() {
                     flashcardIsRandom={flashcardIsRandom}
                     onFlashcardPageChange={handleFlashcardPageChange}
                     flashcardCurrentPage={flashcardCurrentPage}
-                    onViewChange={handleViewChange}
                 />
               </div>
           )}
