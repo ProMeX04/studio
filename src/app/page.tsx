@@ -60,27 +60,6 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
 
     return (
      <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px]">
-        {hasLearnContent && (
-           <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button onClick={handleGenerateClick} variant="outline" size="icon" className="absolute top-0 right-0 z-10" disabled={isLoading}>
-                        {isLoading ? <Loader className="animate-spin" /> : <Plus />}
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                     {isLoading && <p>Đang tạo...</p>}
-                     {!isLoading && canGenerateMore && <p>Thêm nội dung</p>}
-                     {!isLoading && !canGenerateMore && <p>Tăng số lượng tối đa trong cài đặt</p>}
-                </TooltipContent>
-            </Tooltip>
-           </TooltipProvider>
-        )}
-         {hasLearnContent && !isLoading && (
-            <div className="absolute top-2 right-12 text-sm text-muted-foreground z-10">
-                ({currentCount}/{targetCount})
-            </div>
-        )}
         <CardContent className="pt-8">
             {isLoading && !hasLearnContent && (
                  <div className="flex flex-col justify-center items-center h-48">
@@ -165,11 +144,9 @@ export default function Home() {
       const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
       if (flashcardData && flashcardData.topic === currentTopic) {
         currentFlashcards = flashcardData.data;
-        setFlashcardSet(currentFlashcards);
       }
       if (quizData && quizData.topic === currentTopic) {
         currentQuiz = quizData.data;
-        setQuizSet(currentQuiz);
       }
     }
     
@@ -179,6 +156,11 @@ export default function Home() {
     try {
         const flashcardsNeeded = flashcardMax - currentFlashcards.cards.length;
         const quizNeeded = quizMax - currentQuiz.questions.length;
+
+        if (flashcardsNeeded <= 0 && quizNeeded <= 0) {
+            setIsLoading(false);
+            return;
+        }
 
         const flashcardBatches = Math.ceil(Math.max(0, flashcardsNeeded) / BATCH_SIZE);
         const quizBatches = Math.ceil(Math.max(0, quizNeeded) / BATCH_SIZE);
@@ -273,24 +255,27 @@ export default function Home() {
             learn: true,
         });
         
-        if (flashcardData && flashcardData.topic === savedTopic) {
-            setFlashcardSet(flashcardData.data);
-        } else {
-            setFlashcardSet(null);
-        }
+        const currentFlashcards = (flashcardData && flashcardData.topic === savedTopic) ? flashcardData.data : null;
+        const currentQuiz = (quizData && quizData.topic === savedTopic) ? quizData.data : null;
 
-        if (quizData && quizData.topic === savedTopic) {
-            setQuizSet(quizData.data);
-        } else {
-            setQuizSet(null);
-        }
+        setFlashcardSet(currentFlashcards);
+        setQuizSet(currentQuiz);
 
         if (quizData && quizData.topic === savedTopic && quizStateData) {
             setQuizState(quizStateData.data);
         } else {
             setQuizState(null);
         }
-  }, [user, authLoading]);
+
+        const flashcardsNeeded = savedFlashcardMax - (currentFlashcards?.cards.length ?? 0);
+        const quizNeeded = savedQuizMax - (currentQuiz?.questions.length ?? 0);
+
+        if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
+           handleGenerate(savedTopic, savedLanguage, false);
+        }
+
+
+  }, [user, authLoading, handleGenerate]);
 
   useEffect(() => {
     if (!authLoading && isMounted) {
