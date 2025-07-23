@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, HelpCircle, Loader } from 'lucide-react';
 import { explainQuizOption } from '@/ai/flows/explain-quiz-option';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { QuizQuestion, QuizSet } from '@/ai/schemas';
+import { QuizQuestion, QuizSet, ExplainQuizOptionOutput } from '@/ai/schemas';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -19,7 +19,7 @@ export interface AnswerState {
   [questionIndex: number]: {
       selected: string | null;
       isAnswered: boolean;
-      explanations?: { [option: string]: string };
+      explanations?: { [option: string]: ExplainQuizOptionOutput };
   }
 }
 
@@ -39,6 +39,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const [answers, setAnswers] = useState<AnswerState>(initialState?.answers || {});
   const [isExplaining, setIsExplaining] = useState<string | null>(null); // Option being explained
   const { toast } = useToast();
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentAnswerState = answers[currentQuestionIndex] || { selected: null, isAnswered: false, explanations: {} };
   const { selected: selectedAnswer, isAnswered } = currentAnswerState;
@@ -90,7 +91,13 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     if (!quizSet || !currentQuestion) return;
 
     // Do not fetch again if explanation already exists
-    if (currentAnswerState.explanations?.[option]) return;
+    if (currentAnswerState.explanations?.[option]) {
+        if (audioRef.current && currentAnswerState.explanations[option].audio) {
+            audioRef.current.src = currentAnswerState.explanations[option].audio;
+            audioRef.current.play();
+        }
+        return;
+    }
 
     setIsExplaining(option);
     try {
@@ -101,7 +108,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
             correctAnswer: currentQuestion.answer,
         });
 
-        const newExplanations = { ...(currentAnswerState.explanations || {}), [option]: result.explanation };
+        const newExplanations = { ...(currentAnswerState.explanations || {}), [option]: result };
         setAnswers(prev => ({
             ...prev,
             [currentQuestionIndex]: {
@@ -109,6 +116,11 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                 explanations: newExplanations
             }
         }));
+
+        if (audioRef.current && result.audio) {
+            audioRef.current.src = result.audio;
+            audioRef.current.play();
+        }
 
     } catch (error) {
         console.error("Failed to get explanation", error);
@@ -143,6 +155,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
+      <audio ref={audioRef} className="hidden" />
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -190,7 +203,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
                             <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {currentAnswerState.explanations[option]}
+                                    {currentAnswerState.explanations[option].explanation}
                                 </ReactMarkdown>
                             </AlertDescription>
                         </Alert>
