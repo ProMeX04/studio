@@ -142,14 +142,14 @@ export function QuickLinks() {
   };
 
   return (
-    <div className="flex justify-center items-center gap-2 md:gap-4 p-3 rounded-lg w-full bg-background/70 backdrop-blur-sm">
+    <div className="flex justify-center items-center gap-2 md:gap-4 w-full">
       {links.map((link) => (
-        <div key={link.id} className="group relative">
+        <div key={link.id} className="group relative bg-background/70 backdrop-blur-sm p-3 rounded-lg">
             <a
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col items-center gap-2 p-2 rounded-lg transition-colors w-24 hover:bg-secondary"
+            className="flex flex-col items-center gap-2 rounded-lg transition-colors w-24"
             >
             <div className="p-3 rounded-full bg-secondary">
                 {getIconForLink(link)}
@@ -180,7 +180,7 @@ export function QuickLinks() {
       ))}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-            <div className="flex flex-col items-center gap-2 p-2 rounded-lg transition-colors w-24 cursor-pointer hover:bg-secondary" onClick={openAddDialog}>
+            <div className="flex flex-col items-center gap-2 p-3 rounded-lg transition-colors w-24 cursor-pointer bg-background/70 backdrop-blur-sm" onClick={openAddDialog}>
                 <div className="p-3 rounded-full bg-secondary">
                     <Plus className="h-6 w-6 text-muted-foreground" />
                 </div>
