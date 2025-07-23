@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings as SettingsIcon, CheckCircle, Upload, Trash2, BookOpen, BrainCircuit } from 'lucide-react';
+import { Settings as SettingsIcon, CheckCircle, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -279,23 +279,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="view" className="text-right">
-                    Chế độ
-                </Label>
-                 <div className="col-span-3">
-                    <Tabs defaultValue={currentView} onValueChange={(v) => onViewChange(v as 'flashcards' | 'quiz')} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="flashcards" className="gap-2">
-                            <BookOpen /> Flashcard
-                        </TabsTrigger>
-                        <TabsTrigger value="quiz" className="gap-2">
-                            <BrainCircuit /> Trắc nghiệm
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                </div>
-            </div>
             <Tabs defaultValue={currentView} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
@@ -397,3 +380,5 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
+
+    
