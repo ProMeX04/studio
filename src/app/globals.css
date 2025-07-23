@@ -32,6 +32,9 @@ body {
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
+    --success: 140 70% 30%;
+    --success-foreground: 210 40% 98%;
+
     --border: 215 28% 17%;
     --input: 215 28% 17%;
     --ring: 210 40% 98%;

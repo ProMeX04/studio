@@ -75,7 +75,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 
    const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
   
@@ -140,7 +140,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (isCorrect) return 'bg-primary/50 border-primary backdrop-blur-sm';
+    if (isCorrect) return 'bg-success/80 border-success backdrop-blur-sm';
     if (isSelectedWrong) return 'bg-destructive/50 border-destructive backdrop-blur-sm';
     return 'border-border bg-background/80 backdrop-blur-sm';
   };
@@ -215,7 +215,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                  <div className={cn(
                     "p-4 rounded-lg backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-base",
                     selectedAnswer === currentQuestion.answer 
-                      ? "bg-primary/20"
+                      ? "bg-success/20"
                       : "bg-destructive/20"
                  )}>
                     <p className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
