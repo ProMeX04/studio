@@ -58,10 +58,10 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                     {isLoading && <p>Generating...</p>}
-                     {!isLoading && hasContent && !canGenerateMore && <p>Start New Topic</p>}
-                     {!isLoading && hasContent && canGenerateMore && <p>Generate More</p>}
-                     {!isLoading && !hasContent && <p>Generate</p>}
+                     {isLoading && <p>Đang tạo...</p>}
+                     {!isLoading && hasContent && !canGenerateMore && <p>Bắt đầu chủ đề mới</p>}
+                     {!isLoading && hasContent && canGenerateMore && <p>Tạo thêm</p>}
+                     {!isLoading && !hasContent && <p>Tạo</p>}
                 </TooltipContent>
             </Tooltip>
            </TooltipProvider>
@@ -75,7 +75,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
             {isLoading && !hasContent && (
                  <div className="flex flex-col justify-center items-center h-48">
                     <Loader className="animate-spin mb-4" />
-                    <p>Generating new content for your topic...</p>
+                    <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
                  </div>
             )}
             {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
@@ -180,7 +180,7 @@ export default function Home() {
 
     } catch (error) {
       console.error(error);
-      toast({ title: 'Error', description: 'Failed to generate content. Please try again.', variant: 'destructive' });
+      toast({ title: 'Lỗi', description: 'Không thể tạo nội dung. Vui lòng thử lại.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -190,8 +190,8 @@ export default function Home() {
         const db = await getDb(user?.uid);
 
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
-        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Roman History';
-        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
+        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
+        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];

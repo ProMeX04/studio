@@ -15,15 +15,15 @@ export function Greeting() {
     
     let greetingText;
     if (hour < 12) {
-      greetingText = 'Good Morning';
+      greetingText = 'Chào buổi sáng';
     } else if (hour < 18) {
-      greetingText = 'Good Afternoon';
+      greetingText = 'Chào buổi chiều';
     } else {
-      greetingText = 'Good Evening';
+      greetingText = 'Chào buổi tối';
     }
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    const dateText = `, it's ${today.toLocaleDateString('en-US', options)}.`;
+    const dateText = `, hôm nay là ${today.toLocaleDateString('vi-VN', options)}.`;
     setFullGreeting(greetingText + dateText);
   }, []);
 

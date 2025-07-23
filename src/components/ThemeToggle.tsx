@@ -17,7 +17,7 @@ export function ThemeToggle() {
         onClick={() => setTheme("light")}
       >
         <Sun className="h-4 w-4 mr-2" />
-        Light
+        Sáng
       </Button>
       <Button 
         variant={theme === 'dark' ? 'secondary' : 'ghost'}
@@ -25,14 +25,14 @@ export function ThemeToggle() {
         onClick={() => setTheme("dark")}
       >
         <Moon className="h-4 w-4 mr-2" />
-        Dark
+        Tối
       </Button>
        <Button 
         variant={theme === 'system' ? 'secondary' : 'ghost'}
         size="sm"
         onClick={() => setTheme("system")}
       >
-        System
+        Hệ thống
       </Button>
     </div>
   )

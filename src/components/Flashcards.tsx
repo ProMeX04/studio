@@ -46,7 +46,7 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
   if (!flashcardSet || flashcardSet.cards.length === 0) {
     return (
       <div className="text-center h-48 flex items-center justify-center">
-         Enter a topic in settings and click "Save" to create some flashcards.
+         Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một số thẻ flashcard.
       </div>
     );
   }

@@ -33,8 +33,8 @@ interface QuickLink {
 }
 
 const linkSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  url: z.string().url("Please enter a valid URL"),
+  name: z.string().min(1, "Tên là bắt buộc"),
+  url: z.string().url("Vui lòng nhập một URL hợp lệ"),
 });
 
 const defaultLinks: QuickLink[] = [
@@ -164,10 +164,10 @@ export function QuickLinks() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                     <DropdownMenuItem onSelect={() => handleEdit(link)}>
-                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                        <Pencil className="mr-2 h-4 w-4" /> Sửa
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleDelete(link.id)} className="text-destructive">
-                         <Trash2 className="mr-2 h-4 w-4" /> Delete
+                         <Trash2 className="mr-2 h-4 w-4" /> Xóa
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -179,12 +179,12 @@ export function QuickLinks() {
                 <div className="p-3 rounded-full bg-secondary">
                     <Plus className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <span className="text-sm font-medium">Add Link</span>
+                <span className="text-sm font-medium">Thêm liên kết</span>
             </div>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingLink ? 'Edit Link' : 'Add a new link'}</DialogTitle>
+            <DialogTitle>{editingLink ? 'Sửa liên kết' : 'Thêm liên kết mới'}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -193,9 +193,9 @@ export function QuickLinks() {
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Tên</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g. Google" {...field} />
+                            <Input placeholder="ví dụ: Google" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -217,10 +217,10 @@ export function QuickLinks() {
                 <DialogFooter>
                     <DialogClose asChild>
                         <Button type="button" variant="secondary">
-                            Cancel
+                            Hủy
                         </Button>
                     </DialogClose>
-                    <Button type="submit">Save</Button>
+                    <Button type="submit">Lưu</Button>
                 </DialogFooter>
             </form>
           </Form>

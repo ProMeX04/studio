@@ -39,25 +39,16 @@ interface SettingsProps {
 }
 
 const languages = [
+    { value: 'Vietnamese', label: 'Tiếng Việt' },
     { value: 'English', label: 'English' },
     { value: 'Spanish', label: 'Español' },
     { value: 'French', label: 'Français' },
     { value: 'German', label: 'Deutsch' },
     { value: 'Japanese', label: '日本語' },
     { value: 'Korean', label: '한국어' },
-    { value: 'Vietnamese', label: 'Tiếng Việt' },
 ];
 
-const stockBackgrounds = [
-    { id: '1', url: 'https://placehold.co/1920x1080.png', hint: 'nature landscape'},
-    { id: '2', url: 'https://placehold.co/1920x1080.png', hint: 'abstract art'},
-    { id: '3', url: 'https://placehold.co/1920x1080.png', hint: 'city skyline'},
-    { id: '4', url: 'https://placehold.co/1920x1080.png', hint: 'minimalist texture'},
-    { id: '5', url: 'https://placehold.co/1920x1080.png', hint: 'space galaxy'},
-    { id: '6', url: 'https://placehold.co/1920x1080.png', hint: 'ocean waves'},
-];
-
-const MAX_UPLOADED_IMAGES = 5;
+const MAX_UPLOADED_IMAGES = 6;
 
 function GoogleIcon() {
     return (
@@ -74,7 +65,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('Vietnamese');
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
     greeting: true,
@@ -95,7 +86,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
         const db = await getDb(user?.uid);
         const savedTopic = (await db.get('data', 'topic'))?.data as string || '';
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
-        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'English';
+        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string | null;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -168,20 +159,20 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon">
           <SettingsIcon className="h-5 w-5" />
-          <span className="sr-only">Settings</span>
+          <span className="sr-only">Cài đặt</span>
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="max-h-[100vh] w-[400px] sm:max-w-[540px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
+          <SheetTitle>Cài đặt</SheetTitle>
         </SheetHeader>
         <div className="grid gap-6 py-4">
            <Separator />
             <div className="space-y-4">
-                <Label className="font-medium text-foreground">Account</Label>
+                <Label className="font-medium text-foreground">Tài khoản</Label>
                 <div className="pl-4">
                     {authLoading ? (
-                        <p>Loading...</p>
+                        <p>Đang tải...</p>
                     ) : user ? (
                         <div className="flex items-center gap-4">
                             <Avatar>
@@ -192,32 +183,32 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                                 <span className="font-semibold">{user.displayName}</span>
                                 <span className="text-sm text-muted-foreground">{user.email}</span>
                             </div>
-                            <Button variant="outline" size="sm" onClick={signOut} className="ml-auto">Sign Out</Button>
+                            <Button variant="outline" size="sm" onClick={signOut} className="ml-auto">Đăng xuất</Button>
                         </div>
                     ) : (
                         <Button variant="outline" onClick={signInWithGoogle}>
                            <GoogleIcon />
-                            Sign in with Google
+                            Đăng nhập với Google
                         </Button>
                     )}
                 </div>
             </div>
             <Separator />
             <div className="space-y-2">
-                <Label className="font-medium text-foreground">Theme</Label>
+                <Label className="font-medium text-foreground">Giao diện</Label>
                  <div className="pl-10">
                     <ThemeToggle />
                 </div>
             </div>
           <Separator />
           <div className="space-y-4">
-            <Label className="font-medium text-foreground">Background</Label>
+            <Label className="font-medium text-foreground">Hình nền</Label>
             <div className='flex items-center gap-2'>
                 <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload Image
+                    Tải ảnh lên
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleRemoveBackground} aria-label="Remove background">
+                <Button variant="ghost" size="icon" onClick={handleRemoveBackground} aria-label="Xóa hình nền">
                   <Trash2 className="h-4 w-4" />
                 </Button>
             </div>
@@ -235,36 +226,30 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                         {selectedBackground === bg && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
                     </div>
                 ))}
-                {stockBackgrounds.map(bg => (
-                    <div key={bg.id} className="relative cursor-pointer group" onClick={() => handleSelectBackground(bg.url)}>
-                        <Image src={bg.url} alt={`Background ${bg.id}`} width={100} height={60} className={cn("rounded-md object-cover aspect-video", selectedBackground === bg.url && 'ring-2 ring-primary ring-offset-2 ring-offset-background')} data-ai-hint={bg.hint} />
-                        {selectedBackground === bg.url && <CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />}
-                    </div>
-                ))}
             </div>
           </div>
           <Separator />
            <div className="space-y-4">
-            <Label className="font-medium text-foreground">Learn Settings</Label>
+            <Label className="font-medium text-foreground">Cài đặt học tập</Label>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="topic" className="text-right">
-                Topic
+                Chủ đề
                 </Label>
                 <Input
                 id="topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 className="col-span-3"
-                placeholder="e.g. Roman History"
+                placeholder="ví dụ: Lịch sử La Mã"
                 />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="language" className="text-right">
-                Language
+                Ngôn ngữ
                 </Label>
                 <Select value={language} onValueChange={setLanguage}>
                     <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select a language" />
+                        <SelectValue placeholder="Chọn một ngôn ngữ" />
                     </SelectTrigger>
                     <SelectContent>
                         {languages.map((lang) => (
@@ -274,7 +259,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                 </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Default View</Label>
+                <Label className="text-right">Chế độ xem</Label>
                 <RadioGroup 
                 value={view}
                 onValueChange={(value) => handleViewChange(value as 'flashcards' | 'quiz')}
@@ -282,38 +267,38 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
                 >
                 <div className="flex items-center space-x-2">
                     <RadioGroupItem value="flashcards" id="flashcards" />
-                    <Label htmlFor="flashcards">Flashcards</Label>
+                    <Label htmlFor="flashcards">Flashcard</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                     <RadioGroupItem value="quiz" id="quiz" />
-                    <Label htmlFor="quiz">Quiz</Label>
+                    <Label htmlFor="quiz">Trắc nghiệm</Label>
                 </div>
                 </RadioGroup>
             </div>
           </div>
            <Separator />
             <div className="space-y-2">
-                <Label className="font-medium text-foreground">Visible Components</Label>
+                <Label className="font-medium text-foreground">Thành phần hiển thị</Label>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
                     <div className="flex items-center space-x-2">
                         <Switch id="clock-visible" checked={visibility.clock} onCheckedChange={(c) => handleVisibilitySwitch('clock', c)} />
-                        <Label htmlFor="clock-visible">Clock</Label>
+                        <Label htmlFor="clock-visible">Đồng hồ</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="greeting-visible" checked={visibility.greeting} onCheckedChange={(c) => handleVisibilitySwitch('greeting', c)} />
-                        <Label htmlFor="greeting-visible">Greeting</Label>
+                        <Label htmlFor="greeting-visible">Lời chào</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="search-visible" checked={visibility.search} onCheckedChange={(c) => handleVisibilitySwitch('search', c)} />
-                        <Label htmlFor="search-visible">Search</Label>
+                        <Label htmlFor="search-visible">Tìm kiếm</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="quicklinks-visible" checked={visibility.quickLinks} onCheckedChange={(c) => handleVisibilitySwitch('quickLinks', c)} />
-                        <Label htmlFor="quicklinks-visible">Quick Links</Label>
+                        <Label htmlFor="quicklinks-visible">Liên kết nhanh</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="learn-visible" checked={visibility.learn} onCheckedChange={(c) => handleVisibilitySwitch('learn', c)} />
-                        <Label htmlFor="learn-visible">Learn Section</Label>
+                        <Label htmlFor="learn-visible">Phần học tập</Label>
                     </div>
                 </div>
             </div>
@@ -321,10 +306,10 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
         <SheetFooter>
           <SheetClose asChild>
             <Button type="button" variant="secondary">
-              Cancel
+              Hủy
             </Button>
           </SheetClose>
-          <Button onClick={handleFinalSave}>Save changes</Button>
+          <Button onClick={handleFinalSave}>Lưu thay đổi</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

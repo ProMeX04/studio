@@ -22,7 +22,7 @@ export function Search() {
         <Input
           type="search"
           name="q"
-          placeholder="Search the web..."
+          placeholder="Tìm kiếm trên web..."
           className="pl-12 h-14 text-base rounded-full border-none focus-visible:ring-2 focus-visible:ring-ring bg-secondary/70"
         />
       </div>

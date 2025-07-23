@@ -8,8 +8,8 @@ export function Clock() {
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      const options: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: 'numeric', hour12: true };
-      setTime(now.toLocaleTimeString('en-US', options));
+      const options: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: 'numeric', hour12: false };
+      setTime(now.toLocaleTimeString('vi-VN', options));
     };
 
     updateClock();
