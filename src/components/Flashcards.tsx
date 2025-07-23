@@ -37,7 +37,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 
   return (
     <div className="flashcard-container w-full min-h-[12rem] perspective-1000 flex flex-col" onClick={() => setIsFlipped(!isFlipped)}>
-      <div className={cn("flashcard relative w-full cursor-pointer transition-transform duration-700 preserve-3d", { 'is-flipped': isFlipped })}>
+      <div className={cn("flashcard relative w-full cursor-pointer transition-transform duration-700 preserve-3d flex-grow", { 'is-flipped': isFlipped })}>
         <div className="flashcard-front absolute w-full flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg backface-hidden bg-primary/20 backdrop-blur">
           <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
              <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
