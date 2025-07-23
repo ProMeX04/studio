@@ -173,7 +173,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                     <Label
                         htmlFor={`option-${index}`}
                         className={cn(
-                            "flex-grow flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors text-lg",
+                            "flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors text-lg",
                             getOptionClass(option)
                         )}
                     >
@@ -181,20 +181,21 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                            <RadioGroupItem value={option} id={`option-${index}`} />
                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{option}</ReactMarkdown>
                         </div>
-                        {isAnswered && (
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    handleExplain(option);
-                                }}
-                                disabled={isExplaining !== null}
-                                className="shrink-0"
-                            >
-                                {isExplaining === option ? <Loader className="animate-spin" /> : <HelpCircle />}
-                            </Button>
-                        )}
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleExplain(option);
+                            }}
+                            disabled={isExplaining !== null}
+                            className={cn(
+                                "shrink-0 transition-opacity",
+                                !isAnswered && "opacity-0 pointer-events-none"
+                            )}
+                        >
+                            {isExplaining === option ? <Loader className="animate-spin" /> : <HelpCircle />}
+                        </Button>
                     </Label>
 
                      {currentAnswerState.explanations?.[option] && (
