@@ -75,6 +75,7 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 export const ChatMessageSchema = z.object({
   role: z.enum(['user', 'model']),
   text: z.string(),
+  suggestions: z.array(z.string()).optional(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
@@ -87,5 +88,6 @@ export type AskQuestionInput = z.infer<typeof AskQuestionInputSchema>;
 
 export const AskQuestionOutputSchema = z.object({
     answer: z.string().describe("The AI tutor's response text."),
+    suggestions: z.array(z.string()).optional().describe('A list of two suggested follow-up questions for the user.'),
 });
 export type AskQuestionOutput = z.infer<typeof AskQuestionOutputSchema>;

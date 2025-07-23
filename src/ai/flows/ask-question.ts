@@ -29,7 +29,7 @@ Here is the conversation history so far:
 Here is the user's new question:
 "{{{question}}}"
 
-Please provide a concise and helpful answer to the user's question based on the provided context and history.
+Please provide a concise and helpful answer to the user's question based on the provided context and history. After the answer, provide two relevant follow-up questions the user might have. These suggestions should help the user explore the topic further.
 `,
 });
 

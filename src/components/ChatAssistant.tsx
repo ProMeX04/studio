@@ -22,14 +22,14 @@ interface ChatAssistantProps {
 interface ChatInputFormProps {
     input: string;
     setInput: (value: string) => void;
-    handleSubmit: (e: React.FormEvent) => Promise<void>;
+    handleSubmit: (e: React.FormEvent, question?: string) => Promise<void>;
     isLoading: boolean;
     className?: string;
 }
 
 function ChatInputForm({ input, setInput, handleSubmit, isLoading, className }: ChatInputFormProps) {
     return (
-         <form onSubmit={handleSubmit} className={cn("flex w-full items-center gap-2", className)}>
+         <form onSubmit={(e) => handleSubmit(e)} className={cn("flex w-full items-center gap-2", className)}>
             <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -39,6 +39,7 @@ function ChatInputForm({ input, setInput, handleSubmit, isLoading, className }: 
                 disabled={isLoading}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault(); // prevent new line
                         handleSubmit(e);
                     }
                 }}
@@ -70,24 +71,35 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, question?: string) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const questionToSend = question || input;
+    if (!questionToSend.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = { role: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage: ChatMessage = { role: 'user', text: questionToSend };
+    
+    // Hide suggestions from previous model message
+    setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage?.role === 'model') {
+            lastMessage.suggestions = undefined;
+        }
+        return [...newMessages, userMessage];
+    });
+
     setInput('');
     setIsLoading(true);
 
     try {
       const result = await askQuestion({
         context,
-        question: input,
+        question: questionToSend,
         history: messages,
       });
 
       if (result.answer) {
-        const modelMessage: ChatMessage = { role: 'model', text: result.answer };
+        const modelMessage: ChatMessage = { role: 'model', text: result.answer, suggestions: result.suggestions };
         setMessages(prev => [...prev, modelMessage]);
       } else {
         throw new Error('AI did not return an answer.');
@@ -157,15 +169,33 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
                     <Sparkles className="h-5 w-5" />
                   </div>
                 )}
-                <div
-                  className={cn(
-                    "rounded-lg p-3 max-w-[80%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
-                    message.role === 'user'
-                      ? "bg-primary/80 text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                <div className="flex-1 space-y-2">
+                    <div
+                        className={cn(
+                            "rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
+                            message.role === 'user'
+                            ? "bg-primary/80 text-primary-foreground float-right"
+                            : "bg-muted text-muted-foreground",
+                             {"max-w-full": message.role === 'model'}
+                        )}
+                        >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                    </div>
+                     {message.role === 'model' && message.suggestions && message.suggestions.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                            {message.suggestions.map((suggestion, i) => (
+                                <Button
+                                    key={i}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => handleSubmit(e, suggestion)}
+                                    className="bg-background/50 backdrop-blur"
+                                >
+                                    {suggestion}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                  {message.role === 'user' && (
                   <div className="p-2 bg-muted rounded-full text-muted-foreground">
