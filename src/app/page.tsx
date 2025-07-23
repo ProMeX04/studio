@@ -235,10 +235,9 @@ export default function Home() {
   const onSettingsSave = async (settings: {
     topic: string;
     language: string;
-    background: string | null | undefined;
     uploadedBackgrounds: string[];
   }) => {
-      const { topic: newTopic, language: newLanguage, background: newBg, uploadedBackgrounds: newUploadedBgs } = settings;
+      const { topic: newTopic, language: newLanguage, uploadedBackgrounds: newUploadedBgs } = settings;
       
       const topicChanged = newTopic !== topic || newLanguage !== language;
       setTopic(newTopic);
@@ -249,18 +248,21 @@ export default function Home() {
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
       await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
-
-      if (newBg === null) {
-        setBackgroundImage('');
-        await db.delete('data', 'background');
-      } else if (newBg !== undefined) {
-        setBackgroundImage(newBg);
-        await db.put('data', { id: 'background', data: newBg });
-      }
       
       if (topicChanged) {
         handleGenerate(newTopic, newLanguage, true);
       }
+  };
+
+  const handleBackgroundChange = async (newBg: string | null) => {
+    const db = await getDb(user?.uid);
+    if (newBg) {
+      setBackgroundImage(newBg);
+      await db.put('data', { id: 'background', data: newBg });
+    } else {
+      setBackgroundImage('');
+      await db.delete('data', 'background');
+    }
   };
   
   const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
@@ -294,7 +296,8 @@ export default function Home() {
             <Settings 
               onSettingsSave={onSettingsSave} 
               onVisibilityChange={handleVisibilityChange} 
-              onViewChange={handleViewChange} 
+              onViewChange={handleViewChange}
+              onBackgroundChange={handleBackgroundChange}
             />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">

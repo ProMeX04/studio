@@ -31,11 +31,11 @@ interface SettingsProps {
   onSettingsSave: (settings: {
     topic: string;
     language: string;
-    background: string | null | undefined; // undefined means no change
     uploadedBackgrounds: string[];
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
+  onBackgroundChange: (background: string | null) => void;
 }
 
 const languages = [
@@ -61,7 +61,7 @@ function GoogleIcon() {
     )
 }
 
-export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -75,7 +75,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   });
   const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
-  const [pendingBackground, setPendingBackground] = useState<string | null | undefined>(undefined);
   const { user, signInWithGoogle, signOut, loading: authLoading } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +102,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
         });
         setSelectedBackground(savedBg);
         setUploadedBackgrounds(savedUploadedBgs);
-        setPendingBackground(undefined); // Reset pending on open
       }
     }
     loadSettings();
@@ -122,7 +120,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
   
   const handleSelectBackground = (url: string) => {
     setSelectedBackground(url);
-    setPendingBackground(url);
+    onBackgroundChange(url);
   };
 
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,14 +139,13 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange }: S
 
   const handleRemoveBackground = () => {
     setSelectedBackground(null);
-    setPendingBackground(null);
+    onBackgroundChange(null);
   };
 
   const handleFinalSave = () => {
      onSettingsSave({
       topic,
       language,
-      background: pendingBackground,
       uploadedBackgrounds,
     });
     setIsOpen(false);
