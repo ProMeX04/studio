@@ -10,6 +10,9 @@
 import {ai} from '@/ai/genkit';
 import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutputSchema, type ExplainQuizOptionInput, type ExplainQuizOptionOutput } from '@/ai/schemas';
 
+// Regex to find and replace non-standard backticks with standard ones.
+const backtickRegex = /`|´|‘|’/g;
+
 export async function explainQuizOption(input: ExplainQuizOptionInput): Promise<ExplainQuizOptionOutput> {
   return explainQuizOptionFlow(input);
 }
@@ -68,6 +71,9 @@ const explainQuizOptionFlow = ai.defineFlow(
         throw new Error('Could not generate an explanation.');
     }
     
+    // Clean the explanation to ensure proper markdown rendering.
+    explanationOutput.explanation = explanationOutput.explanation.replace(backtickRegex, '`');
+
     return {
         explanation: explanationOutput.explanation,
     };

@@ -8,6 +8,9 @@
 import {ai} from '@/ai/genkit';
 import { AskQuestionInputSchema, AskQuestionOutputSchema, type AskQuestionInput, type AskQuestionOutput } from '@/ai/schemas';
 
+// Regex to find and replace non-standard backticks with standard ones.
+const backtickRegex = /`|´|‘|’/g;
+
 export async function askQuestion(input: AskQuestionInput): Promise<AskQuestionOutput> {
   return askQuestionFlow(input);
 }
@@ -43,6 +46,16 @@ const askQuestionFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("AI did not return an answer.");
+    }
+    
+    // Clean the answer text to ensure proper markdown rendering.
+    output.answer = output.answer.replace(backtickRegex, '`');
+    if (output.suggestions) {
+        output.suggestions = output.suggestions.map(s => s.replace(backtickRegex, '`'));
+    }
+
+    return output;
   }
 );

@@ -10,6 +10,9 @@
 import {ai} from '@/ai/genkit';
 import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizInput, GenerateQuizOutput } from '@/ai/schemas';
 
+// Regex to find and replace non-standard backticks with standard ones.
+const backtickRegex = /`|´|‘|’/g;
+
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
   return generateQuizFlow(input);
 }
@@ -45,6 +48,17 @@ const generateQuizFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI failed to generate quiz questions.');
+    }
+
+    // Clean each quiz question to ensure proper markdown rendering.
+    return output.map(q => ({
+        ...q,
+        question: q.question.replace(backtickRegex, '`'),
+        options: q.options.map(opt => opt.replace(backtickRegex, '`')),
+        answer: q.answer.replace(backtickRegex, '`'),
+        explanation: q.explanation.replace(backtickRegex, '`'),
+    }));
   }
 );
