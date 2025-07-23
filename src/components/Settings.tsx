@@ -312,7 +312,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     id="flashcardMax"
                     type="number"
                     value={flashcardMax}
-                    onChange={(e) => setFlashcardMax(Number(e.target.value))}
+                    onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
                     />
@@ -325,7 +325,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     id="flashcardDisplayMax"
                     type="number"
                     value={flashcardDisplayMax}
-                    onChange={(e) => setFlashcardDisplayMax(Number(e.target.value))}
+                    onChange={(e) => setFlashcardDisplayMax(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 10"
                     />
@@ -340,7 +340,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     id="quizMax"
                     type="number"
                     value={quizMax}
-                    onChange={(e) => setQuizMax(Number(e.target.value))}
+                    onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
                     />
