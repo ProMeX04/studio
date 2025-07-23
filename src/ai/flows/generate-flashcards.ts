@@ -31,7 +31,7 @@ Existing Flashcards:
 {{/each}}
 {{/if}}
 
-Return a JSON array of objects with "front" and "back" keys.
+IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has a "front" and a "back" key. For example: [{"front": "Question 1", "back": "Answer 1"}, {"front": "Question 2", "back": "Answer 2"}].
 `,
 });
 

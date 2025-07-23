@@ -30,6 +30,8 @@ Here is the user's new question:
 "{{{question}}}"
 
 Please provide a concise and helpful answer to the user's question based on the provided context and history. After the answer, provide two relevant follow-up questions the user might have. These suggestions should help the user explore the topic further.
+
+IMPORTANT: Your response MUST be a valid JSON object with the keys "answer" and "suggestions". For example: {"answer": "This is the answer.", "suggestions": ["Follow-up 1?", "Follow-up 2?"]}.
 `,
 });
 

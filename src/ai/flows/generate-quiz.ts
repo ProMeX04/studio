@@ -33,7 +33,7 @@ Existing Questions:
 {{/each}}
 {{/if}}
 
-Return a JSON array of objects with "question", "options", "answer", and "explanation" keys.
+IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has "question", "options", "answer", and "explanation" keys.
 `,
 });
 
