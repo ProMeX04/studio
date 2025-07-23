@@ -82,7 +82,7 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
     }
   }, [currentPage, isRandom, onPageChange]);
 
-  const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? 1 : 1));
+  const totalPages = Math.ceil(displayedCards.length / (displayCount > 0 ? displayCount : 1));
   
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
