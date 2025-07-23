@@ -21,7 +21,6 @@ import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from './ThemeToggle';
 import { getDb } from '@/lib/idb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
@@ -160,13 +159,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
           <SheetTitle>Cài đặt</SheetTitle>
         </SheetHeader>
         <div className="grid gap-6 py-4">
-            <Separator />
-            <div className="space-y-2">
-                <Label className="font-medium text-foreground">Giao diện</Label>
-                 <div className="pl-10">
-                    <ThemeToggle />
-                </div>
-            </div>
           <Separator />
           <div className="space-y-4">
             <Label className="font-medium text-foreground">Hình nền</Label>
