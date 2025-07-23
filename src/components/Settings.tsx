@@ -72,7 +72,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
   });
   const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
-  const [view, setView] = useState<'flashcards' | 'quiz'>(currentView);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,8 +104,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
     });
     setSelectedBackground(savedBg);
     setUploadedBackgrounds(savedUploadedBgs);
-    setView(currentView);
-  }, [currentView]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -145,7 +143,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
     onBackgroundChange(selectedBackground);
     onUploadedBackgroundsChange(uploadedBackgrounds);
     onFlashcardSettingsChange({ isRandom: flashcardIsRandom });
-    onViewChange(view);
+    onViewChange(currentView);
     setIsOpen(false);
   }
 
@@ -230,7 +228,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Chế độ</Label>
                 <div className='col-span-3'>
-                    <Tabs value={view} onValueChange={(value) => setView(value as 'flashcards' | 'quiz')} className="w-full">
+                    <Tabs value={currentView} onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')} className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
                             <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
@@ -343,5 +341,3 @@ export function Settings({ onSettingsSave, onVisibilityChange, onBackgroundChang
     </Sheet>
   );
 }
-
-    
