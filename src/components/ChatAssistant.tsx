@@ -92,11 +92,15 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
     setIsLoading(true);
 
     try {
-      const result = await askQuestion({
+      const flowInput = {
         context,
         question: questionToSend,
         history: messages,
-      });
+      };
+      
+      console.log("AI Conversation Context:", flowInput);
+
+      const result = await askQuestion(flowInput);
 
       if (result.answer) {
         const modelMessage: ChatMessage = { role: 'model', text: result.answer, suggestions: result.suggestions };
