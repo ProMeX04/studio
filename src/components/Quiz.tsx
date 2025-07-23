@@ -156,6 +156,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
               {currentQuestion.options.map((option, index) => (
                 <div key={index} className="space-y-2">
                     <Label
+                        htmlFor={`option-${index}`}
                         className={cn(
                             "flex-grow flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors text-lg",
                             getOptionClass(option)
@@ -185,7 +186,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                         <Alert variant="default" className="bg-secondary/20 backdrop-blur">
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
-                            <AlertDescription className="prose dark:prose-invert prose-p:my-0">
+                            <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {currentAnswerState.explanations[option]}
                                 </ReactMarkdown>
