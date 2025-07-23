@@ -142,7 +142,7 @@ export function QuickLinks() {
   };
 
   return (
-    <div className="flex justify-center items-center gap-2 md:gap-4 p-3 rounded-lg w-full">
+    <div className="flex justify-center items-center gap-2 md:gap-4 p-3 rounded-lg w-full bg-background/70 backdrop-blur-sm">
       {links.map((link) => (
         <div key={link.id} className="group relative">
             <a
@@ -154,7 +154,12 @@ export function QuickLinks() {
             <div className="p-3 rounded-full bg-secondary">
                 {getIconForLink(link)}
             </div>
-            <span className="text-sm font-medium truncate w-full text-center">{link.name}</span>
+            <span 
+              className="text-sm font-medium truncate w-full text-center"
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)'}}
+            >
+              {link.name}
+            </span>
             </a>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

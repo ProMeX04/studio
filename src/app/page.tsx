@@ -405,7 +405,7 @@ export default function Home() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${backgroundImage})` }}
         >
-          <div className="absolute inset-0 bg-black/50"></div>
+          <div className="absolute inset-0 bg-black/60"></div>
         </div>
       )}
       <div className="absolute top-4 right-4 flex items-center gap-4 z-10">
@@ -445,7 +445,7 @@ export default function Home() {
                     displayCount={displayCount}
                     onQuizStateChange={handleQuizStateChange}
                     flashcardIsRandom={flashcardIsRandom}
-                    onFlashcardPageChange={handleFlashcardPageChange}
+                    onFlashcardPageChange={onFlashcardPageChange}
                     flashcardCurrentPage={flashcardCurrentPage}
                 />
               </div>

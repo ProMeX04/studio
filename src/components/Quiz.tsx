@@ -135,14 +135,14 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   }, [quizSet, currentQuestion, currentAnswerState, currentQuestionIndex, toast]);
 
   const getOptionClass = (option: string) => {
-    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/20 backdrop-blur';
+    if (!isAnswered) return 'border-border cursor-pointer hover:bg-accent/50 bg-background/80 backdrop-blur-sm';
 
     const isCorrect = option === currentQuestion?.answer;
     const isSelectedWrong = option === selectedAnswer && selectedAnswer !== currentQuestion?.answer;
 
-    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur';
-    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur';
-    return 'border-border bg-background/20 backdrop-blur';
+    if (isCorrect) return 'bg-primary/30 border-primary backdrop-blur-sm';
+    if (isSelectedWrong) return 'bg-destructive/30 border-destructive backdrop-blur-sm';
+    return 'border-border bg-background/80 backdrop-blur-sm';
   };
 
   if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
