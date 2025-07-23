@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings as SettingsIcon, CheckCircle, Upload, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, CheckCircle, Upload, Trash2, BookOpen, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -37,10 +37,11 @@ interface SettingsProps {
     quizDisplayMax: number;
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
-  onViewChange: (view: 'flashcards' | 'quiz' | 'tutor') => void;
+  onViewChange: (view: 'flashcards' | 'quiz') => void;
   onBackgroundChange: (background: string | null) => void;
   onUploadedBackgroundsChange: (backgrounds: string[]) => void;
   onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void;
+  currentView: 'flashcards' | 'quiz';
 }
 
 const languages = [
@@ -66,10 +67,9 @@ function GoogleIcon() {
     )
 }
 
-export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange, onFlashcardSettingsChange, currentView }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
-  const [view, setView] = useState<'flashcards' | 'quiz' | 'tutor'>('flashcards');
   const [language, setLanguage] = useState('Vietnamese');
   const [flashcardMax, setFlashcardMax] = useState(50);
   const [quizMax, setQuizMax] = useState(50);
@@ -93,7 +93,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     if (authLoading) return;
     const db = await getDb(user?.uid);
     const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
-    const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' | 'tutor' || 'flashcards';
     const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
     const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
     const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
@@ -105,7 +104,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
     
     setTopic(savedTopic);
-    setView(savedView);
     setLanguage(savedLanguage);
     setFlashcardMax(savedFlashcardMax);
     setQuizMax(savedQuizMax);
@@ -134,11 +132,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     setVisibility(newVisibility);
     onVisibilityChange(newVisibility);
   };
-
-  const handleViewChange = (newView: 'flashcards' | 'quiz' | 'tutor') => {
-    setView(newView);
-    onViewChange(newView);
-  }
 
   const handleFlashcardRandomToggle = (isRandom: boolean) => {
     setFlashcardIsRandom(isRandom);
@@ -286,7 +279,20 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
-            <Tabs value={view} onValueChange={(value) => handleViewChange(value as any)} className="w-full">
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="view" className="text-right">
+                    Chế độ
+                </Label>
+                <div className="col-span-3 flex gap-1 bg-muted p-1 rounded-md">
+                    <Button onClick={() => onViewChange('flashcards')} variant={currentView === 'flashcards' ? 'secondary' : 'ghost'} className="flex-1 gap-2">
+                       <BookOpen /> Flashcard
+                    </Button>
+                    <Button onClick={() => onViewChange('quiz')} variant={currentView === 'quiz' ? 'secondary' : 'ghost'} className="flex-1 gap-2">
+                       <BrainCircuit /> Trắc nghiệm
+                    </Button>
+                </div>
+            </div>
+            <Tabs defaultValue={currentView} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
                 <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>

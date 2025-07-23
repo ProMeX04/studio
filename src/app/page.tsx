@@ -11,14 +11,13 @@ import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
-import { Loader, Plus, BookOpen, BrainCircuit } from 'lucide-react';
+import { Loader, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, AppData } from '@/lib/idb';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AIAssistant } from '@/components/AIAssistant';
 import type { QuizQuestion } from '@/ai/schemas';
 
@@ -418,6 +417,7 @@ export default function Home() {
               onBackgroundChange={handleBackgroundChange}
               onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
               onFlashcardSettingsChange={handleFlashcardSettingsChange}
+              currentView={view}
             />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
@@ -433,46 +433,21 @@ export default function Home() {
           )}
           {visibility.learn && (
              <div className="lg:col-span-4 relative">
-                <Tabs value={view} onValueChange={(v) => handleViewChange(v as any)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="flashcards" className="gap-2"><BookOpen/> Flashcard</TabsTrigger>
-                    <TabsTrigger value="quiz" className="gap-2"><BrainCircuit/> Trắc nghiệm</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="flashcards">
-                      <Learn 
-                          view="flashcards"
-                          isLoading={isLoading}
-                          flashcardSet={flashcardSet}
-                          quizSet={null}
-                          quizState={null}
-                          onGenerateNew={onGenerateNew}
-                          generationProgress={generationProgress}
-                          targetCount={flashcardMax}
-                          displayCount={flashcardDisplayMax}
-                          onQuizStateChange={handleQuizStateChange}
-                          flashcardIsRandom={flashcardIsRandom}
-                          onFlashcardPageChange={handleFlashcardPageChange}
-                          flashcardCurrentPage={flashcardCurrentPage}
-                      />
-                  </TabsContent>
-                   <TabsContent value="quiz">
-                       <Learn 
-                          view="quiz"
-                          isLoading={isLoading}
-                          flashcardSet={null}
-                          quizSet={displayedQuizSet}
-                          quizState={quizState}
-                          onGenerateNew={onGenerateNew}
-                          generationProgress={generationProgress}
-                          targetCount={quizMax}
-                          displayCount={quizDisplayMax}
-                          onQuizStateChange={handleQuizStateChange}
-                          flashcardIsRandom={flashcardIsRandom}
-                          onFlashcardPageChange={handleFlashcardPageChange}
-                          flashcardCurrentPage={flashcardCurrentPage}
-                       />
-                  </TabsContent>
-                </Tabs>
+                <Learn 
+                    view={view}
+                    isLoading={isLoading}
+                    flashcardSet={flashcardSet}
+                    quizSet={displayedQuizSet}
+                    quizState={quizState}
+                    onGenerateNew={onGenerateNew}
+                    generationProgress={generationProgress}
+                    targetCount={targetCount}
+                    displayCount={displayCount}
+                    onQuizStateChange={handleQuizStateChange}
+                    flashcardIsRandom={flashcardIsRandom}
+                    onFlashcardPageChange={handleFlashcardPageChange}
+                    flashcardCurrentPage={flashcardCurrentPage}
+                />
               </div>
           )}
         </div>
