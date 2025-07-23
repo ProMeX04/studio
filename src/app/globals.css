@@ -37,6 +37,7 @@ body {
     --ring: 220 80% 50%;
 
     --radius: 0.5rem;
+    --text-shadow: 0 2px 4px #00000080;
   }
 
   .dark {
@@ -67,6 +68,7 @@ body {
     --border: 215 28% 17%;
     --input: 215 28% 17%;
     --ring: 210 40% 98%;
+    --text-shadow: 0 2px 8px #000000CC;
   }
 }
 
@@ -95,5 +97,8 @@ body {
   }
   .flashcard.is-flipped {
     transform: rotateY(180deg);
+  }
+  .text-shadow {
+    text-shadow: var(--text-shadow);
   }
 }

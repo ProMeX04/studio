@@ -20,7 +20,7 @@ export function Clock() {
   }, []);
 
   return (
-    <h1 className="text-8xl font-bold tracking-tighter">
+    <h1 className="text-8xl font-bold tracking-tighter text-shadow">
       {time}
     </h1>
   );

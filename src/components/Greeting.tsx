@@ -59,7 +59,7 @@ export function Greeting() {
   }
 
   return (
-    <p className="text-xl relative text-foreground/80">
+    <p className="text-xl relative text-foreground/80 text-shadow">
       {typedGreeting}
       <span className={cn(
           'ml-1 h-5 w-0.5 bg-current inline-block', 
