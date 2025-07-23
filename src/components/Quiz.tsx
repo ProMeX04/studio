@@ -188,7 +188,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                         <Alert variant="default" className="bg-secondary/20 backdrop-blur">
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
-                            <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0">
+                            <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {currentAnswerState.explanations[option]}
                                 </ReactMarkdown>
@@ -200,13 +200,13 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
             </RadioGroup>
             {isAnswered && (
                  <div className={cn(
-                    "p-4 rounded-lg backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1",
+                    "p-4 rounded-lg backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-base",
                     selectedAnswer === currentQuestion.answer 
                       ? "bg-primary/20"
                       : "bg-destructive/20"
                  )}>
                     <p className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</p>
-                    <div className="prose dark:prose-invert max-w-none prose-p:my-0">
+                    <div className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.explanation}</ReactMarkdown>
                     </div>
                  </div>
@@ -220,16 +220,18 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
       </CardContent>
       <CardFooter className="flex-col !pt-0 gap-2">
          {quizSet.questions.length > 0 && (
-          <div className="flex items-center justify-center w-full gap-4">
-            <Button onClick={handlePrevQuestion} disabled={currentQuestionIndex === 0} variant="outline" size="icon">
-              <ChevronLeft />
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Câu hỏi {currentQuestionIndex + 1} trên {quizSet.questions.length}
-            </p>
-            <Button onClick={handleNextQuestion} disabled={currentQuestionIndex === quizSet.questions.length - 1} variant="outline" size="icon">
-              <ChevronRight />
-            </Button>
+          <div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
+            <div className="flex items-center justify-center w-full gap-4">
+              <Button onClick={handlePrevQuestion} disabled={currentQuestionIndex === 0} variant="outline" size="icon">
+                <ChevronLeft />
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Câu hỏi {currentQuestionIndex + 1} trên {quizSet.questions.length}
+              </p>
+              <Button onClick={handleNextQuestion} disabled={currentQuestionIndex === quizSet.questions.length - 1} variant="outline" size="icon">
+                <ChevronRight />
+              </Button>
+            </div>
           </div>
         )}
       </CardFooter>
