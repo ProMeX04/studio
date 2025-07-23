@@ -159,7 +159,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
           <div className="w-full max-w-2xl mx-auto space-y-6">
-             <div className="text-2xl font-semibold text-center bg-background/10 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-2">
+             <div className="text-2xl font-semibold text-center bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-2">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestion.question}</ReactMarkdown>
              </div>
             <RadioGroup 
