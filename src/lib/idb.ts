@@ -32,7 +32,7 @@ export type StoredData =
   | AppData<string>
   | AppData<number>
   | AppData<boolean>
-  | AppData<'flashcards' | 'quiz' | 'tutor'>
+  | AppData<'flashcards' | 'quiz'>
   | AppData<ComponentVisibility>
   | AppData<string[]>
 

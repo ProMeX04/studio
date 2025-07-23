@@ -23,11 +23,13 @@ export async function liveTutor(input: LiveTutorInput): Promise<LiveTutorOutput>
     ];
 
     try {
-        const { text: modelResponse } = await ai.generate({
+        const result = await ai.generate({
             // @ts-ignore
             prompt: prompt,
             model: 'googleai/gemini-2.5-flash'
         });
+        
+        const modelResponse = result.text;
 
         if (!modelResponse || modelResponse.trim() === '') {
             return { responseText: '', updatedHistory: history };

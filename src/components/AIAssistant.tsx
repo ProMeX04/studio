@@ -4,21 +4,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCcw, Mic, MicOff, Loader, CircleDot } from 'lucide-react';
+import { RefreshCcw, Mic, MicOff, Loader, CircleDot, MessageSquare, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { textToSpeech } from '@/ai/flows/text-to-speech';
 import { liveTutor } from '@/ai/flows/live-tutor';
-import { QuizQuestion, ChatMessage } from '@/ai/schemas';
+import { ChatMessage } from '@/ai/schemas';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 
-interface LiveTutorProps {
-  topic: string;
-  quizContext?: QuizQuestion | null;
+interface AIAssistantProps {
+  context: string;
 }
 
 type TutorState = 'idle' | 'listening' | 'processing' | 'speaking';
 
-export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
+export function AIAssistant({ context }: AIAssistantProps) {
   const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
   const [tutorState, setTutorState] = useState<TutorState>('idle');
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
@@ -61,17 +69,11 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
           reader.readAsDataURL(audioBlob);
           reader.onloadend = async () => {
             const base64Audio = reader.result as string;
-            
-            // Build context
-            let contextPrompt = `The user is learning about: ${topic}.`;
-            if (quizContext) {
-                contextPrompt += ` They are currently on a quiz question: "${quizContext.question}" with options: ${quizContext.options.join(', ')}. The correct answer is ${quizContext.answer}.`;
-            }
 
             try {
                  const { responseText, updatedHistory } = await liveTutor({
                     audioDataUri: base64Audio,
-                    context: contextPrompt,
+                    context: context,
                     history: conversationHistory
                 });
 
@@ -106,7 +108,7 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
     }
 
     setupMedia();
-  }, [toast, topic, quizContext, conversationHistory]);
+  }, [toast, context, conversationHistory]);
 
   const stopListening = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -125,13 +127,14 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
     const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
     
     const check = () => {
+        if (!analyserRef.current) return;
         analyserNode.getByteTimeDomainData(dataArray);
         const isSilent = dataArray.every(v => v === 128);
         
         if (isSilent) {
             if (!silenceTimerRef.current) {
                 silenceTimerRef.current = setTimeout(() => {
-                    stopListening();
+                    if (isRecording) stopListening();
                 }, 2000); // 2 seconds of silence
             }
         } else {
@@ -148,35 +151,6 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
       requestAnimationFrame(check);
     }
   };
-
-
-  useEffect(() => {
-    if (isRecording) {
-        if (!analyserRef.current) return;
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        let silenceFrameCount = 0;
-        const SILENCE_THRESHOLD = 50; // frames of silence
-
-        const checkSilence = () => {
-            if (!isRecording) return;
-            analyserRef.current?.getByteFrequencyData(dataArray);
-            const sum = dataArray.reduce((a, b) => a + b, 0);
-            if (sum / dataArray.length < 2) { // Threshold for silence
-                silenceFrameCount++;
-            } else {
-                silenceFrameCount = 0;
-            }
-
-            if (silenceFrameCount > SILENCE_THRESHOLD) {
-                stopListening();
-            } else {
-                requestAnimationFrame(checkSilence);
-            }
-        };
-        checkSilence();
-    }
-  }, [isRecording, stopListening]);
-
 
   const handleAudioPlayback = useCallback(async (text: string) => {
     if (!text.trim()) {
@@ -229,18 +203,16 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
     toast({ title: 'Cuộc hội thoại đã được làm mới.' });
   }
 
-  // Cleanup on unmount
+  // Cleanup on dialog close
   useEffect(() => {
-    return () => {
+    if (!isOpen) {
+        stopListening();
         if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
         }
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
-        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-            audioContextRef.current.close();
-        }
-    };
-  }, []);
+        mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
+    }
+  }, [isOpen, stopListening]);
 
   const getTutorIcon = () => {
     switch (tutorState) {
@@ -258,43 +230,62 @@ export function LiveTutor({ topic, quizContext }: LiveTutorProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 p-4 w-full max-w-2xl mx-auto">
-        <div className="w-full h-64 bg-secondary/30 rounded-lg p-4 overflow-y-auto flex flex-col gap-2">
-            {conversationHistory.length === 0 && (
-                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Nhấn nút micro để bắt đầu cuộc trò chuyện với gia sư AI.
-                 </div>
-            )}
-            {conversationHistory.map((msg, index) => (
-                <div key={index} className={cn("p-2 rounded-lg max-w-[80%]", msg.role === 'user' ? 'bg-primary/80 text-primary-foreground self-end ml-auto' : 'bg-muted text-muted-foreground self-start')}>
-                    <p className="text-sm"> <span className="font-bold">{msg.role === 'user' ? 'Bạn' : 'Gia sư'}:</span> {msg.text}</p>
-                </div>
-            ))}
-        </div>
-      <div className="flex items-center gap-4">
-        <Button onClick={resetConversation} variant="outline" size="icon" disabled={tutorState === 'processing'}>
-            <RefreshCcw className="h-5 w-5" />
-        </Button>
-        <Button 
-            onClick={handleMicClick} 
-            size="lg" 
-            className={cn(
-                "rounded-full w-20 h-20 flex items-center justify-center transition-all duration-300",
-                tutorState === 'listening' ? 'bg-red-500 hover:bg-red-600' : 'bg-primary',
-                tutorState === 'processing' && 'bg-yellow-500'
+    <>
+      <Button 
+        onClick={() => setIsOpen(true)}
+        variant="primary" 
+        size="lg" 
+        className="fixed bottom-8 right-8 rounded-full w-16 h-16 shadow-lg z-20"
+      >
+        <MessageSquare />
+      </Button>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Trợ lý AI</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center gap-4 p-4 w-full mx-auto">
+            <div className="w-full h-64 bg-secondary/30 rounded-lg p-4 overflow-y-auto flex flex-col gap-2">
+                {conversationHistory.length === 0 && (
+                     <div className="flex items-center justify-center h-full text-muted-foreground">
+                        Nhấn nút micro để bắt đầu cuộc trò chuyện với trợ lý AI.
+                     </div>
                 )}
-            disabled={tutorState === 'processing' || tutorState === 'speaking'}
-        >
-          {getTutorIcon()}
-        </Button>
-        <div className="w-10 h-10"></div>
-      </div>
-       <p className="text-sm text-muted-foreground h-5">
-            {tutorState === 'listening' && 'Đang lắng nghe...'}
-            {tutorState === 'processing' && 'Đang xử lý...'}
-            {tutorState === 'speaking' && 'AI đang nói...'}
-            {tutorState === 'idle' && 'Sẵn sàng lắng nghe'}
-       </p>
-    </div>
+                {conversationHistory.map((msg, index) => (
+                    <div key={index} className={cn("p-2 rounded-lg max-w-[80%]", msg.role === 'user' ? 'bg-primary/80 text-primary-foreground self-end ml-auto' : 'bg-muted text-muted-foreground self-start')}>
+                        <p className="text-sm"> <span className="font-bold">{msg.role === 'user' ? 'Bạn' : 'Trợ lý'}:</span> {msg.text}</p>
+                    </div>
+                ))}
+            </div>
+            <div className="flex items-center gap-4">
+              <Button onClick={resetConversation} variant="outline" size="icon" disabled={tutorState === 'processing'}>
+                  <RefreshCcw className="h-5 w-5" />
+              </Button>
+              <Button 
+                  onClick={handleMicClick} 
+                  size="lg" 
+                  className={cn(
+                      "rounded-full w-20 h-20 flex items-center justify-center transition-all duration-300",
+                      tutorState === 'listening' ? 'bg-red-500 hover:bg-red-600' : 'bg-primary',
+                      tutorState === 'processing' && 'bg-yellow-500'
+                      )}
+                  disabled={tutorState === 'processing' || tutorState === 'speaking'}
+              >
+                {getTutorIcon()}
+              </Button>
+              <div className="w-10 h-10"></div>
+            </div>
+            <p className="text-sm text-muted-foreground h-5">
+                  {tutorState === 'listening' && 'Đang lắng nghe...'}
+                  {tutorState === 'processing' && 'Đang xử lý...'}
+                  {tutorState === 'speaking' && 'AI đang nói...'}
+                  {tutorState === 'idle' && 'Sẵn sàng lắng nghe'}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+
