@@ -20,6 +20,7 @@ export interface FlashcardSet {
 
 interface FlashcardsProps {
   flashcardSet: FlashcardSet | null;
+  displayCount: number;
 }
 
 function FlashcardItem({ card }: { card: Flashcard }) {
@@ -44,26 +45,29 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 }
 
 
-export function Flashcards({ flashcardSet }: FlashcardsProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function Flashcards({ flashcardSet, displayCount }: FlashcardsProps) {
+  const [currentPage, setCurrentPage] = useState(0);
 
+  const cards = flashcardSet?.cards || [];
+  const totalPages = Math.ceil(cards.length / (displayCount > 0 ? displayCount : 1));
+  
   useEffect(() => {
-    setCurrentIndex(0);
+    setCurrentPage(0);
   }, [flashcardSet]);
 
-  const handleNext = () => {
-    if (flashcardSet && currentIndex < flashcardSet.cards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+  const handlePrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
     }
   };
 
-  if (!flashcardSet || flashcardSet.cards.length === 0) {
+  if (!flashcardSet || cards.length === 0) {
     return (
       <div className="text-center h-48 flex items-center justify-center">
          Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một số thẻ flashcard.
@@ -71,27 +75,33 @@ export function Flashcards({ flashcardSet }: FlashcardsProps) {
     );
   }
 
-  const currentCard = flashcardSet.cards[currentIndex];
+  const startIndex = currentPage * displayCount;
+  const endIndex = startIndex + displayCount;
+  const currentCards = cards.slice(startIndex, endIndex);
 
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-      <CardContent className="flex-grow pt-8 flex justify-center items-center">
-        <div className="w-full max-w-sm">
-          {currentCard && <FlashcardItem card={currentCard} />}
+      <CardContent className="flex-grow pt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {currentCards.map((card, index) => (
+            <FlashcardItem key={`${flashcardSet.id}-${startIndex + index}`} card={card} />
+          ))}
         </div>
       </CardContent>
-       <CardFooter className="flex-col !pt-0 gap-2 items-center">
-        <div className="flex items-center justify-center w-full gap-4">
-            <Button onClick={handlePrev} disabled={currentIndex === 0} variant="outline" size="icon">
-                <ChevronLeft />
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Thẻ {currentIndex + 1} trên {flashcardSet.cards.length}
-            </p>
-            <Button onClick={handleNext} disabled={currentIndex === flashcardSet.cards.length - 1} variant="outline" size="icon">
-                <ChevronRight />
-            </Button>
-        </div>
+       <CardFooter className="flex-col !pt-8 gap-2 items-center">
+         {totalPages > 1 && (
+            <div className="flex items-center justify-center w-full gap-4">
+                <Button onClick={handlePrevPage} disabled={currentPage === 0} variant="outline" size="icon">
+                    <ChevronLeft />
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
+                  Trang {currentPage + 1} / {totalPages}
+                </p>
+                <Button onClick={handleNextPage} disabled={currentPage >= totalPages - 1} variant="outline" size="icon">
+                    <ChevronRight />
+                </Button>
+            </div>
+         )}
       </CardFooter>
     </Card>
   );

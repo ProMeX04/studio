@@ -30,9 +30,10 @@ interface LearnProps {
   onGenerateNew: (forceNew: boolean) => void;
   generationProgress: number;
   targetCount: number;
+  displayCount: number;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress, targetCount }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress, targetCount, displayCount }: LearnProps) {
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
 
@@ -78,7 +79,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
                     <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
                  </div>
             )}
-            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} />}
+            {view === 'flashcards' && <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} />}
             {view === 'quiz' && <Quiz quizSet={quizSet} />}
         </CardContent>
      </Card>
@@ -331,7 +332,6 @@ export default function Home() {
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
 
-  const displayedFlashcardSet = flashcardSet ? { ...flashcardSet, cards: flashcardSet.cards.slice(0, displayCount) } : null;
   const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions.slice(0, displayCount) } : null;
 
   return (
@@ -370,11 +370,12 @@ export default function Home() {
                  <Learn 
                     view={view}
                     isLoading={isLoading}
-                    flashcardSet={displayedFlashcardSet}
+                    flashcardSet={flashcardSet}
                     quizSet={displayedQuizSet}
                     onGenerateNew={onGenerateNew}
                     generationProgress={generationProgress}
                     targetCount={targetCount}
+                    displayCount={displayCount}
                  />
               </div>
           )}
@@ -383,5 +384,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
