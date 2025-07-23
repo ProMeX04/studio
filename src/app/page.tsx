@@ -394,21 +394,16 @@ export default function Home() {
                      context += ` Người dùng đã chọn "${userAnswer}".`;
                 }
             }
-        } else if (view === 'flashcards' && flashcardSet && flashcardDisplayMax > 0) {
-            const startIndex = flashcardCurrentPage * flashcardDisplayMax;
-            const endIndex = startIndex + flashcardDisplayMax;
-            const currentCards = flashcardSet.cards.slice(startIndex, endIndex);
-            if (currentCards.length > 0) {
-                const cardContext = currentCards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
-                context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
-            }
+        } else if (view === 'flashcards' && flashcardSet?.cards.length > 0) {
+            const cardContext = flashcardSet.cards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
+            context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
         }
         return context;
       }
 
       setAssistantContext(getAssistantContext());
 
-  }, [view, topic, flashcardSet, quizSet, quizState, flashcardCurrentPage, flashcardDisplayMax]);
+  }, [view, topic, flashcardSet, quizSet, quizState]);
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
   const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
@@ -482,3 +477,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
