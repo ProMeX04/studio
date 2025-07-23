@@ -57,7 +57,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 
 export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange, initialPage }: FlashcardsProps) {
   const [currentPage, setCurrentPage] = useState(0);
-  const [displayedCards, setDisplayedCards = useState<Flashcard[]>([]);
+  const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([]);
 
   const originalCards = useMemo(() => flashcardSet?.cards || [], [flashcardSet]);
 
