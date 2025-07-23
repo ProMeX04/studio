@@ -279,7 +279,11 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                     </SelectContent>
                 </Select>
             </div>
-            <Tabs defaultValue={currentView} className="w-full">
+            <Tabs 
+                value={currentView} 
+                onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')}
+                className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
                 <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
@@ -380,5 +384,3 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
-
-    
