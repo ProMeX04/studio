@@ -20,7 +20,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
 
-Use standard Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords or code snippets for code.
+Use standard Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords. Use the standard backtick character (\`) for inline code blocks, for instance: \`console.log('Hello')\`.
 For mathematical notations, use standard LaTeX syntax like $...$ for inline math and $$...$$ for block-level math. For example: 'What is the value of $x$ in $x^2 = 4$?' or 'The Pythagorean theorem is defined as: $$a^2 + b^2 = c^2$$'
 Ensure explanations are well-structured with clear paragraphs.
 
