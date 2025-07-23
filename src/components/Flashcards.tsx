@@ -36,23 +36,21 @@ function FlashcardItem({ card }: { card: Flashcard }) {
   }, [card]);
 
   return (
-    <div
-      className="flex flex-col cursor-pointer min-h-[12rem]"
-      onClick={() => setIsFlipped(!isFlipped)}
-    >
-      {!isFlipped ? (
-        <div className="flashcard-front flex-grow w-full flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-primary/20 backdrop-blur">
-          <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
-          </div>
+    <div className="perspective-1000" onClick={() => setIsFlipped(!isFlipped)}>
+        <div className={cn("flashcard w-full h-full preserve-3d transition-transform duration-500 min-h-[12rem] cursor-pointer", isFlipped && 'is-flipped')}>
+            {/* Front of the card */}
+            <div className="flashcard-front absolute w-full h-full backface-hidden flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-primary/20 backdrop-blur">
+                <div className="text-lg font-semibold prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.front}</ReactMarkdown>
+                </div>
+            </div>
+            {/* Back of the card */}
+            <div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-secondary/20 backdrop-blur">
+                <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.back}</ReactMarkdown>
+                </div>
+            </div>
         </div>
-      ) : (
-        <div className="flashcard-back flex-grow w-full flex flex-col items-start justify-start p-4 text-center rounded-lg border shadow-lg bg-secondary/20 backdrop-blur">
-          <div className="text-lg prose dark:prose-invert max-w-none prose-p:my-0 w-full text-left">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.back}</ReactMarkdown>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
