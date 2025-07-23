@@ -235,19 +235,16 @@ export default function Home() {
   const onSettingsSave = async (settings: {
     topic: string;
     language: string;
-    uploadedBackgrounds: string[];
   }) => {
-      const { topic: newTopic, language: newLanguage, uploadedBackgrounds: newUploadedBgs } = settings;
+      const { topic: newTopic, language: newLanguage } = settings;
       
       const topicChanged = newTopic !== topic || newLanguage !== language;
       setTopic(newTopic);
       setLanguage(newLanguage);
-      setUploadedBackgrounds(newUploadedBgs);
 
       const db = await getDb(user?.uid);
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
-      await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
       
       if (topicChanged) {
         handleGenerate(newTopic, newLanguage, true);
@@ -263,6 +260,12 @@ export default function Home() {
       setBackgroundImage('');
       await db.delete('data', 'background');
     }
+  };
+
+  const handleUploadedBackgroundsChange = async (newUploadedBgs: string[]) => {
+    setUploadedBackgrounds(newUploadedBgs);
+    const db = await getDb(user?.uid);
+    await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
   };
   
   const handleVisibilityChange = async (newVisibility: ComponentVisibility) => {
@@ -298,6 +301,7 @@ export default function Home() {
               onVisibilityChange={handleVisibilityChange} 
               onViewChange={handleViewChange}
               onBackgroundChange={handleBackgroundChange}
+              onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
             />
         </div>
       <div className="flex flex-col items-center justify-center w-full max-w-xl space-y-8 z-10">
@@ -328,3 +332,5 @@ export default function Home() {
     </main>
   );
 }
+
+    

@@ -31,11 +31,11 @@ interface SettingsProps {
   onSettingsSave: (settings: {
     topic: string;
     language: string;
-    uploadedBackgrounds: string[];
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
   onBackgroundChange: (background: string | null) => void;
+  onUploadedBackgroundsChange: (backgrounds: string[]) => void;
 }
 
 const languages = [
@@ -61,7 +61,7 @@ function GoogleIcon() {
     )
 }
 
-export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange }: SettingsProps) {
+export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onBackgroundChange, onUploadedBackgroundsChange }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
@@ -131,6 +131,7 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
         const result = event.target?.result as string;
         const newUploadedBgs = [result, ...uploadedBackgrounds].slice(0, MAX_UPLOADED_IMAGES);
         setUploadedBackgrounds(newUploadedBgs);
+        onUploadedBackgroundsChange(newUploadedBgs);
         handleSelectBackground(result);
       };
       reader.readAsDataURL(file);
@@ -146,7 +147,6 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
      onSettingsSave({
       topic,
       language,
-      uploadedBackgrounds,
     });
     setIsOpen(false);
   }
@@ -312,3 +312,5 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
+
+    
