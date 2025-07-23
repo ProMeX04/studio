@@ -37,7 +37,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 
   return (
     <div
-      className="w-full min-h-[12rem] flex flex-col cursor-pointer"
+      className="flex flex-col cursor-pointer min-h-[12rem]"
       onClick={() => setIsFlipped(!isFlipped)}
     >
       {!isFlipped ? (
@@ -116,7 +116,7 @@ export function Flashcards({ flashcardSet, displayCount, isRandom, onPageChange,
   return (
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow pt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
           {currentCards.map((card, index) => (
             <FlashcardItem key={`${flashcardSet.id}-${card.front}-${startIndex + index}`} card={card} />
           ))}
