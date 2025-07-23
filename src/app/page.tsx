@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
 
-const GENERATION_TARGET = 50;
 const BATCH_SIZE = 10;
 
 interface LearnProps {
@@ -30,11 +29,12 @@ interface LearnProps {
   quizSet: QuizSet | null;
   onGenerateNew: (forceNew: boolean) => void;
   generationProgress: number;
+  targetCount: number;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generationProgress, targetCount }: LearnProps) {
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
-    const canGenerateMore = currentCount < GENERATION_TARGET;
+    const canGenerateMore = currentCount < targetCount;
 
     const handleGenerateClick = () => {
         if (currentCount > 0) {
@@ -68,7 +68,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, onGenerateNew, generati
         )}
          {hasContent && !isLoading && (
             <div className="absolute top-2 right-12 text-sm text-muted-foreground z-10">
-                ({currentCount}/{GENERATION_TARGET})
+                ({currentCount}/{targetCount})
             </div>
         )}
         <CardContent className="pt-8">
@@ -97,6 +97,8 @@ export default function Home() {
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('English');
+  const [flashcardMax, setFlashcardMax] = useState(50);
+  const [quizMax, setQuizMax] = useState(50);
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
@@ -147,35 +149,51 @@ export default function Home() {
     setQuizSet(currentQuiz);
     
     try {
-       const totalItems = Math.max(currentFlashcards.cards.length, currentQuiz.questions.length);
-       const neededItems = GENERATION_TARGET - totalItems;
+        const flashcardsNeeded = flashcardMax - currentFlashcards.cards.length;
+        const quizNeeded = quizMax - currentQuiz.questions.length;
 
-        if (neededItems <= 0) {
+        const flashcardBatches = Math.ceil(Math.max(0, flashcardsNeeded) / BATCH_SIZE);
+        const quizBatches = Math.ceil(Math.max(0, quizNeeded) / BATCH_SIZE);
+        const totalBatches = Math.max(flashcardBatches, quizBatches);
+
+
+        if (totalBatches <= 0) {
             setIsLoading(false);
             return;
         }
 
-       const batches = Math.ceil(neededItems / BATCH_SIZE);
+        for (let i = 0; i < totalBatches; i++) {
+            const numToGenerateFlashcards = Math.min(BATCH_SIZE, flashcardMax - currentFlashcards.cards.length);
+            const numToGenerateQuiz = Math.min(BATCH_SIZE, quizMax - currentQuiz.questions.length);
 
-        for (let i = 0; i < batches; i++) {
-            const numToGenerate = Math.min(BATCH_SIZE, GENERATION_TARGET - Math.max(currentFlashcards.cards.length, currentQuiz.questions.length));
-            if (numToGenerate <= 0) continue;
+            const promises = [];
+            if (numToGenerateFlashcards > 0) {
+                promises.push(generateFlashcards({ topic: currentTopic, count: numToGenerateFlashcards, language: currentLanguage, existingCards: currentFlashcards.cards }));
+            } else {
+                promises.push(Promise.resolve([]));
+            }
 
-            const flashcardsPromise = generateFlashcards({ topic: currentTopic, count: numToGenerate, language: currentLanguage, existingCards: currentFlashcards.cards });
-            const quizPromise = generateQuiz({ topic: currentTopic, count: numToGenerate, language: currentLanguage, existingQuestions: currentQuiz.questions });
-
-            const [newFlashcards, newQuiz] = await Promise.all([flashcardsPromise, quizPromise]);
-
-            currentFlashcards.cards.push(...newFlashcards);
-            currentQuiz.questions.push(...newQuiz);
-
-            setFlashcardSet({ ...currentFlashcards });
-            setQuizSet({ ...currentQuiz });
+            if (numToGenerateQuiz > 0) {
+                 promises.push(generateQuiz({ topic: currentTopic, count: numToGenerateQuiz, language: currentLanguage, existingQuestions: currentQuiz.questions }));
+            } else {
+                 promises.push(Promise.resolve([]));
+            }
             
-            await db.put('data', { id: 'flashcards', topic: currentTopic, data: currentFlashcards });
-            await db.put('data', { id: 'quiz', topic: currentTopic, data: currentQuiz });
+            const [newFlashcards, newQuiz] = await Promise.all(promises);
 
-            setGenerationProgress(((i + 1) / batches) * 100);
+            if (newFlashcards.length > 0) {
+              currentFlashcards.cards.push(...newFlashcards);
+              setFlashcardSet({ ...currentFlashcards });
+              await db.put('data', { id: 'flashcards', topic: currentTopic, data: currentFlashcards });
+            }
+
+            if (newQuiz.length > 0) {
+              currentQuiz.questions.push(...newQuiz);
+              setQuizSet({ ...currentQuiz });
+              await db.put('data', { id: 'quiz', topic: currentTopic, data: currentQuiz });
+            }
+
+            setGenerationProgress(((i + 1) / totalBatches) * 100);
         }
 
     } catch (error) {
@@ -184,7 +202,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user]);
+  }, [toast, user, flashcardMax, quizMax]);
 
   const loadInitialData = useCallback(async () => {
         const db = await getDb(user?.uid);
@@ -192,6 +210,8 @@ export default function Home() {
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
         const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
+        const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
+        const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -205,6 +225,8 @@ export default function Home() {
         setView(savedView);
         setTopic(savedTopic);
         setLanguage(savedLanguage);
+        setFlashcardMax(savedFlashcardMax);
+        setQuizMax(savedQuizMax);
         setVisibility(savedVisibility ?? {
             clock: true,
             greeting: true,
@@ -235,19 +257,29 @@ export default function Home() {
   const onSettingsSave = async (settings: {
     topic: string;
     language: string;
+    flashcardMax: number;
+    quizMax: number;
   }) => {
-      const { topic: newTopic, language: newLanguage } = settings;
+      const { topic: newTopic, language: newLanguage, flashcardMax: newFlashcardMax, quizMax: newQuizMax } = settings;
       
       const topicChanged = newTopic !== topic || newLanguage !== language;
+      const countsChanged = newFlashcardMax !== flashcardMax || newQuizMax !== quizMax;
+      
       setTopic(newTopic);
       setLanguage(newLanguage);
+      setFlashcardMax(newFlashcardMax);
+      setQuizMax(newQuizMax);
 
       const db = await getDb(user?.uid);
       await db.put('data', { id: 'topic', data: newTopic });
       await db.put('data', { id: 'language', data: newLanguage });
+      await db.put('data', { id: 'flashcardMax', data: newFlashcardMax });
+      await db.put('data', { id: 'quizMax', data: newQuizMax });
       
       if (topicChanged) {
         handleGenerate(newTopic, newLanguage, true);
+      } else if (countsChanged) {
+        handleGenerate(newTopic, newLanguage, false);
       }
   };
 
@@ -283,6 +315,8 @@ export default function Home() {
   const onGenerateNew = (forceNew: boolean) => {
      handleGenerate(topic, language, forceNew);
   }
+
+  const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-start p-4 sm:p-8 md:p-12 space-y-8">
@@ -324,6 +358,7 @@ export default function Home() {
                     quizSet={quizSet}
                     onGenerateNew={onGenerateNew}
                     generationProgress={generationProgress}
+                    targetCount={targetCount}
                  />
               </div>
           )}
@@ -332,5 +367,3 @@ export default function Home() {
     </main>
   );
 }
-
-    

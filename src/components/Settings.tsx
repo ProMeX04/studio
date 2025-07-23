@@ -31,6 +31,8 @@ interface SettingsProps {
   onSettingsSave: (settings: {
     topic: string;
     language: string;
+    flashcardMax: number;
+    quizMax: number;
   }) => void;
   onVisibilityChange: (visibility: ComponentVisibility) => void;
   onViewChange: (view: 'flashcards' | 'quiz') => void;
@@ -66,6 +68,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
   const [topic, setTopic] = useState('');
   const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
   const [language, setLanguage] = useState('Vietnamese');
+  const [flashcardMax, setFlashcardMax] = useState(50);
+  const [quizMax, setQuizMax] = useState(50);
   const [visibility, setVisibility] = useState<ComponentVisibility>({
     clock: true,
     greeting: true,
@@ -83,9 +87,11 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     async function loadSettings() {
       if (isOpen && !authLoading) {
         const db = await getDb(user?.uid);
-        const savedTopic = (await db.get('data', 'topic'))?.data as string || '';
+        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
         const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
+        const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
+        const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string | null;
         const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
@@ -93,6 +99,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
         setTopic(savedTopic);
         setView(savedView);
         setLanguage(savedLanguage);
+        setFlashcardMax(savedFlashcardMax);
+        setQuizMax(savedQuizMax);
         setVisibility(savedVisibility ?? {
           clock: true,
           greeting: true,
@@ -147,6 +155,8 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
      onSettingsSave({
       topic,
       language,
+      flashcardMax: Number(flashcardMax),
+      quizMax: Number(quizMax)
     });
     setIsOpen(false);
   }
@@ -240,6 +250,32 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
                 placeholder="ví dụ: Lịch sử La Mã"
                 />
             </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="flashcardMax" className="text-right">
+                Số lượng Flashcard
+                </Label>
+                <Input
+                id="flashcardMax"
+                type="number"
+                value={flashcardMax}
+                onChange={(e) => setFlashcardMax(Number(e.target.value))}
+                className="col-span-3"
+                placeholder="ví dụ: 50"
+                />
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="quizMax" className="text-right">
+                Số lượng Quiz
+                </Label>
+                <Input
+                id="quizMax"
+                type="number"
+                value={quizMax}
+                onChange={(e) => setQuizMax(Number(e.target.value))}
+                className="col-span-3"
+                placeholder="ví dụ: 50"
+                />
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="language" className="text-right">
                 Ngôn ngữ
@@ -312,5 +348,3 @@ export function Settings({ onSettingsSave, onVisibilityChange, onViewChange, onB
     </Sheet>
   );
 }
-
-    

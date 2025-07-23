@@ -16,7 +16,9 @@ export type DataKey =
   | 'view'
   | 'visibility'
   | 'background'
-  | 'uploadedBackgrounds';
+  | 'uploadedBackgrounds'
+  | 'flashcardMax'
+  | 'quizMax';
 
 export type StoredData =
   | LabeledData<FlashcardSet>
