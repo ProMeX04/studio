@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
 import { Label } from "./ui/label"
-import { ChevronLeft, ChevronRight, HelpCircle, Loader } from "lucide-react"
+import {
+	ChevronLeft,
+	ChevronRight,
+	HelpCircle,
+	Loader,
+	Plus,
+} from "lucide-react"
 import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
@@ -34,6 +40,9 @@ interface QuizProps {
 	quizSet: QuizSet | null
 	initialState: QuizState | null
 	onStateChange: (newState: QuizState) => void
+	onGenerateMore: () => void
+	canGenerateMore: boolean
+	isLoading: boolean
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -71,11 +80,15 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</SyntaxHighlighter>
 						)
 					}
-					return (
+					return inline ? (
 						<code
 							className={cn(className, "inline-code")}
 							{...props}
 						>
+							{children}
+						</code>
+					) : (
+						<code className={className} {...props}>
 							{children}
 						</code>
 					)
@@ -89,7 +102,14 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
+export function Quiz({
+	quizSet,
+	initialState,
+	onStateChange,
+	onGenerateMore,
+	canGenerateMore,
+	isLoading,
+}: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
 	)
@@ -356,8 +376,8 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 							>
 								<ChevronLeft />
 							</Button>
-							<p className="text-center text-sm text-muted-foreground">
-								Câu hỏi {currentQuestionIndex + 1} trên{" "}
+							<p className="text-center text-sm text-muted-foreground w-28">
+								Câu hỏi {currentQuestionIndex + 1} /{" "}
 								{quizSet.questions.length}
 							</p>
 							<Button
@@ -371,6 +391,21 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
 							>
 								<ChevronRight />
 							</Button>
+							{canGenerateMore && (
+								<Button
+									onClick={onGenerateMore}
+									disabled={isLoading}
+									variant="outline"
+									size="icon"
+									className="ml-2"
+								>
+									{isLoading ? (
+										<Loader className="animate-spin" />
+									) : (
+										<Plus />
+									)}
+								</Button>
+							)}
 						</div>
 					</div>
 				)}

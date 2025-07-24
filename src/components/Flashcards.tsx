@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Loader } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -31,6 +31,9 @@ interface FlashcardsProps {
 	flashcardSet: FlashcardSet | null
 	isRandom: boolean
 	onCurrentCardChange?: (card: Flashcard | null) => void
+	onGenerateMore: () => void
+	canGenerateMore: boolean
+	isLoading: boolean
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -56,8 +59,6 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-				// @ts-ignore - kiểu của ReactMarkdown
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
@@ -73,11 +74,15 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</Syntax>
 						)
 					}
-					return (
+					return inline ? (
 						<code
 							className={cn(className, "inline-code")}
 							{...props}
 						>
+							{children}
+						</code>
+					) : (
+						<code className={className} {...props}>
 							{children}
 						</code>
 					)
@@ -128,6 +133,9 @@ export function Flashcards({
 	flashcardSet,
 	isRandom,
 	onCurrentCardChange,
+	onGenerateMore,
+	canGenerateMore,
+	isLoading,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 
@@ -154,12 +162,13 @@ export function Flashcards({
 				// Có thẻ mới, chỉ xáo trộn phần mới rồi gắn vào cuối
 				const newCards = flashcardSet.cards.slice(displayedCards.length)
 				setDisplayedCards((prev) => [...prev, ...shuffle(newCards)])
+			} else if (flashcardSet.cards.length < displayedCards.length) {
+				// Topic changed, shuffle all again
+				setDisplayedCards(shuffle(flashcardSet.cards))
 			}
 		} else {
-			// Không random: giữ nguyên thứ tự server gửi, chỉ nối thêm
-			if (flashcardSet.cards.length > displayedCards.length) {
-				setDisplayedCards(flashcardSet.cards)
-			}
+			// Không random: giữ nguyên thứ tự server gửi
+			setDisplayedCards(flashcardSet.cards)
 		}
 	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
 
@@ -216,7 +225,7 @@ export function Flashcards({
 				)}
 			</CardContent>
 			<CardFooter className="flex-col !pt-8 gap-2 items-center">
-				{totalCards > 1 && (
+				{totalCards > 0 && (
 					<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 						<div className="flex items-center justify-center w-full gap-4">
 							<Button
@@ -238,6 +247,21 @@ export function Flashcards({
 							>
 								<ChevronRight />
 							</Button>
+							{canGenerateMore && (
+								<Button
+									onClick={onGenerateMore}
+									disabled={isLoading}
+									variant="outline"
+									size="icon"
+									className="ml-2"
+								>
+									{isLoading ? (
+										<Loader className="animate-spin" />
+									) : (
+										<Plus />
+									)}
+								</Button>
+							)}
 						</div>
 					</div>
 				)}

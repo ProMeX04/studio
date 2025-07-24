@@ -13,7 +13,7 @@ import type { QuizState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { Loader } from "lucide-react"
+import { Loader, Plus } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -26,13 +26,10 @@ import {
 	onDataChange,
 	closeBroadcastChannel,
 	closeDb,
-	saveGenerationState,
-	getGenerationState,
-	clearGenerationState,
-	checkInterruptedGeneration,
 } from "@/lib/idb"
 import { ChatAssistant } from "@/components/ChatAssistant"
 import type { Flashcard } from "@/ai/schemas"
+import { Button } from "@/components/ui/button"
 
 const BATCH_SIZE = 5
 
@@ -43,11 +40,10 @@ interface LearnProps {
 	quizSet: QuizSet | null
 	quizState: QuizState | null
 	onGenerateNew: (forceNew: boolean) => void
-	generationProgress: number
-	targetCount: number
 	onQuizStateChange: (newState: QuizState) => void
 	flashcardIsRandom: boolean
 	onCurrentCardChange: (flashcard: Flashcard | null) => void
+	canGenerateMore: boolean
 }
 
 function Learn({
@@ -57,28 +53,13 @@ function Learn({
 	quizSet,
 	quizState,
 	onGenerateNew,
-	targetCount,
 	onQuizStateChange,
 	flashcardIsRandom,
 	onCurrentCardChange,
+	canGenerateMore,
 }: LearnProps) {
-	const { toast } = useToast()
-	const currentCount =
-		view === "flashcards"
-			? flashcardSet?.cards.length || 0
-			: quizSet?.questions.length || 0
-	const canGenerateMore = currentCount < targetCount
-
 	const handleGenerateClick = () => {
-		if (canGenerateMore) {
-			onGenerateNew(false) // Never force new, always append
-		} else {
-			toast({
-				title: "Đã đạt số lượng tối đa",
-				description:
-					"Vui lòng tăng số lượng tối đa trong cài đặt để tạo thêm.",
-			})
-		}
+		onGenerateNew(false)
 	}
 
 	const hasLearnContent =
@@ -102,6 +83,9 @@ function Learn({
 						flashcardSet={flashcardSet}
 						isRandom={flashcardIsRandom}
 						onCurrentCardChange={onCurrentCardChange}
+						onGenerateMore={handleGenerateClick}
+						canGenerateMore={canGenerateMore}
+						isLoading={isLoading}
 					/>
 				)}
 				{view === "quiz" && (
@@ -109,6 +93,9 @@ function Learn({
 						quizSet={quizSet}
 						initialState={quizState}
 						onStateChange={onQuizStateChange}
+						onGenerateMore={handleGenerateClick}
+						canGenerateMore={canGenerateMore}
+						isLoading={isLoading}
 					/>
 				)}
 			</CardContent>
@@ -132,7 +119,6 @@ export default function Home() {
 	const [quizMax, setQuizMax] = useState(50)
 	const [flashcardIsRandom, setFlashcardIsRandom] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
-	const [generationProgress, setGenerationProgress] = useState(0)
 	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
@@ -198,38 +184,8 @@ export default function Home() {
 				return
 			}
 
-			const db = await getDb()
-			const flashcardData = (await db.get(
-				"data",
-				"flashcards"
-			)) as LabeledData<FlashcardSet>
-			const quizData = (await db.get(
-				"data",
-				"quiz"
-			)) as LabeledData<QuizSet>
-
-			let currentFlashcardCount = 0
-			let currentQuizCount = 0
-
-			if (flashcardData && flashcardData.topic === currentTopic) {
-				currentFlashcardCount = flashcardData.data.cards.length
-			}
-			if (quizData && quizData.topic === currentTopic) {
-				currentQuizCount = quizData.data.questions.length
-			}
-
-			// Check if we need to generate
-			const needFlashcards = currentFlashcardCount < flashcardMax
-			const needQuiz = currentQuizCount < quizMax
-
-			if (!forceNew && !needFlashcards && !needQuiz) {
-				console.log("✅ Đã đủ nội dung, không cần generate")
-				return
-			}
-
-			console.log(
-				`🚀 Bắt đầu generate - Flashcards: ${needFlashcards}, Quiz: ${needQuiz}`
-			)
+			isGeneratingRef.current = true
+			setIsLoading(true)
 
 			// Hủy operation cũ nếu có
 			if (abortControllerRef.current) {
@@ -240,21 +196,7 @@ export default function Home() {
 			abortControllerRef.current = new AbortController()
 			const signal = abortControllerRef.current.signal
 
-			isGeneratingRef.current = true
-			setIsLoading(true)
-			setGenerationProgress(0)
-
-			// Save generation state
-			await saveGenerationState({
-				topic: currentTopic,
-				language: currentLanguage,
-				isGenerating: true,
-				startTime: Date.now(),
-				targetFlashcards: flashcardMax,
-				targetQuiz: quizMax,
-				currentFlashcards: currentFlashcardCount,
-				currentQuiz: currentQuizCount,
-			})
+			const db = await getDb()
 
 			let currentFlashcards: FlashcardSet = {
 				id: "idb-flashcards",
@@ -291,29 +233,20 @@ export default function Home() {
 				}
 			}
 
-			setFlashcardSet(currentFlashcards)
-			setQuizSet(currentQuiz)
+			// Show existing content immediately
+			setFlashcardSet({ ...currentFlashcards })
+			setQuizSet({ ...currentQuiz })
 
 			try {
-				const flashcardsNeeded =
+				let flashcardsNeeded =
 					flashcardMax - currentFlashcards.cards.length
-				const quizNeeded = quizMax - currentQuiz.questions.length
+				let quizNeeded = quizMax - currentQuiz.questions.length
 
 				if (flashcardsNeeded <= 0 && quizNeeded <= 0 && !forceNew) {
 					setIsLoading(false)
+					isGeneratingRef.current = false
 					return
 				}
-
-				// Tính tổng batch cần sinh cho mỗi loại
-				let remainingFlashcards = Math.max(0, flashcardsNeeded)
-				let remainingQuiz = Math.max(0, quizNeeded)
-
-				// Tổng lần sinh dữ liệu (bất kể loại nào)
-				const totalBatches =
-					Math.ceil(remainingFlashcards / BATCH_SIZE) +
-					Math.ceil(remainingQuiz / BATCH_SIZE)
-
-				let completedBatches = 0
 
 				// Helper function với timeout và retry
 				const safeAICall = async (
@@ -360,282 +293,97 @@ export default function Home() {
 				}
 
 				while (
-					(remainingFlashcards > 0 || remainingQuiz > 0) &&
+					(flashcardsNeeded > 0 || quizNeeded > 0) &&
 					!signal.aborted
 				) {
 					// Rate limiting: chờ giữa các batch
-					if (completedBatches > 0) {
-						await new Promise((resolve) =>
-							setTimeout(resolve, 1000)
-						)
-					}
+					await new Promise((resolve) => setTimeout(resolve, 1000))
 
-					// Ưu tiên sinh cho chế độ hiện tại trước
-					if (view === "flashcards" && remainingFlashcards > 0) {
-						const count = Math.min(BATCH_SIZE, remainingFlashcards)
-
-						try {
-							// Gửi tất cả flashcard front để tránh duplicate
-							const existingCards = currentFlashcards.cards
-
-							const newCards = await safeAICall(() =>
-								generateFlashcards({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingCards: existingCards,
-								})
-							)
-
-							// Kiểm tra và validate response
-							if (
-								Array.isArray(newCards) &&
-								newCards.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentFlashcards.cards.push(...newCards)
-								await db.put("data", {
-									id: "flashcards",
-									topic: currentTopic,
-									data: currentFlashcards,
-								} as any)
-								setFlashcardSet({ ...currentFlashcards })
-
-								// Update generation state
-								await saveGenerationState({
-									topic: currentTopic,
-									language: currentLanguage,
-									isGenerating: true,
-									startTime: Date.now(),
-									targetFlashcards: flashcardMax,
-									targetQuiz: quizMax,
-									currentFlashcards:
-										currentFlashcards.cards.length,
-									currentQuiz: currentQuiz.questions.length,
-								})
-
-								console.log(
-									`✅ Generated ${newCards.length} flashcards`
+					const generateFlashcardsPromise = async () => {
+						if (flashcardsNeeded > 0) {
+							const count = Math.min(BATCH_SIZE, flashcardsNeeded)
+							try {
+								const existingCards = currentFlashcards.cards
+								const newCards = await safeAICall(() =>
+									generateFlashcards({
+										topic: currentTopic,
+										count,
+										language: currentLanguage,
+										existingCards: existingCards,
+									})
 								)
-							} else {
-								console.warn(
-									"⚠️ Invalid flashcards response:",
-									newCards
+
+								if (
+									Array.isArray(newCards) &&
+									newCards.length > 0 &&
+									!signal.aborted &&
+									isMountedRef.current
+								) {
+									currentFlashcards.cards.push(...newCards)
+									flashcardsNeeded -= newCards.length
+									await db.put("data", {
+										id: "flashcards",
+										topic: currentTopic,
+										data: currentFlashcards,
+									} as any)
+									setFlashcardSet({ ...currentFlashcards })
+								}
+							} catch (error: any) {
+								console.error(
+									"❌ Flashcard generation batch failed:",
+									error.message
 								)
-							}
-						} catch (error: any) {
-							console.error(
-								"❌ Flashcard generation failed:",
-								error.message
-							)
-							if (error.message === "AI_TIMEOUT") {
-								toast({
-									title: "Timeout",
-									description:
-										"AI generation quá lâu. Đang thử lại...",
-									variant: "destructive",
-								})
+								// Stop generating flashcards if one batch fails to avoid retrying the same error
+								flashcardsNeeded = 0
 							}
 						}
-
-						remainingFlashcards -= count
-						completedBatches++
-						setGenerationProgress(
-							(completedBatches / totalBatches) * 100
-						)
 					}
 
-					if (view === "quiz" && remainingQuiz > 0) {
-						const count = Math.min(BATCH_SIZE, remainingQuiz)
-
-						try {
-							// Gửi tất cả câu hỏi để tránh duplicate
-							const existingQuestions = currentQuiz.questions
-
-							const newQuestions = await safeAICall(() =>
-								generateQuiz({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingQuestions: existingQuestions,
-								})
-							)
-
-							if (
-								Array.isArray(newQuestions) &&
-								newQuestions.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentQuiz.questions.push(...newQuestions)
-								await db.put("data", {
-									id: "quiz",
-									topic: currentTopic,
-									data: currentQuiz,
-								} as any)
-								setQuizSet({ ...currentQuiz })
-
-								// Update generation state
-								await saveGenerationState({
-									topic: currentTopic,
-									language: currentLanguage,
-									isGenerating: true,
-									startTime: Date.now(),
-									targetFlashcards: flashcardMax,
-									targetQuiz: quizMax,
-									currentFlashcards:
-										currentFlashcards.cards.length,
-									currentQuiz: currentQuiz.questions.length,
-								})
-
-								console.log(
-									`✅ Generated ${newQuestions.length} quiz questions`
+					const generateQuizPromise = async () => {
+						if (quizNeeded > 0) {
+							const count = Math.min(BATCH_SIZE, quizNeeded)
+							try {
+								const existingQuestions = currentQuiz.questions
+								const newQuestions = await safeAICall(() =>
+									generateQuiz({
+										topic: currentTopic,
+										count,
+										language: currentLanguage,
+										existingQuestions: existingQuestions,
+									})
 								)
-							} else {
-								console.warn(
-									"⚠️ Invalid quiz response:",
-									newQuestions
+
+								if (
+									Array.isArray(newQuestions) &&
+									newQuestions.length > 0 &&
+									!signal.aborted &&
+									isMountedRef.current
+								) {
+									currentQuiz.questions.push(...newQuestions)
+									quizNeeded -= newQuestions.length
+									await db.put("data", {
+										id: "quiz",
+										topic: currentTopic,
+										data: currentQuiz,
+									} as any)
+									setQuizSet({ ...currentQuiz })
+								}
+							} catch (error: any) {
+								console.error(
+									"❌ Quiz generation batch failed:",
+									error.message
 								)
-							}
-						} catch (error: any) {
-							console.error(
-								"❌ Quiz generation failed:",
-								error.message
-							)
-							if (error.message === "AI_TIMEOUT") {
-								toast({
-									title: "Timeout",
-									description:
-										"AI generation quá lâu. Đang thử lại...",
-									variant: "destructive",
-								})
+								// Stop generating quiz if one batch fails
+								quizNeeded = 0
 							}
 						}
-
-						remainingQuiz -= count
-						completedBatches++
-						setGenerationProgress(
-							(completedBatches / totalBatches) * 100
-						)
 					}
 
-					// Sau khi ưu tiên chế độ hiện tại, sinh phần còn lại nếu còn
-					if (view === "flashcards" && remainingQuiz > 0) {
-						const count = Math.min(BATCH_SIZE, remainingQuiz)
-
-						try {
-							const existingQuestions = currentQuiz.questions
-							const newQuestions = await safeAICall(() =>
-								generateQuiz({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingQuestions: existingQuestions,
-								})
-							)
-
-							if (
-								Array.isArray(newQuestions) &&
-								newQuestions.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentQuiz.questions.push(...newQuestions)
-								await db.put("data", {
-									id: "quiz",
-									topic: currentTopic,
-									data: currentQuiz,
-								} as any)
-								setQuizSet({ ...currentQuiz })
-
-								// Update generation state
-								await saveGenerationState({
-									topic: currentTopic,
-									language: currentLanguage,
-									isGenerating: true,
-									startTime: Date.now(),
-									targetFlashcards: flashcardMax,
-									targetQuiz: quizMax,
-									currentFlashcards:
-										currentFlashcards.cards.length,
-									currentQuiz: currentQuiz.questions.length,
-								})
-							}
-						} catch (error: any) {
-							console.error(
-								"❌ Background quiz generation failed:",
-								error.message
-							)
-						}
-
-						remainingQuiz -= count
-						completedBatches++
-						setGenerationProgress(
-							(completedBatches / totalBatches) * 100
-						)
-					}
-
-					if (view === "quiz" && remainingFlashcards > 0) {
-						const count = Math.min(BATCH_SIZE, remainingFlashcards)
-
-						try {
-							const existingCards = currentFlashcards.cards
-							const newCards = await safeAICall(() =>
-								generateFlashcards({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingCards: existingCards,
-								})
-							)
-
-							if (
-								Array.isArray(newCards) &&
-								newCards.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentFlashcards.cards.push(...newCards)
-								await db.put("data", {
-									id: "flashcards",
-									topic: currentTopic,
-									data: currentFlashcards,
-								} as any)
-								setFlashcardSet({ ...currentFlashcards })
-
-								// Update generation state
-								await saveGenerationState({
-									topic: currentTopic,
-									language: currentLanguage,
-									isGenerating: true,
-									startTime: Date.now(),
-									targetFlashcards: flashcardMax,
-									targetQuiz: quizMax,
-									currentFlashcards:
-										currentFlashcards.cards.length,
-									currentQuiz: currentQuiz.questions.length,
-								})
-							}
-						} catch (error: any) {
-							console.error(
-								"❌ Background flashcard generation failed:",
-								error.message
-							)
-						}
-
-						remainingFlashcards -= count
-						completedBatches++
-						setGenerationProgress(
-							(completedBatches / totalBatches) * 100
-						)
-					}
-				}
-
-				// Hoàn tất - chỉ cập nhật nếu component còn mounted
-				if (!signal.aborted && isMountedRef.current) {
-					setFlashcardSet({ ...currentFlashcards })
-					setQuizSet({ ...currentQuiz })
+					// Generate in parallel
+					await Promise.all([
+						generateFlashcardsPromise(),
+						generateQuizPromise(),
+					])
 				}
 			} catch (error: any) {
 				console.log("🚫 Generation bị hủy hoặc lỗi:", error.message)
@@ -651,16 +399,11 @@ export default function Home() {
 					})
 				}
 			} finally {
-				// Clear generation state khi hoàn thành
-				await clearGenerationState()
-				console.log("✅ Generation completed, state cleared")
-
 				isGeneratingRef.current = false
 				setIsLoading(false)
-				setGenerationProgress(0)
 			}
 		},
-		[toast, flashcardMax, quizMax, view]
+		[toast, flashcardMax, quizMax]
 	)
 
 	const loadInitialData = useCallback(async () => {
@@ -729,62 +472,16 @@ export default function Home() {
 			setQuizState(null)
 		}
 
-		// Check for interrupted generation
-		const wasInterrupted = await checkInterruptedGeneration(
-			savedTopic,
-			savedLanguage
-		)
-		if (wasInterrupted) {
-			// Show toast confirmation instead of alert
-			toast({
-				title: "🔄 Phát hiện quá trình tạo nội dung bị gián đoạn",
-				description: `Chủ đề "${savedTopic}" chưa hoàn thành. Bạn có muốn tiếp tục tải thêm nội dung không?`,
-				duration: 0, // Không tự động đóng
-				action: (
-					<div className="flex gap-2">
-						<button
-							className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-							onClick={async () => {
-								toast({
-									title: "Đang tiếp tục tạo nội dung...",
-									description: "Vui lòng đợi trong giây lát",
-								})
-								handleGenerate(savedTopic, savedLanguage, false)
-							}}
-						>
-							Tiếp tục
-						</button>
-						<button
-							className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
-							onClick={async () => {
-								await clearGenerationState()
-								console.log(
-									"🚫 User declined to continue interrupted generation"
-								)
-								toast({
-									title: "Đã bỏ qua",
-									description:
-										"Quá trình tạo nội dung đã được hủy",
-								})
-							}}
-						>
-							Bỏ qua
-						</button>
-					</div>
-				),
-			})
-		} else {
-			// Normal check for needed content
-			const flashcardsNeeded =
-				savedFlashcardMax - (currentFlashcards?.cards.length ?? 0)
-			const quizNeeded =
-				savedQuizMax - (currentQuiz?.questions.length ?? 0)
+		// Normal check for needed content
+		const flashcardsNeeded =
+			savedFlashcardMax - (currentFlashcards?.cards.length ?? 0)
+		const quizNeeded =
+			savedQuizMax - (currentQuiz?.questions.length ?? 0)
 
-			if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
-				handleGenerate(savedTopic, savedLanguage, false)
-			}
+		if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
+			handleGenerate(savedTopic, savedLanguage, false)
 		}
-	}, [handleGenerate, toast])
+	}, [handleGenerate])
 
 	useEffect(() => {
 		if (isMounted) {
@@ -1011,7 +708,12 @@ export default function Home() {
 		currentFlashcard,
 	])
 
+	const currentCount =
+		view === "flashcards"
+			? flashcardSet?.cards.length ?? 0
+			: quizSet?.questions.length ?? 0
 	const targetCount = view === "flashcards" ? flashcardMax : quizMax
+	const canGenerateMore = currentCount < targetCount
 
 	if (!isMounted) {
 		return null
@@ -1076,11 +778,10 @@ export default function Home() {
 							quizSet={quizSet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
-							generationProgress={generationProgress}
-							targetCount={targetCount}
 							onQuizStateChange={handleQuizStateChange}
 							flashcardIsRandom={flashcardIsRandom}
 							onCurrentCardChange={handleCurrentCardChange}
+							canGenerateMore={canGenerateMore}
 						/>
 					</div>
 					<div className="flex-shrink-0">

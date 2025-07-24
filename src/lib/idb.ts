@@ -1,4 +1,3 @@
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
@@ -17,8 +16,7 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'flashcardIsRandom'
-  | 'generationState'; // Track generation progress
+  | 'flashcardIsRandom';
 
 export type LabeledData<T> = {
   id: string;
@@ -32,18 +30,6 @@ export type AppData = {
 };
 
 export type StoredData = LabeledData<any> | AppData;
-
-// Generation State để track progress
-interface GenerationState {
-  topic: string;
-  language: string;
-  isGenerating: boolean;
-  startTime: number;
-  targetFlashcards: number;
-  targetQuiz: number;
-  currentFlashcards: number;
-  currentQuiz: number;
-}
 
 interface MyDB extends DBSchema {
   data: {
@@ -61,70 +47,17 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
+         // In version 2, we remove the 'generationState' key if it exists
+        if (oldVersion < 2) {
+          const store = transaction.objectStore('data');
+          store.delete('generationState').catch(() => {
+            // Ignore error if key doesn't exist
+          });
+        }
       },
     });
   }
   return dbInstance;
-};
-
-// Save generation state
-export const saveGenerationState = async (state: GenerationState): Promise<void> => {
-  try {
-    const db = await getDb();
-    await db.put('data', { id: 'generationState', data: state });
-    console.log('💾 Saved generation state:', state);
-  } catch (error) {
-    console.error('❌ Error saving generation state:', error);
-  }
-};
-
-// Get generation state  
-export const getGenerationState = async (): Promise<GenerationState | null> => {
-  try {
-    const db = await getDb();
-    const result = await db.get('data', 'generationState') as AppData | undefined;
-    return result?.data || null;
-  } catch (error) {
-    console.error('❌ Error getting generation state:', error);
-    return null;
-  }
-};
-
-// Clear generation state
-export const clearGenerationState = async (): Promise<void> => {
-  try {
-    const db = await getDb();
-    await db.delete('data', 'generationState');
-    console.log('🗑️ Cleared generation state');
-  } catch (error) {
-    console.error('❌ Error clearing generation state:', error);
-  }
-};
-
-// Check if generation was interrupted
-export const checkInterruptedGeneration = async (currentTopic: string, currentLanguage: string): Promise<boolean> => {
-  const state = await getGenerationState();
-
-  if (!state) return false;
-
-  // Check if same topic/language and was generating
-  if (state.topic === currentTopic &&
-    state.language === currentLanguage &&
-    state.isGenerating) {
-
-    // Check if generation is incomplete
-    const needsMoreFlashcards = state.currentFlashcards < state.targetFlashcards;
-    const needsMoreQuiz = state.currentQuiz < state.targetQuiz;
-
-    if (needsMoreFlashcards || needsMoreQuiz) {
-      console.log('🔄 Found interrupted generation:', state);
-      return true;
-    }
-  }
-  
-  // If the state is old but generation seems complete, clear it to be safe
-  await clearGenerationState();
-  return false;
 };
 
 export const closeDb = async () => {
