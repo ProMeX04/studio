@@ -30,10 +30,12 @@ Question: "{{{question}}}"
 Correct Answer: "{{{correctAnswer}}}"
 
 Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}". You can provide additional context or interesting facts related to the topic.
-IMPORTANT: Your response MUST be valid standard Markdown.
+
+IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+- For example: {"explanation": "The method \`pop()\` removes and returns the element at the given index. In this case, it removes the element at index 1, which is **20**."}
 Ensure the explanation is well-structured with clear paragraphs.
 `,
 });
@@ -50,10 +52,12 @@ Correct Answer: "{{{correctAnswer}}}"
 The Incorrect Option to Explain: "{{{selectedOption}}}"
 
 Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}".
-IMPORTANT: Your response MUST be valid standard Markdown.
+
+IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+- For example: {"explanation": "While that's a good thought, the correct answer is actually **20**. The method \`pop(1)\` specifically targets the element at index 1."}
 Ensure the explanation is well-structured with clear paragraphs.
 `,
 });
