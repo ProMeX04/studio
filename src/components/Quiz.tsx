@@ -17,12 +17,32 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 interface QuizProps {
   quizSet: QuizSet | null;
   initialState: QuizState | null;
   onStateChange: (newState: QuizState) => void;
 }
+
+const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+    const match = /language-(\w+)/.exec(className || '');
+    return !inline && match ? (
+      <SyntaxHighlighter
+        style={vscDarkPlus}
+        language={match[1]}
+        PreTag="div"
+        {...props}
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+};
 
 export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialState?.currentQuestionIndex || 0);
@@ -142,9 +162,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
-          <div className="w-full max-w-4xl mx-auto space-y-6">
+          <div className="w-full max-w-5xl mx-auto space-y-6">
              <div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
+                <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
              </div>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
@@ -163,7 +183,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                     >
                         <div className="flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0">
                            <RadioGroupItem value={option} id={`option-${index}`} />
-                           <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</ReactMarkdown>
+                           <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</ReactMarkdown>
                         </div>
                         <Button
                             size="icon"
@@ -187,7 +207,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
                             <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                     {currentAnswerState.explanations[option].explanation}
                                 </ReactMarkdown>
                             </AlertDescription>
@@ -205,7 +225,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                  )}>
                     <AlertTitle className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</AlertTitle>
                     <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.explanation}</ReactMarkdown>
+                        <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.explanation}</ReactMarkdown>
                     </AlertDescription>
                  </Alert>
             )}
@@ -236,3 +256,5 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     </Card>
   );
 }
+
+    
