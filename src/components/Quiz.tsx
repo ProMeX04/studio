@@ -11,24 +11,12 @@ import { ChevronLeft, ChevronRight, HelpCircle, Loader } from 'lucide-react';
 import { explainQuizOption } from '@/ai/flows/explain-quiz-option';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { QuizQuestion, QuizSet, ExplainQuizOptionOutput } from '@/ai/schemas';
+import type { QuizQuestion, QuizSet, ExplainQuizOptionOutput } from '@/ai/schemas';
+import type { QuizState, AnswerState } from '@/app/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-
-export interface AnswerState {
-  [questionIndex: number]: {
-      selected: string | null;
-      isAnswered: boolean;
-      explanations?: { [option: string]: ExplainQuizOptionOutput };
-  }
-}
-
-export interface QuizState {
-  currentQuestionIndex: number;
-  answers: AnswerState;
-}
 
 interface QuizProps {
   quizSet: QuizSet | null;

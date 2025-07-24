@@ -115,6 +115,11 @@ export function Settings({
      setIsOpen(false);
   }
 
+  const numericInputProps = {
+    onWheel: (e: React.WheelEvent<HTMLInputElement>) => (e.target as HTMLElement).blur(),
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault(),
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
@@ -220,6 +225,7 @@ export function Settings({
                     onChange={(e) => onFlashcardMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
+                    {...numericInputProps}
                     />
                 </div>
               </TabsContent>
@@ -235,6 +241,7 @@ export function Settings({
                     onChange={(e) => onQuizMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
+                    {...numericInputProps}
                     />
                 </div>
               </TabsContent>

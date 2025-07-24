@@ -9,7 +9,8 @@ import { Clock } from '@/components/Clock';
 import { Flashcards } from '@/components/Flashcards';
 import type { FlashcardSet } from '@/ai/schemas';
 import { Quiz } from '@/components/Quiz';
-import type { QuizSet, QuizState } from '@/ai/schemas';
+import type { QuizSet, QuizQuestion } from '@/ai/schemas';
+import type { QuizState } from '@/app/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
@@ -18,7 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Settings } from '@/components/Settings';
 import { getDb, LabeledData, AppData } from '@/lib/idb';
 import { ChatAssistant } from '@/components/ChatAssistant';
-import type { QuizQuestion } from '@/ai/schemas';
 
 const BATCH_SIZE = 10;
 

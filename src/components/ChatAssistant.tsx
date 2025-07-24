@@ -30,6 +30,13 @@ interface ChatInputFormProps {
 }
 
 function ChatInputForm({ input, setInput, handleSubmit, isLoading, className }: ChatInputFormProps) {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+        }
+    };
+
     return (
          <form onSubmit={(e) => handleSubmit(e)} className={cn("flex w-full items-center gap-2", className)}>
             <Textarea
@@ -39,18 +46,13 @@ function ChatInputForm({ input, setInput, handleSubmit, isLoading, className }: 
                 className="min-h-0 resize-none"
                 rows={1}
                 disabled={isLoading}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault(); // prevent new line
-                        handleSubmit(e);
-                    }
-                }}
+                onKeyDown={handleKeyDown}
             />
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
                 {isLoading ? <Loader className="animate-spin" /> : <Send />}
             </Button>
         </form>
-    )
+    );
 }
 
 export function ChatAssistant({ context }: ChatAssistantProps) {
@@ -100,8 +102,6 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
         history: messages,
       };
       
-      console.log("AI Conversation Context:", flowInput);
-
       const result = await askQuestion(flowInput);
 
       if (result.answer) {
