@@ -61,8 +61,6 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
                             </SyntaxHighlighter>
                         );
                     }
-                    // For inline code, react-markdown will handle stripping the backticks.
-                    // We just need to apply the class.
                     return (
                         <code className={cn(className, "inline-code")} {...props}>
                             {children}
