@@ -82,15 +82,14 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			rehypePlugins={[rehypeKatex]}
 			components={{
 				p: (props: any) => {
-					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
-					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
-					const hasDiv = props.children.some(
+					const hasDiv = Array.isArray(props.children) && props.children.some(
 						(child: any) =>
 							child &&
 							typeof child === "object" &&
 							"type" in child &&
 							child.type === "div"
-					)
+					);
+
 					if (hasDiv) {
 						return <div>{props.children}</div>
 					}
@@ -386,21 +385,6 @@ export function Quiz({
 						<p className="text-muted-foreground mb-4">
 							Chưa có câu hỏi trắc nghiệm nào.
 						</p>
-						<Button
-							onClick={onGenerateMore}
-							disabled={isLoading || !canGenerateMore}
-							variant="default"
-							size="lg"
-						>
-							{isLoading ? (
-								<Loader className="animate-spin" />
-							) : (
-								<>
-									<Plus className="mr-2" />
-									Tạo Bài trắc nghiệm
-								</>
-							)}
-						</Button>
 					</div>
 				)}
 			</CardContent>
