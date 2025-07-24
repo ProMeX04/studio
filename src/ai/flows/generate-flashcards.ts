@@ -21,9 +21,7 @@ const prompt = ai.definePrompt({
   name: 'generateFlashcardsPrompt',
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
-  prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a front and back.
-
-Use Markdown for formatting, such as bolding for keywords or code snippets for code. For example: '**What** is the capital of France?' or 'What does \`console.log()\` do?'. Use the standard backtick character (\`) for inline code blocks.
+  prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a "front" and a "back".
 
 {{#if existingCards}}
 You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
@@ -34,7 +32,12 @@ Existing Flashcards:
 {{/each}}
 {{/if}}
 
-IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has a "front" and a "back" key. For example: [{"front": "Question 1", "back": "Answer 1"}, {"front": "Question 2", "back": "Answer 2"}].
+IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has a "front" and a "back" key. The "front" and "back" fields MUST contain valid standard Markdown.
+- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
+- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
+- Use bolding for keywords, like **this**.
+- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+- For example: [{"front": "What does \`console.log()\` do?", "back": "It prints a message to the web console."}, {"front": "What is the Pythagorean theorem?", "back": "It is defined as: $$a^2 + b^2 = c^2$$"}]
 `,
 });
 

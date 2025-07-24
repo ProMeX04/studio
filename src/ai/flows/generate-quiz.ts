@@ -23,10 +23,6 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
 
-Use standard Markdown for formatting the question, options, and explanation. For example, you can use bolding for keywords. For code snippets, use standard Markdown code blocks with language identifiers, for instance: \`\`\`javascript\nconsole.log('Hello');\n\`\`\`.
-For mathematical notations, use standard LaTeX syntax like $...$ for inline math and $$...$$ for block-level math. For example: 'What is the value of $x$ in $x^2 = 4$?' or 'The Pythagorean theorem is defined as: $$a^2 + b^2 = c^2$$'
-Ensure explanations are well-structured with clear paragraphs.
-
 {{#if existingQuestions}}
 You have already generated the following questions. Do not repeat them or create questions with very similar content.
 
@@ -36,7 +32,12 @@ Existing Questions:
 {{/each}}
 {{/if}}
 
-IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has "question", "options", "answer", and "explanation" keys.
+IMPORTANT: Your response MUST be a valid JSON array of objects. Each object must have "question", "options", "answer", and "explanation" keys.
+The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
+- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
+- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
+- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+Ensure explanations are well-structured with clear paragraphs.
 `,
 });
 
