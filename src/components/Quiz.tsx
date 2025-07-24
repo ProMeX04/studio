@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -370,7 +371,7 @@ export function Quiz({
 					<div className="flex items-center justify-center w-full gap-4">
 						<Button
 							onClick={handlePrevQuestion}
-							disabled={currentQuestionIndex === 0}
+							disabled={currentQuestionIndex === 0 || !hasContent}
 							variant="outline"
 							size="icon"
 						>
@@ -392,21 +393,19 @@ export function Quiz({
 						>
 							<ChevronRight />
 						</Button>
-						{canGenerateMore && (
-							<Button
-								onClick={onGenerateMore}
-								disabled={isLoading}
-								variant="outline"
-								size="icon"
-								className="ml-2"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin" />
-								) : (
-									<Plus />
-								)}
-							</Button>
-						)}
+						<Button
+							onClick={onGenerateMore}
+							disabled={isLoading || !canGenerateMore}
+							variant="outline"
+							size="icon"
+							className="ml-2"
+						>
+							{isLoading ? (
+								<Loader className="animate-spin" />
+							) : (
+								<Plus />
+							)}
+						</Button>
 					</div>
 				</div>
 			</CardFooter>

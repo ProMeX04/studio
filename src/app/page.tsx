@@ -68,13 +68,6 @@ function Learn({
 	return (
 		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
 			<CardContent className="pt-8 flex-grow flex flex-col">
-				{isLoading && !hasLearnContent && (
-					<div className="flex flex-col justify-center items-center h-48">
-						<Loader className="animate-spin mb-4" />
-						<p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
-					</div>
-				)}
-
 				{view === "flashcards" && (
 					<Flashcards
 						flashcardSet={flashcardSet}
@@ -257,16 +250,16 @@ export default function Home() {
 						"flashcards"
 					)) as LabeledData<FlashcardSet>
 					const currentFlashcards =
-						flashcardData && flashcardData.topic === currentTopic
+						!forceNew && flashcardData && flashcardData.topic === currentTopic
 							? flashcardData.data
 							: { id: "idb-flashcards", topic: currentTopic, cards: [] }
 
-					if (isMountedRef.current) {
+					if (isMountedRef.current && forceNew) {
 						setFlashcardSet({ ...currentFlashcards })
 					}
 
 					let flashcardsNeeded = flashcardMax - currentFlashcards.cards.length
-					if (flashcardsNeeded <= 0 && !forceNew) {
+					if (flashcardsNeeded <= 0) {
 						setIsLoading(false)
 						isGeneratingRef.current = false
 						return
@@ -323,16 +316,16 @@ export default function Home() {
 						"quiz"
 					)) as LabeledData<QuizSet>
 					const currentQuiz =
-						quizData && quizData.topic === currentTopic
+						!forceNew && quizData && quizData.topic === currentTopic
 							? quizData.data
 							: { id: "idb-quiz", topic: currentTopic, questions: [] }
 
-					if (isMountedRef.current) {
+					if (isMountedRef.current && forceNew) {
 						setQuizSet({ ...currentQuiz })
 					}
 
 					let quizNeeded = quizMax - currentQuiz.questions.length
-					if (quizNeeded <= 0 && !forceNew) {
+					if (quizNeeded <= 0) {
 						setIsLoading(false)
 						isGeneratingRef.current = false
 						return
@@ -378,11 +371,14 @@ export default function Home() {
 			} catch (error: any) {
 				console.error("🚫 Generation bị hủy hoặc lỗi:", error.message)
 				if (error.name === "AbortError") {
-					console.log("✅ Generation đã được hủy thành công")
+					toast({
+						title: "Đã hủy",
+						description: "Quá trình tạo nội dung đã được hủy.",
+					});
 				} else {
 					toast({
 						title: "Lỗi tạo nội dung",
-						description: "Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.",
+						description: `Không thể tạo nội dung: ${error.message}. Vui lòng thử lại.`,
 						variant: "destructive",
 					})
 				}
@@ -473,19 +469,19 @@ export default function Home() {
 		async (settings: { topic: string; language: string }) => {
 			const { topic: newTopic, language: newLanguage } = settings
 			
-			setTopic(newTopic)
-			setLanguage(newLanguage)
-
 			const db = await getDb()
-			await db.put("data", { id: "topic", data: newTopic })
-			await db.put("data", { id: "language", data: newLanguage })
 
-			// Đồng bộ với tab khác
-			broadcastDataChange("topic" as DataKey, { data: newTopic })
-			broadcastDataChange("language" as DataKey, { data: newLanguage })
+			if (topic !== newTopic) {
+				setTopic(newTopic)
+				await db.put("data", { id: "topic", data: newTopic })
+			}
 
+			if (language !== newLanguage) {
+				setLanguage(newLanguage)
+				await db.put("data", { id: "language", data: newLanguage })
+			}
 		},
-		[]
+		[topic, language]
 	)
 
 	const onGenerateFromSettings = useCallback(
@@ -621,6 +617,7 @@ export default function Home() {
 	useEffect(() => {
 		const getAssistantContext = (): string => {
 			let context = `Người dùng đang học về chủ đề: ${topic}.`
+			
 			if (view === "quiz" && quizSet && quizState) {
 				const currentQuestion: QuizQuestion | undefined =
 					quizSet.questions[quizState.currentQuestionIndex]
@@ -630,6 +627,7 @@ export default function Home() {
 					}" với các lựa chọn: ${currentQuestion.options.join(
 						", "
 					)}. Câu trả lời đúng là ${currentQuestion.answer}.`
+					
 					const userAnswer =
 						quizState.answers[quizState.currentQuestionIndex]
 							?.selected

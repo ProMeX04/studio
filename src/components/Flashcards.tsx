@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
@@ -74,6 +75,8 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</Syntax>
 						)
 					}
+					// For inline code, we let react-markdown handle it, but we add our class.
+					// We check for the inline prop to be sure.
 					if (inline) {
 						return (
 							<code className={cn(className, "inline-code")} {...props}>
@@ -222,7 +225,7 @@ export function Flashcards({
 					<div className="flex items-center justify-center w-full gap-4">
 						<Button
 							onClick={handlePrevCard}
-							disabled={currentCardIndex === 0}
+							disabled={currentCardIndex === 0 || !hasContent}
 							variant="outline"
 							size="icon"
 						>
@@ -239,21 +242,19 @@ export function Flashcards({
 						>
 							<ChevronRight />
 						</Button>
-						{canGenerateMore && (
-							<Button
-								onClick={onGenerateMore}
-								disabled={isLoading}
-								variant="outline"
-								size="icon"
-								className="ml-2"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin" />
-								) : (
-									<Plus />
-								)}
-							</Button>
-						)}
+						<Button
+							onClick={onGenerateMore}
+							disabled={isLoading || !canGenerateMore}
+							variant="outline"
+							size="icon"
+							className="ml-2"
+						>
+							{isLoading ? (
+								<Loader className="animate-spin" />
+							) : (
+								<Plus />
+							)}
+						</Button>
 					</div>
 				</div>
 			</CardFooter>
