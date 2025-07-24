@@ -49,16 +49,21 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
             components={{
                 code({ node, inline, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
-                    return !inline && match ? (
-                        <SyntaxHighlighter
-                            style={codeStyle}
-                            language={match[1]}
-                            PreTag="div"
-                            {...props}
-                        >
-                            {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                    ) : (
+                    if (!inline && match) {
+                        return (
+                            <SyntaxHighlighter
+                                style={codeStyle}
+                                language={match[1]}
+                                PreTag="div"
+                                {...props}
+                            >
+                                {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                        );
+                    }
+                    // For inline code, react-markdown will handle stripping the backticks.
+                    // We just need to apply the class.
+                    return (
                         <code className={cn(className, "inline-code")} {...props}>
                             {children}
                         </code>
