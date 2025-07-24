@@ -35,6 +35,8 @@ interface FlashcardsProps {
 	onGenerateMore: () => void
 	canGenerateMore: boolean
 	isLoading: boolean
+	initialIndex: number;
+    onIndexChange: (index: number) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -142,13 +144,25 @@ export function Flashcards({
 	onGenerateMore,
 	canGenerateMore,
 	isLoading,
+	initialIndex,
+    onIndexChange,
 }: FlashcardsProps) {
-	const [currentCardIndex, setCurrentCardIndex] = useState(0)
+	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
 
 	const shuffle = useCallback((cards: Flashcard[]) => {
 		return [...cards].sort(() => Math.random() - 0.5)
 	}, [])
+
+	useEffect(() => {
+        setCurrentCardIndex(initialIndex);
+    }, [initialIndex]);
+
+	useEffect(() => {
+        onIndexChange(currentCardIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentCardIndex]);
+
 
 	useEffect(() => {
 		if (!flashcardSet?.cards) {

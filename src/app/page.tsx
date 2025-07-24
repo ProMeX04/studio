@@ -27,6 +27,7 @@ import {
 	onDataChange,
 	closeBroadcastChannel,
 	closeDb,
+	clearAllData,
 } from "@/lib/idb"
 import { ChatAssistant } from "@/components/ChatAssistant"
 import type { Flashcard } from "@/ai/schemas"
@@ -45,6 +46,8 @@ interface LearnProps {
 	flashcardIsRandom: boolean
 	onCurrentCardChange: (flashcard: Flashcard | null) => void
 	canGenerateMore: boolean
+	onFlashcardIndexChange: (index: number) => void
+	flashcardIndex: number
 }
 
 function Learn({
@@ -58,6 +61,8 @@ function Learn({
 	flashcardIsRandom,
 	onCurrentCardChange,
 	canGenerateMore,
+	flashcardIndex,
+	onFlashcardIndexChange,
 }: LearnProps) {
 	const hasLearnContent =
 		(view === "flashcards" &&
@@ -76,6 +81,8 @@ function Learn({
 						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
+						initialIndex={flashcardIndex}
+						onIndexChange={onFlashcardIndexChange}
 					/>
 				)}
 				{view === "quiz" && (
@@ -128,6 +135,7 @@ export default function Home() {
 	const [currentFlashcard, setCurrentFlashcard] = useState<Flashcard | null>(
 		null
 	)
+	const [flashcardIndex, setFlashcardIndex] = useState(0)
 
 	// Ngăn race condition và cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -246,7 +254,9 @@ export default function Home() {
 				if (genType === "flashcards") {
 					if (forceNew) {
 						setFlashcardSet(null)
+						setFlashcardIndex(0)
 						await db.delete("data", "flashcards")
+						await db.delete("data", "flashcardIndex")
 					}
 
 					const flashcardData = (await db.get(
@@ -395,7 +405,7 @@ export default function Home() {
 		},
 		[toast, flashcardMax, quizMax]
 	)
-
+	
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb()
 
@@ -419,6 +429,8 @@ export default function Home() {
 		const savedUploadedBgs =
 			((await db.get("data", "uploadedBackgrounds"))?.data as string[]) ||
 			[]
+		const savedFlashcardIndex =
+			((await db.get("data", "flashcardIndex"))?.data as number) || 0
 
 		const flashcardData = (await db.get(
 			"data",
@@ -445,6 +457,7 @@ export default function Home() {
 				learn: true,
 			}
 		)
+		setFlashcardIndex(savedFlashcardIndex)
 
 		const currentFlashcards =
 			flashcardData && flashcardData.topic === savedTopic
@@ -463,6 +476,17 @@ export default function Home() {
 		}
 	}, [])
 
+	const handleClearAllData = useCallback(async () => {
+		const db = await getDb()
+		await clearAllData(db)
+		// Tải lại toàn bộ dữ liệu ban đầu
+		await loadInitialData()
+		toast({
+			title: "Đã xóa dữ liệu",
+			description: "Toàn bộ flashcard và quiz đã được xóa.",
+		})
+	}, [loadInitialData, toast])
+
 	useEffect(() => {
 		if (isMounted) {
 			loadInitialData()
@@ -470,33 +494,57 @@ export default function Home() {
 	}, [isMounted, loadInitialData])
 
 	const onSettingsSave = useCallback(
-		async (settings: { topic: string; language: string }) => {
-			const { topic: newTopic, language: newLanguage } = settings
-			
+		async (settings: {
+			topic: string
+			language: string
+			flashcardMax: number
+			quizMax: number
+			flashcardIsRandom: boolean
+		}) => {
+			const {
+				topic: newTopic,
+				language: newLanguage,
+				flashcardMax: newFlashcardMax,
+				quizMax: newQuizMax,
+				flashcardIsRandom: newFlashcardIsRandom,
+			} = settings
 			const db = await getDb()
 
-			let topicChanged = false
 			if (topic !== newTopic) {
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
-				topicChanged = true
 			}
-
 			if (language !== newLanguage) {
 				setLanguage(newLanguage)
 				await db.put("data", { id: "language", data: newLanguage })
 			}
-
-			return topicChanged
+			if (flashcardMax !== newFlashcardMax) {
+				setFlashcardMax(newFlashcardMax)
+				await db.put("data", {
+					id: "flashcardMax",
+					data: newFlashcardMax,
+				})
+			}
+			if (quizMax !== newQuizMax) {
+				setQuizMax(newQuizMax)
+				await db.put("data", { id: "quizMax", data: newQuizMax })
+			}
+			if (flashcardIsRandom !== newFlashcardIsRandom) {
+				setFlashcardIsRandom(newFlashcardIsRandom)
+				await db.put("data", {
+					id: "flashcardIsRandom",
+					data: newFlashcardIsRandom,
+				})
+			}
 		},
-		[topic, language]
+		[topic, language, flashcardMax, quizMax, flashcardIsRandom]
 	)
 
 	const onGenerateFromSettings = useCallback(
-		() => {
-			handleGenerate(topic, language, true, view);
+		(newTopic: string) => {
+			handleGenerate(newTopic, language, true, view);
 		}, 
-		[handleGenerate, topic, language, view]
+		[handleGenerate, language, view]
 	)
 
 
@@ -584,43 +632,18 @@ export default function Home() {
 		handleGenerate(topic, language, false, view)
 	}, [handleGenerate, topic, language, view])
 
-	const handleFlashcardSettingsChange = useCallback(
-		async (settings: { isRandom: boolean }) => {
-			if (flashcardIsRandom === settings.isRandom) return
-
-			setFlashcardIsRandom(settings.isRandom)
+	const handleFlashcardIndexChange = useCallback(
+		async (index: number) => {
+			setFlashcardIndex(index)
 			const db = await getDb()
-			await db.put("data", {
-				id: "flashcardIsRandom",
-				data: settings.isRandom,
-			})
+			await db.put("data", { id: "flashcardIndex", data: index })
 		},
-		[flashcardIsRandom]
+		[] // No dependencies, we only want to save the raw index
 	)
 
 	const handleCurrentCardChange = useCallback((card: Flashcard | null) => {
 		setCurrentFlashcard(card)
 	}, [])
-
-	const createInstantUpdater = <T,>(
-		setter: (value: T) => void,
-		dbKey: string
-	) => {
-		return useCallback(
-			async (value: T) => {
-				setter(value)
-				const db = await getDb()
-				await db.put("data", { id: dbKey, data: value } as any)
-			},
-			[setter, dbKey]
-		)
-	}
-
-	const handleFlashcardMaxChange = createInstantUpdater(
-		setFlashcardMax,
-		"flashcardMax"
-	)
-	const handleQuizMaxChange = createInstantUpdater(setQuizMax, "quizMax")
 
 	useEffect(() => {
 		const getAssistantContext = (): string => {
@@ -690,23 +713,21 @@ export default function Home() {
 				<div className="flex justify-between items-start">
 					{visibility.greeting && <Greeting />}
 					<Settings
-						onSettingsSave={onSettingsSave}
-						onGenerateNew={onGenerateFromSettings}
+						onSettingsChange={onSettingsSave}
+						onClearAllData={handleClearAllData}
 						onVisibilityChange={handleVisibilityChange}
 						onBackgroundChange={handleBackgroundChange}
 						onUploadedBackgroundsChange={
 							handleUploadedBackgroundsChange
 						}
-						onFlashcardSettingsChange={
-							handleFlashcardSettingsChange
-						}
 						onViewChange={handleViewChange}
-						onFlashcardMaxChange={handleFlashcardMaxChange}
-						onQuizMaxChange={handleQuizMaxChange}
+						onGenerateNew={onGenerateFromSettings}
 						currentView={view}
 						visibility={visibility}
 						uploadedBackgrounds={uploadedBackgrounds}
 						currentBackgroundImage={backgroundImage}
+						topic={topic}
+						language={language}
 						flashcardMax={flashcardMax}
 						quizMax={quizMax}
 						flashcardIsRandom={flashcardIsRandom}
@@ -738,6 +759,8 @@ export default function Home() {
 							flashcardIsRandom={flashcardIsRandom}
 							onCurrentCardChange={handleCurrentCardChange}
 							canGenerateMore={canGenerateMore}
+							flashcardIndex={flashcardIndex}
+							onFlashcardIndexChange={handleFlashcardIndexChange}
 						/>
 					</div>
 					<div className="flex-shrink-0">

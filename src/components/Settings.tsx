@@ -8,6 +8,7 @@ import {
 	Upload,
 	Trash2,
 	RefreshCw,
+	AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,22 +36,39 @@ import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { getDb } from "@/lib/idb"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "./ui/alert-dialog"
 
 interface SettingsProps {
-	onSettingsSave: (settings: { topic: string; language: string }) => void
-	onGenerateNew: () => void;
+	onSettingsChange: (settings: {
+		topic: string
+		language: string
+		flashcardMax: number
+		quizMax: number
+		flashcardIsRandom: boolean
+	}) => void
+	onClearAllData: () => void
+	onGenerateNew: (topic: string) => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
-	onFlashcardSettingsChange: (settings: { isRandom: boolean }) => void
 	onViewChange: (view: "flashcards" | "quiz") => void
-	onFlashcardMaxChange: (value: number) => void
-	onQuizMaxChange: (value: number) => void
 
 	currentView: "flashcards" | "quiz"
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
 	currentBackgroundImage: string | null
+	topic: string
+	language: string
 	flashcardMax: number
 	quizMax: number
 	flashcardIsRandom: boolean
@@ -69,65 +87,80 @@ const languages = [
 const MAX_UPLOADED_IMAGES = 6
 
 export function Settings({
-	onSettingsSave,
+	onSettingsChange,
+	onClearAllData,
 	onGenerateNew,
 	onVisibilityChange,
 	onBackgroundChange,
 	onUploadedBackgroundsChange,
-	onFlashcardSettingsChange,
 	onViewChange,
-	onFlashcardMaxChange,
-	onQuizMaxChange,
 	currentView,
 	visibility,
 	uploadedBackgrounds,
 	currentBackgroundImage,
-	flashcardMax,
-	quizMax,
-	flashcardIsRandom,
+	topic: initialTopic,
+	language: initialLanguage,
+	flashcardMax: initialFlashcardMax,
+	quizMax: initialQuizMax,
+	flashcardIsRandom: initialFlashcardIsRandom,
 }: SettingsProps) {
 	const [isOpen, setIsOpen] = useState(false)
-	// State for properties that are not updated instantly
-	const [topic, setTopic] = useState("")
-	const [language, setLanguage] = useState("Vietnamese")
+	// Local state for settings panel
+	const [topic, setTopic] = useState(initialTopic)
+	const [language, setLanguage] = useState(initialLanguage)
+	const [flashcardMax, setFlashcardMax] = useState(initialFlashcardMax)
+	const [quizMax, setQuizMax] = useState(initialQuizMax)
+	const [flashcardIsRandom, setFlashcardIsRandom] =
+		useState(initialFlashcardIsRandom)
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
-	const loadSettingsForEdit = useCallback(async () => {
-		const db = await getDb()
-		const savedTopic =
-			((await db.get("data", "topic"))?.data as string) || "Lịch sử La Mã"
-		const savedLanguage =
-			((await db.get("data", "language"))?.data as string) || "Vietnamese"
-		setTopic(savedTopic)
-		setLanguage(savedLanguage)
-	}, [])
-
+	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
-		if (isOpen) {
-			loadSettingsForEdit()
-		}
-	}, [isOpen, loadSettingsForEdit])
+		setTopic(initialTopic)
+		setLanguage(initialLanguage)
+		setFlashcardMax(initialFlashcardMax)
+		setQuizMax(initialQuizMax)
+		setFlashcardIsRandom(initialFlashcardIsRandom)
+	}, [
+		isOpen,
+		initialTopic,
+		initialLanguage,
+		initialFlashcardMax,
+		initialQuizMax,
+		initialFlashcardIsRandom,
+	])
+
+	const handleLocalSettingsSave = () => {
+		onSettingsChange({
+			topic,
+			language,
+			flashcardMax,
+			quizMax,
+			flashcardIsRandom,
+		})
+	}
+
+	const handleGenerateNew = () => {
+		handleLocalSettingsSave() // Save current settings first
+		onGenerateNew(topic)      // Then generate with the new topic
+		setIsOpen(false)
+	}
+	
+	const handleClearData = () => {
+		onClearAllData()
+		setIsOpen(false)
+	}
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (file) {
-			// Giới hạn kích thước file (2MB)
 			const MAX_FILE_SIZE = 2 * 1024 * 1024
 			if (file.size > MAX_FILE_SIZE) {
 				alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.")
 				return
 			}
-
 			const reader = new FileReader()
-
-			// Cleanup function
-			const cleanup = () => {
-				reader.onload = null
-				reader.onerror = null
-				reader.onabort = null
-			}
-
 			reader.onload = (event) => {
 				const result = event.target?.result as string
 				const newUploadedBgs = [result, ...uploadedBackgrounds].slice(
@@ -136,27 +169,9 @@ export function Settings({
 				)
 				onUploadedBackgroundsChange(newUploadedBgs)
 				onBackgroundChange(result)
-				cleanup() // Cleanup sau khi hoàn thành
 			}
-
-			reader.onerror = () => {
-				console.error("Lỗi khi đọc file")
-				cleanup()
-			}
-
-			reader.onabort = () => {
-				console.log("Đọc file bị hủy")
-				cleanup()
-			}
-
 			reader.readAsDataURL(file)
 		}
-	}
-
-	const handleFinalSaveAndGenerate = () => {
-		onSettingsSave({ topic, language })
-		onGenerateNew();
-		setIsOpen(false)
 	}
 
 	const numericInputProps = {
@@ -167,7 +182,16 @@ export function Settings({
 	}
 
 	return (
-		<Sheet open={isOpen} onOpenChange={setIsOpen}>
+		<Sheet
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) {
+					// Save settings when closing the sheet
+					handleLocalSettingsSave()
+				}
+				setIsOpen(open)
+			}}
+		>
 			<SheetTrigger asChild>
 				<Button variant="ghost" size="icon">
 					<SettingsIcon className="h-5 w-5" />
@@ -297,24 +321,18 @@ export function Settings({
 								value="flashcards"
 								className="space-y-4 pt-4"
 							>
-								<div className="grid grid-cols-4 items-center gap-4">
+								<div className="flex items-center justify-between pl-10">
 									<Label
 										htmlFor="flashcardIsRandom"
 										className="text-right"
 									>
-										Ngẫu nhiên
+										Ngẫu nhiên thẻ
 									</Label>
-									<div className="col-span-3">
-										<Switch
-											id="flashcardIsRandom"
-											checked={flashcardIsRandom}
-											onCheckedChange={(checked) =>
-												onFlashcardSettingsChange({
-													isRandom: checked,
-												})
-											}
-										/>
-									</div>
+									<Switch
+										id="flashcardIsRandom"
+										checked={flashcardIsRandom}
+										onCheckedChange={setFlashcardIsRandom}
+									/>
 								</div>
 								<div className="grid grid-cols-4 items-center gap-4">
 									<Label
@@ -328,7 +346,7 @@ export function Settings({
 										type="number"
 										value={flashcardMax}
 										onChange={(e) =>
-											onFlashcardMaxChange(
+											setFlashcardMax(
 												parseInt(e.target.value) || 0
 											)
 										}
@@ -354,7 +372,7 @@ export function Settings({
 										type="number"
 										value={quizMax}
 										onChange={(e) =>
-											onQuizMaxChange(
+											setQuizMax(
 												parseInt(e.target.value) || 0
 											)
 										}
@@ -365,6 +383,12 @@ export function Settings({
 								</div>
 							</TabsContent>
 						</Tabs>
+						<div className="flex justify-center pt-2">
+							<Button onClick={handleGenerateNew}>
+								<RefreshCw className="mr-2 h-4 w-4" />
+								Tạo lại với chủ đề mới
+							</Button>
+						</div>
 					</div>
 					<Separator />
 					<div className="space-y-2">
@@ -447,10 +471,43 @@ export function Settings({
 					</div>
 				</div>
 				<SheetFooter>
-					<Button onClick={handleFinalSaveAndGenerate}>
-						<RefreshCw className="mr-2 h-4 w-4" />
-						Tạo lại từ đầu
-					</Button>
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button variant="destructive">
+								<Trash2 className="mr-2 h-4 w-4" />
+								Xóa toàn bộ dữ liệu
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>
+									<div className="flex items-center gap-2">
+										<AlertTriangle className="text-destructive" />
+										<span>Bạn có chắc chắn không?</span>
+									</div>
+								</AlertDialogTitle>
+								<AlertDialogDescription>
+									Hành động này sẽ xóa vĩnh viễn tất cả
+									flashcard, bài trắc nghiệm, lịch sử và cài
+									đặt của bạn. Hành động này không thể hoàn
+									tác.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Hủy</AlertDialogCancel>
+								<AlertDialogAction
+									onClick={handleClearData}
+									className={cn(
+										buttonVariants({
+											variant: "destructive",
+										})
+									)}
+								>
+									Vâng, xóa tất cả
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>

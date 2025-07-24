@@ -1,3 +1,4 @@
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
@@ -16,7 +17,8 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'flashcardIsRandom';
+  | 'flashcardIsRandom'
+  | 'flashcardIndex';
 
 export type LabeledData<T> = {
   id: string;
