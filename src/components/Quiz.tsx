@@ -37,6 +37,9 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Syntax: any = SyntaxHighlighter
+
 interface QuizProps {
 	quizSet: QuizSet | null
 	initialState: QuizState | null
@@ -68,14 +71,9 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 		<ReactMarkdown
 			components={{
 				p: ({ node, ...props }) => {
-					// Hack to avoid hydration error (<p> cannot have <pre> as a descendant)
-					// by checking if the only child is a 'raw' node with a <pre> tag.
-					// This is a bit of a hack, but it works for now.
-					// A better solution would be to use a different markdown renderer.
-					// that is more flexible.
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const isPre = (node?.children[0] as any)?.tagName === "pre"
-					if (isPre) {
+					const hasPre = node.children.some((child: any) => child.tagName === "pre");
+					if (hasPre) {
 						return <div>{props.children}</div>
 					}
 					return <p {...props} />
@@ -84,18 +82,16 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
 						return (
-							<SyntaxHighlighter
-								style={codeStyle}
+							<Syntax
+								style={codeStyle as any}
 								language={match[1]}
 								PreTag="div"
 								{...props}
 							>
 								{String(children).replace(/\n$/, "")}
-							</SyntaxHighlighter>
+							</Syntax>
 						)
 					}
-					// For inline code, we let react-markdown handle it, but we add our class.
-					// We check for the inline prop to be sure.
 					if (inline) {
 						return (
 							<code
@@ -106,16 +102,16 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
-					// For code blocks without a language, we just render a plain code block.
+					// Handle non-inline code without a language match
 					return (
-						<pre className="p-0 bg-transparent">
-							<code
-								className={cn(className, "inline-code")}
-								{...props}
-							>
-								{children}
-							</code>
-						</pre>
+						<Syntax
+							style={codeStyle as any}
+							language="text"
+							PreTag="div"
+							{...props}
+						>
+							{String(children).replace(/\n$/, "")}
+						</Syntax>
 					)
 				},
 			}}
@@ -380,8 +376,6 @@ export function Quiz({
 					<div className="text-center h-64 flex items-center justify-center">
 						<p className="text-muted-foreground">
 							Chưa có câu hỏi trắc nghiệm nào.
-							<br />
-							Nhấn dấu (+) để bắt đầu tạo.
 						</p>
 					</div>
 				)}
