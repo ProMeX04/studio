@@ -39,14 +39,14 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     codeStyle['pre[class*="language-"]'] = {
         ...codeStyle['pre[class*="language-"]'],
         ...baseStyle,
-        fontSize: '16px', // Increased from default
+        fontSize: '16px',
     };
      codeStyle['code[class*="language-"]'] = {
         ...codeStyle['code[class*="language-"]'],
         ...baseStyle,
         background: 'transparent',
         padding: '0',
-        fontSize: '16px', // Increased from default
+        fontSize: '16px',
     };
 
 
