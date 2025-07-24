@@ -1,7 +1,14 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, Fragment, ReactNode } from "react"
+import {
+	useState,
+	useEffect,
+	useCallback,
+	Fragment,
+	ReactNode,
+	useRef,
+} from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
@@ -71,6 +78,21 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
+				p: (props: any) => {
+					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
+					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
+					const hasDiv = props.children.some(
+						(child: any) =>
+							child &&
+							typeof child === "object" &&
+							"type" in child &&
+							child.type === "div"
+					)
+					if (hasDiv) {
+						return <div>{props.children}</div>
+					}
+					return <p>{props.children}</p>
+				},
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (inline) {
@@ -171,7 +193,7 @@ export function Flashcards({
 	useEffect(() => {
 		if (!flashcardSet?.cards) {
 			setDisplayedCards([])
-			setCurrentCardIndex(0)
+			// Do not reset index here to avoid race conditions
 			return
 		}
 
@@ -190,9 +212,11 @@ export function Flashcards({
 	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
 
 	useEffect(() => {
-		if (currentCardIndex >= displayedCards.length) {
-			setCurrentCardIndex(Math.max(0, displayedCards.length - 1))
-		}
+		if (currentCardIndex >= displayedCards.length && displayedCards.length > 0) {
+			setCurrentCardIndex(displayedCards.length - 1)
+		} else if (displayedCards.length === 0) {
+      setCurrentCardIndex(0);
+    }
 	}, [displayedCards.length, currentCardIndex])
 
 	useEffect(() => {
@@ -229,10 +253,25 @@ export function Flashcards({
 						card={currentCard}
 					/>
 				) : (
-					<div className="text-center h-48 flex items-center justify-center">
-						<p className="text-muted-foreground">
+					<div className="text-center h-48 flex flex-col items-center justify-center">
+						<p className="text-muted-foreground mb-4">
 							Chưa có flashcard nào.
 						</p>
+						<Button
+							onClick={onGenerateMore}
+							disabled={isLoading || !canGenerateMore}
+							variant="default"
+							size="lg"
+						>
+							{isLoading ? (
+								<Loader className="animate-spin" />
+							) : (
+								<>
+									<Plus className="mr-2" />
+									Tạo Flashcard
+								</>
+							)}
+						</Button>
 					</div>
 				)}
 			</CardContent>
