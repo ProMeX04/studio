@@ -142,7 +142,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     <Card className="h-full flex flex-col bg-transparent shadow-none border-none">
       <CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
         {currentQuestion ? (
-          <div className="w-full max-w-2xl mx-auto space-y-6">
+          <div className="w-full max-w-4xl mx-auto space-y-6">
              <div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
              </div>
