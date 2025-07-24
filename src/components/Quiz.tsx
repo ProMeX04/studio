@@ -29,9 +29,23 @@ interface QuizProps {
 const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
     const codeStyle = { ...vscDarkPlus };
-    // Remove background from the pre tag to make it transparent
-    codeStyle['pre[class*="language-"]'].background = 'transparent';
-    codeStyle['pre[class*="language-"]'].padding = '0';
+    
+    // Make seamless and increase font size
+    const baseStyle = {
+        background: 'transparent',
+        padding: '0',
+        fontSize: '14px', // Increased from default
+    };
+
+    codeStyle['pre[class*="language-"]'] = {
+        ...codeStyle['pre[class*="language-"]'],
+        ...baseStyle
+    };
+     codeStyle['code[class*="language-"]'] = {
+        ...codeStyle['code[class*="language-"]'],
+        ...baseStyle
+    };
+
 
     return !inline && match ? (
       <SyntaxHighlighter
@@ -261,5 +275,3 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     </Card>
   );
 }
-
-    
