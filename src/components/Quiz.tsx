@@ -61,7 +61,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
       </SyntaxHighlighter>
     ) : (
       <code className={cn(className, "inline-code")} {...props}>
-        {children}
+        {String(children).replace(/`/g, '')}
       </code>
     );
 };
@@ -278,3 +278,5 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     </Card>
   );
 }
+
+    
