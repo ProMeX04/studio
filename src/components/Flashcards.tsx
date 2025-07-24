@@ -85,15 +85,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// Handle non-inline code
 					return (
-						<Syntax
-							style={codeStyle as any}
-							language={match ? match[1] : "text"}
-							PreTag={Fragment}
-							wrapLongLines={true}
-							{...props}
-						>
-							{String(children).replace(/\n$/, "")}
-						</Syntax>
+						<div>
+							<Syntax
+								style={codeStyle as any}
+								language={match ? match[1] : "text"}
+								PreTag="div"
+								wrapLongLines={true}
+								{...props}
+							>
+								{String(children).replace(/\n$/, "")}
+							</Syntax>
+						</div>
 					)
 				},
 			}}
