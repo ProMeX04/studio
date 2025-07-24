@@ -27,6 +27,20 @@ interface FlashcardsProps {
   isRandom: boolean;
 }
 
+const MarkdownRenderer = ({ children }: { children: string }) => (
+    <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+            code({node, inline, className, children, ...props}) {
+                return <code className={cn(className, "inline-code")} {...props}>{children}</code>
+            }
+        }}
+    >
+        {children}
+    </ReactMarkdown>
+);
+
 function FlashcardItem({ card }: { card: Flashcard }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -40,13 +54,13 @@ function FlashcardItem({ card }: { card: Flashcard }) {
             {/* Front of the card */}
             <div className="flashcard-front absolute w-full h-full backface-hidden flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm">
                 <div className="text-2xl font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{card.front}</ReactMarkdown>
+                    <MarkdownRenderer>{card.front}</MarkdownRenderer>
                 </div>
             </div>
             {/* Back of the card */}
             <div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm">
                 <div className="text-xl prose dark:prose-invert max-w-none prose-p:my-0">
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{card.back}</ReactMarkdown>
+                    <MarkdownRenderer>{card.back}</MarkdownRenderer>
                 </div>
             </div>
         </div>

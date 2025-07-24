@@ -174,7 +174,17 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
                              {"max-w-full": message.role === 'model'}
                         )}
                         >
-                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{message.text}</ReactMarkdown>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[rehypeKatex]}
+                          components={{
+                            code({node, inline, className, children, ...props}) {
+                                return <code className={cn(className, "inline-code")} {...props}>{children}</code>
+                            }
+                          }}
+                        >
+                          {message.text}
+                        </ReactMarkdown>
                     </div>
                      {message.role === 'model' && message.suggestions && message.suggestions.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-2">

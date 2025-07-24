@@ -26,45 +26,53 @@ interface QuizProps {
   onStateChange: (newState: QuizState) => void;
 }
 
-const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
-    const match = /language-(\w+)/.exec(className || '');
-    const codeStyle = { ...vscDarkPlus };
-    
-    // Make seamless and increase font size
-    const baseStyle = {
-        background: 'transparent',
-        padding: '0',
+const MarkdownRenderer = ({ children }: { children: string }) => {
+    const codeStyle = {
+        ...vscDarkPlus,
+        'pre[class*="language-"]': {
+            ...vscDarkPlus['pre[class*="language-"]'],
+            background: 'transparent',
+            padding: '0',
+            margin: '0',
+            fontSize: '16px',
+        },
+        'code[class*="language-"]': {
+             ...vscDarkPlus['code[class*="language-"]'],
+            background: 'transparent',
+            padding: '0',
+            fontSize: '16px',
+        }
     };
 
-    codeStyle['pre[class*="language-"]'] = {
-        ...codeStyle['pre[class*="language-"]'],
-        ...baseStyle,
-        fontSize: '16px',
-    };
-     codeStyle['code[class*="language-"]'] = {
-        ...codeStyle['code[class*="language-"]'],
-        ...baseStyle,
-        background: 'transparent',
-        padding: '0',
-        fontSize: '16px',
-    };
-
-
-    return !inline && match ? (
-      <SyntaxHighlighter
-        style={codeStyle}
-        language={match[1]}
-        PreTag="div"
-        {...props}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
-    ) : (
-      <code className={cn(className, "inline-code")} {...props}>
-        {String(children).replace(/`/g, '')}
-      </code>
+    return (
+        <ReactMarkdown
+            components={{
+                code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                        <SyntaxHighlighter
+                            style={codeStyle}
+                            language={match[1]}
+                            PreTag="div"
+                            {...props}
+                        >
+                            {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                    ) : (
+                        <code className={cn(className, "inline-code")} {...props}>
+                            {children}
+                        </code>
+                    );
+                },
+            }}
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+        >
+            {children}
+        </ReactMarkdown>
     );
 };
+
 
 export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialState?.currentQuestionIndex || 0);
@@ -186,7 +194,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
         {currentQuestion ? (
           <div className="w-full max-w-5xl mx-auto space-y-6">
              <div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
-                <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.question}</ReactMarkdown>
+                <MarkdownRenderer>{currentQuestion.question}</MarkdownRenderer>
              </div>
             <RadioGroup 
                 value={selectedAnswer ?? ''} 
@@ -205,7 +213,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                     >
                         <div className="flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0">
                            <RadioGroupItem value={option} id={`option-${index}`} />
-                           <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</ReactMarkdown>
+                           <MarkdownRenderer>{option}</MarkdownRenderer>
                         </div>
                         <Button
                             size="icon"
@@ -229,9 +237,9 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                             <HelpCircle className="h-4 w-4" />
                             <AlertTitle>Giải thích chi tiết</AlertTitle>
                             <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                                <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <MarkdownRenderer>
                                     {currentAnswerState.explanations[option].explanation}
-                                </ReactMarkdown>
+                                </MarkdownRenderer>
                             </AlertDescription>
                         </Alert>
                     )}
@@ -247,7 +255,7 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
                  )}>
                     <AlertTitle className="font-bold text-base !my-0">{selectedAnswer === currentQuestion.answer ? "Chính xác!" : "Không chính xác."}</AlertTitle>
                     <AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base">
-                        <ReactMarkdown components={{ code: CodeBlock }} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{currentQuestion.explanation}</ReactMarkdown>
+                        <MarkdownRenderer>{currentQuestion.explanation}</MarkdownRenderer>
                     </AlertDescription>
                  </Alert>
             )}
@@ -278,5 +286,3 @@ export function Quiz({ quizSet, initialState, onStateChange }: QuizProps) {
     </Card>
   );
 }
-
-    
