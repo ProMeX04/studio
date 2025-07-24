@@ -83,7 +83,7 @@ const generateQuizFlow = ai.defineFlow(
     } catch (error: any) {
       console.error('❌ Quiz generation error:', error.message);
 
-      // Rethrow với message rõ ràng
+      // Rethrow with a clear message
       if (error.message.startsWith('AI_')) {
         throw error;
       }

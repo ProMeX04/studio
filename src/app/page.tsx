@@ -581,9 +581,6 @@ export default function Home() {
 		setCurrentFlashcard(card)
 	}, [])
 
-	const currentQuizAnswer =
-		quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null
-
 	const createInstantUpdater = <T,>(
 		setter: (value: T) => void,
 		dbKey: string
@@ -635,7 +632,6 @@ export default function Home() {
 		topic,
 		quizSet,
 		quizState,
-		currentQuizAnswer,
 		currentFlashcard,
 	])
 

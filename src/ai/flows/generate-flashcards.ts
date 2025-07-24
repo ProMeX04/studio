@@ -70,7 +70,7 @@ const generateFlashcardsFlow = ai.defineFlow(
     } catch (error: any) {
       console.error('❌ Flashcard generation error:', error.message);
 
-      // Rethrow với message rõ ràng
+      // Rethrow with a clear message
       if (error.message.startsWith('AI_')) {
         throw error;
       }
