@@ -10,9 +10,6 @@
 import {ai} from '@/ai/genkit';
 import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsInput, GenerateFlashcardsOutput } from '@/ai/schemas';
 
-// Regex to find and replace non-standard backticks with standard ones.
-const backtickRegex = /`|´|‘|’/g;
-
 export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
   return generateFlashcardsFlow(input);
 }
@@ -53,10 +50,6 @@ const generateFlashcardsFlow = ai.defineFlow(
       throw new Error('AI failed to generate flashcards.');
     }
     
-    // Clean each flashcard to ensure proper markdown rendering.
-    return output.map(card => ({
-      front: card.front.replace(backtickRegex, '`'),
-      back: card.back.replace(backtickRegex, '`'),
-    }));
+    return output;
   }
 );
