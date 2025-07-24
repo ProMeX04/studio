@@ -10,7 +10,7 @@ import {
 	RefreshCw,
 	AlertTriangle,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
 	Sheet,
 	SheetContent,
@@ -384,10 +384,35 @@ export function Settings({
 							</TabsContent>
 						</Tabs>
 						<div className="flex justify-center pt-2">
-							<Button onClick={handleGenerateNew}>
-								<RefreshCw className="mr-2 h-4 w-4" />
-								Tạo lại với chủ đề mới
-							</Button>
+							<AlertDialog>
+								<AlertDialogTrigger asChild>
+									<Button variant="destructive">
+										<RefreshCw className="mr-2 h-4 w-4" />
+										Tạo lại & Xóa dữ liệu cũ
+									</Button>
+								</AlertDialogTrigger>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>
+											<div className="flex items-center gap-2">
+												<AlertTriangle className="text-destructive" />
+												<span>Bạn có chắc chắn không?</span>
+											</div>
+										</AlertDialogTitle>
+										<AlertDialogDescription>
+											Hành động này sẽ xóa vĩnh viễn tất cả flashcard hoặc bài trắc nghiệm của chủ đề <strong>{topic}</strong> và tạo lại từ đầu. Hành động này không thể hoàn tác.
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>Hủy</AlertDialogCancel>
+										<AlertDialogAction
+											onClick={handleGenerateNew}
+										>
+											Vâng, tạo lại
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
 						</div>
 					</div>
 					<Separator />
