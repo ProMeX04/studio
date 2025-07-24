@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, Fragment } from "react"
+import { useState, useEffect, useCallback, Fragment, ReactNode } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
@@ -12,6 +12,13 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +44,8 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
+	onViewChange: (view: "flashcards" | "quiz") => void
+	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -74,6 +83,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
+					// Handle non-inline code
 					return (
 						<Syntax
 							style={codeStyle as any}
@@ -137,6 +147,8 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
+	onViewChange,
+	currentView,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -233,10 +245,23 @@ export function Flashcards({
 						>
 							<ChevronLeft />
 						</Button>
-						<p className="text-center text-sm text-muted-foreground w-24">
-							Thẻ {hasContent ? currentCardIndex + 1 : 0} /{" "}
-							{totalCards}
-						</p>
+						<Select
+							value={currentView}
+							onValueChange={(value) =>
+								onViewChange(value as "flashcards" | "quiz")
+							}
+						>
+							<SelectTrigger className="w-[180px]">
+								<SelectValue placeholder="Chọn chế độ" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="flashcards">
+									Flashcard
+								</SelectItem>
+								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+							</SelectContent>
+						</Select>
+
 						<Button
 							onClick={handleNextCard}
 							disabled={
@@ -262,6 +287,9 @@ export function Flashcards({
 						</Button>
 					</div>
 				</div>
+				<p className="text-center text-sm text-muted-foreground w-24">
+					Thẻ {hasContent ? currentCardIndex + 1 : 0} / {totalCards}
+				</p>
 			</CardFooter>
 		</Card>
 	)

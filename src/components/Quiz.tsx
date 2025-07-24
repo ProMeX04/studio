@@ -36,6 +36,13 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -47,6 +54,8 @@ interface QuizProps {
 	onGenerateMore: () => void
 	canGenerateMore: boolean
 	isLoading: boolean
+	onViewChange: (view: "flashcards" | "quiz") => void
+	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -82,6 +91,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
+					// Handle non-inline code
 					return (
 						<Syntax
 							style={codeStyle as any}
@@ -109,6 +119,8 @@ export function Quiz({
 	onGenerateMore,
 	canGenerateMore,
 	isLoading,
+	onViewChange,
+	currentView,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -370,10 +382,22 @@ export function Quiz({
 						>
 							<ChevronLeft />
 						</Button>
-						<p className="text-center text-sm text-muted-foreground w-28">
-							Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0}{" "}
-							/ {quizSet?.questions.length ?? 0}
-						</p>
+						<Select
+							value={currentView}
+							onValueChange={(value) =>
+								onViewChange(value as "flashcards" | "quiz")
+							}
+						>
+							<SelectTrigger className="w-[180px]">
+								<SelectValue placeholder="Chọn chế độ" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="flashcards">
+									Flashcard
+								</SelectItem>
+								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+							</SelectContent>
+						</Select>
 						<Button
 							onClick={handleNextQuestion}
 							disabled={
@@ -401,6 +425,10 @@ export function Quiz({
 						</Button>
 					</div>
 				</div>
+				<p className="text-center text-sm text-muted-foreground w-28">
+					Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0} /{" "}
+					{quizSet?.questions.length ?? 0}
+				</p>
 			</CardFooter>
 		</Card>
 	)

@@ -48,6 +48,7 @@ interface LearnProps {
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
+	onViewChange: (view: "flashcards" | "quiz") => void
 }
 
 function Learn({
@@ -63,6 +64,7 @@ function Learn({
 	canGenerateMore,
 	flashcardIndex,
 	onFlashcardIndexChange,
+	onViewChange,
 }: LearnProps) {
 	const hasLearnContent =
 		(view === "flashcards" &&
@@ -83,6 +85,8 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
+						onViewChange={onViewChange}
+						currentView={view}
 					/>
 				)}
 				{view === "quiz" && (
@@ -93,6 +97,8 @@ function Learn({
 						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
+						onViewChange={onViewChange}
+						currentView={view}
 					/>
 				)}
 			</CardContent>
@@ -509,8 +515,10 @@ export default function Home() {
 				flashcardIsRandom: newFlashcardIsRandom,
 			} = settings
 			const db = await getDb()
+			
+			const topicChanged = topic !== newTopic;
 
-			if (topic !== newTopic) {
+			if (topicChanged) {
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
 			}
@@ -536,8 +544,12 @@ export default function Home() {
 					data: newFlashcardIsRandom,
 				})
 			}
+
+			if (topicChanged) {
+				handleGenerate(newTopic, newLanguage, true, view);
+			}
 		},
-		[topic, language, flashcardMax, quizMax, flashcardIsRandom]
+		[topic, language, flashcardMax, quizMax, flashcardIsRandom, view, handleGenerate]
 	)
 
 	const onGenerateFromSettings = useCallback(
@@ -761,6 +773,7 @@ export default function Home() {
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
+							onViewChange={handleViewChange}
 						/>
 					</div>
 					<div className="flex-shrink-0">
