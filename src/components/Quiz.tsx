@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, Fragment } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -32,7 +32,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
       <SyntaxHighlighter
         style={vscDarkPlus}
         language={match[1]}
-        PreTag="div"
+        PreTag={Fragment}
         {...props}
       >
         {String(children).replace(/\n$/, '')}
