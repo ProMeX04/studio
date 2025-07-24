@@ -73,4 +73,7 @@ body {
   .text-shadow {
     text-shadow: var(--text-shadow);
   }
+  .inline-code {
+    @apply bg-muted text-secondary-foreground/80 px-1 py-0.5 rounded-sm font-mono text-sm;
+  }
 }

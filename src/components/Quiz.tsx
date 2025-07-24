@@ -60,7 +60,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
         {String(children).replace(/\n$/, '')}
       </SyntaxHighlighter>
     ) : (
-      <code className={className} {...props}>
+      <code className={cn(className, "inline-code")} {...props}>
         {children}
       </code>
     );
