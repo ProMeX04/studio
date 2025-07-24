@@ -80,14 +80,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</SyntaxHighlighter>
 						)
 					}
-					return inline ? (
-						<code
-							className={cn(className, "inline-code")}
-							{...props}
-						>
-							{children}
-						</code>
-					) : (
+					// For inline code, we let react-markdown handle it, but we add our class.
+					// We check for the inline prop to be sure.
+					if (inline) {
+						return (
+							<code className={cn(className, "inline-code")} {...props}>
+								{children}
+							</code>
+						)
+					}
+					// For code blocks without a language, we just render a plain code block.
+					return (
 						<code className={className} {...props}>
 							{children}
 						</code>
@@ -155,6 +158,7 @@ export function Quiz({
 		() => quizSet?.questions[currentQuestionIndex],
 		[quizSet, currentQuestionIndex]
 	)
+	const hasContent = quizSet && quizSet.questions && quizSet.questions.length > 0;
 
 	const handleNextQuestion = () => {
 		if (quizSet && currentQuestionIndex < quizSet.questions.length - 1) {
@@ -245,19 +249,10 @@ export function Quiz({
 		return "border-border bg-background/80 backdrop-blur-sm"
 	}
 
-	if (!quizSet || !quizSet.questions || quizSet.questions.length === 0) {
-		return (
-			<div className="text-center h-64 flex items-center justify-center">
-				Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một bài
-				kiểm tra.
-			</div>
-		)
-	}
-
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
-				{currentQuestion ? (
+				{hasContent && currentQuestion ? (
 					<div className="w-full max-w-5xl mx-auto space-y-6">
 						<div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
 							<MarkdownRenderer>
@@ -360,12 +355,16 @@ export function Quiz({
 					</div>
 				) : (
 					<div className="text-center h-64 flex items-center justify-center">
-						Không có bài kiểm tra nào.
+						<p className="text-muted-foreground">
+							Chưa có câu hỏi trắc nghiệm nào.
+							<br />
+							Nhập chủ đề trong cài đặt và bắt đầu tạo.
+						</p>
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="flex-col !pt-0 gap-2">
-				{quizSet.questions.length > 0 && (
+			<CardFooter className="flex-col !pt-0 gap-2 items-center">
+				{hasContent && quizSet.questions.length > 0 ? (
 					<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 						<div className="flex items-center justify-center w-full gap-4">
 							<Button
@@ -408,6 +407,20 @@ export function Quiz({
 							)}
 						</div>
 					</div>
+				) : (
+					<Button
+						onClick={onGenerateMore}
+						disabled={isLoading}
+						variant="default"
+						size="lg"
+					>
+						{isLoading ? (
+							<Loader className="animate-spin" />
+						) : (
+							<Plus />
+						)}
+						Bắt đầu tạo Bài trắc nghiệm
+					</Button>
 				)}
 			</CardFooter>
 		</Card>

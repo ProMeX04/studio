@@ -74,14 +74,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</Syntax>
 						)
 					}
-					return inline ? (
-						<code
-							className={cn(className, "inline-code")}
-							{...props}
-						>
-							{children}
-						</code>
-					) : (
+					// For inline code, we let react-markdown handle it, but we add our class.
+					// We check for the inline prop to be sure.
+					if (inline) {
+						return (
+							<code className={cn(className, "inline-code")} {...props}>
+								{children}
+							</code>
+						)
+					}
+					// For code blocks without a language, we just render a plain code block.
+					return (
 						<code className={className} {...props}>
 							{children}
 						</code>
@@ -138,15 +141,12 @@ export function Flashcards({
 	isLoading,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
-
-	// Giữ một mảng thẻ đã hiển thị để tránh bị xáo trộn lại khi thêm mới
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
 
 	const shuffle = useCallback((cards: Flashcard[]) => {
 		return [...cards].sort(() => Math.random() - 0.5)
 	}, [])
 
-	// Cập nhật displayedCards chỉ khi số lượng thẻ tăng lên hoặc chế độ random thay đổi
 	useEffect(() => {
 		if (!flashcardSet?.cards) {
 			setDisplayedCards([])
@@ -156,30 +156,24 @@ export function Flashcards({
 
 		if (isRandom) {
 			if (displayedCards.length === 0) {
-				// Lần đầu tiên: xáo trộn toàn bộ
 				setDisplayedCards(shuffle(flashcardSet.cards))
 			} else if (flashcardSet.cards.length > displayedCards.length) {
-				// Có thẻ mới, chỉ xáo trộn phần mới rồi gắn vào cuối
 				const newCards = flashcardSet.cards.slice(displayedCards.length)
 				setDisplayedCards((prev) => [...prev, ...shuffle(newCards)])
 			} else if (flashcardSet.cards.length < displayedCards.length) {
-				// Topic changed, shuffle all again
 				setDisplayedCards(shuffle(flashcardSet.cards))
 			}
 		} else {
-			// Không random: giữ nguyên thứ tự server gửi
 			setDisplayedCards(flashcardSet.cards)
 		}
 	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
 
-	// Nếu số thẻ tăng làm index vượt quá, điều chỉnh về cuối cùng
 	useEffect(() => {
 		if (currentCardIndex >= displayedCards.length) {
 			setCurrentCardIndex(Math.max(0, displayedCards.length - 1))
 		}
 	}, [displayedCards.length, currentCardIndex])
 
-	// Thông báo cho parent khi current card thay đổi
 	useEffect(() => {
 		if (onCurrentCardChange) {
 			const card = displayedCards[currentCardIndex] ?? null
@@ -188,6 +182,8 @@ export function Flashcards({
 	}, [currentCardIndex, displayedCards, onCurrentCardChange])
 
 	const totalCards = displayedCards.length
+	const currentCard = displayedCards[currentCardIndex]
+	const hasContent = flashcardSet && flashcardSet.cards.length > 0
 
 	const handleNextCard = () => {
 		if (currentCardIndex < totalCards - 1) {
@@ -201,31 +197,28 @@ export function Flashcards({
 		}
 	}
 
-	if (!flashcardSet || flashcardSet.cards.length === 0) {
-		return (
-			<div className="text-center h-48 flex items-center justify-center">
-				Nhập một chủ đề trong cài đặt và nhấp vào "Lưu" để tạo một số
-				thẻ flashcard.
-			</div>
-		)
-	}
-
-	const currentCard = displayedCards[currentCardIndex]
-
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<CardContent className="flex-grow pt-8 flex items-center justify-center">
-				{currentCard && (
+				{hasContent && currentCard ? (
 					<FlashcardItem
 						key={`${flashcardSet?.id ?? ""}-${
 							currentCard.front
 						}-${currentCardIndex}`}
 						card={currentCard}
 					/>
+				) : (
+					<div className="text-center h-48 flex items-center justify-center">
+						<p className="text-muted-foreground">
+							Chưa có flashcard nào.
+							<br />
+							Nhập chủ đề trong cài đặt và bắt đầu tạo.
+						</p>
+					</div>
 				)}
 			</CardContent>
 			<CardFooter className="flex-col !pt-8 gap-2 items-center">
-				{totalCards > 0 && (
+				{hasContent ? (
 					<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 						<div className="flex items-center justify-center w-full gap-4">
 							<Button
@@ -264,6 +257,20 @@ export function Flashcards({
 							)}
 						</div>
 					</div>
+				) : (
+					<Button
+						onClick={onGenerateMore}
+						disabled={isLoading}
+						variant="default"
+						size="lg"
+					>
+						{isLoading ? (
+							<Loader className="animate-spin" />
+						) : (
+							<Plus />
+						)}
+						Bắt đầu tạo Flashcard
+					</Button>
 				)}
 			</CardFooter>
 		</Card>
