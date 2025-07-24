@@ -255,13 +255,22 @@ export function Flashcards({
 					/>
 				) : (
 					<div className="text-center h-48 flex flex-col items-center justify-center">
-						<p className="text-muted-foreground mb-4">
-							Chưa có flashcard nào.
-						</p>
+						{!isLoading && (
+							<div className="text-center flex flex-col items-center justify-center">
+								<p className="text-muted-foreground mb-4">
+									Chưa có flashcard nào.
+								</p>
+							</div>
+						)}
 					</div>
 				)}
 			</CardContent>
 			<CardFooter className="flex-col !pt-8 gap-2 items-center">
+				{(!hasContent && !isLoading) && (
+					<Button onClick={onGenerateMore} size="lg" className="mb-4">
+						<Plus className="mr-2" /> Tạo Flashcard
+					</Button>
+				)}
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 					<div className="flex items-center justify-center w-full gap-4">
 						<Button
@@ -299,19 +308,21 @@ export function Flashcards({
 						>
 							<ChevronRight />
 						</Button>
-						<Button
-							onClick={onGenerateMore}
-							disabled={isLoading || !canGenerateMore}
-							variant="outline"
-							size="icon"
-							className="ml-2"
-						>
-							{isLoading ? (
-								<Loader className="animate-spin" />
-							) : (
-								<Plus />
-							)}
-						</Button>
+						{hasContent && (
+							<Button
+								onClick={onGenerateMore}
+								disabled={isLoading || !canGenerateMore}
+								variant="outline"
+								size="icon"
+								className="ml-2"
+							>
+								{isLoading ? (
+									<Loader className="animate-spin" />
+								) : (
+									<Plus />
+								)}
+							</Button>
+						)}
 					</div>
 				</div>
 				<p className="text-center text-sm text-muted-foreground w-24">
