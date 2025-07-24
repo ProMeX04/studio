@@ -948,6 +948,10 @@ export default function Home() {
 		[flashcardIsRandom]
 	)
 
+	const handleCurrentCardChange = useCallback((card: Flashcard | null) => {
+		setCurrentFlashcard(card)
+	}, [])
+
 	const currentQuizAnswer =
 		quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null
 
@@ -1009,13 +1013,6 @@ export default function Home() {
 
 	const targetCount = view === "flashcards" ? flashcardMax : quizMax
 
-	const displayedFlashcardSet = flashcardSet
-		? { ...flashcardSet, cards: flashcardSet.cards }
-		: null
-	const displayedQuizSet = quizSet
-		? { ...quizSet, questions: quizSet.questions }
-		: null
-
 	if (!isMounted) {
 		return null
 	}
@@ -1075,15 +1072,15 @@ export default function Home() {
 						<Learn
 							view={view}
 							isLoading={isLoading}
-							flashcardSet={displayedFlashcardSet}
-							quizSet={displayedQuizSet}
+							flashcardSet={flashcardSet}
+							quizSet={quizSet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
 							generationProgress={generationProgress}
 							targetCount={targetCount}
 							onQuizStateChange={handleQuizStateChange}
 							flashcardIsRandom={flashcardIsRandom}
-							onCurrentCardChange={setCurrentFlashcard}
+							onCurrentCardChange={handleCurrentCardChange}
 						/>
 					</div>
 					<div className="flex-shrink-0">

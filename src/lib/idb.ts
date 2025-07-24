@@ -121,7 +121,9 @@ export const checkInterruptedGeneration = async (currentTopic: string, currentLa
       return true;
     }
   }
-
+  
+  // If the state is old but generation seems complete, clear it to be safe
+  await clearGenerationState();
   return false;
 };
 
