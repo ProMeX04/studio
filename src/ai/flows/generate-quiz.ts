@@ -7,7 +7,7 @@
  * - generateQuiz - A function that generates a quiz for a given topic.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
 import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizInput, GenerateQuizOutput } from '@/ai/schemas';
 
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
@@ -16,9 +16,14 @@ export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQu
 
 const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
-  input: {schema: GenerateQuizInputSchema},
-  output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have 4 options, a single correct answer, and an explanation for the answer.
+  input: { schema: GenerateQuizInputSchema },
+  output: { schema: GenerateQuizOutputSchema },
+  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+
+For the "options" array:
+ - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
+
+Example valid options array: ["Paris", "London", "Rome", "Berlin"]
 
 {{#if existingQuestions}}
 You have already generated the following questions. Do not repeat them or create questions with very similar content.
@@ -45,7 +50,7 @@ const generateQuizFlow = ai.defineFlow(
     outputSchema: GenerateQuizOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     if (!output) {
       throw new Error('AI failed to generate quiz questions.');
     }

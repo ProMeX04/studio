@@ -3,77 +3,88 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+	font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer base {
-  :root {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
+	:root {
+		--background: 224 71% 4%;
+		--foreground: 210 40% 98%;
 
-    --card: 224 71% 4%;
-    --card-foreground: 210 40% 98%;
+		--card: 224 71% 4%;
+		--card-foreground: 210 40% 98%;
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
+		--popover: 224 71% 4%;
+		--popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 224 71% 4%;
+		--primary: 210 40% 98%;
+		--primary-foreground: 224 71% 4%;
 
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 40% 98%;
+		--secondary: 215 28% 17%;
+		--secondary-foreground: 210 40% 98%;
 
-    --muted: 215 28% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
+		--muted: 215 28% 17%;
+		--muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 215 28% 17%;
-    --accent-foreground: 210 40% 98%;
+		--accent: 215 28% 17%;
+		--accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+		--destructive: 0 62.8% 30.6%;
+		--destructive-foreground: 210 40% 98%;
 
-    --success: 140 70% 30%;
-    --success-foreground: 210 40% 98%;
+		--success: 140 70% 30%;
+		--success-foreground: 210 40% 98%;
 
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 210 40% 98%;
+		--border: 215 28% 17%;
+		--input: 215 28% 17%;
+		--ring: 210 40% 98%;
 
-    --radius: 0.5rem;
-    --text-shadow: 0 2px 8px #000000CC;
-  }
+		--radius: 0.5rem;
+		--text-shadow: 0 2px 8px #000000cc;
+	}
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	.prose code::before,
+	.prose code::after {
+		content: "";
+	}
 }
 
 @layer utilities {
-  .perspective-1000 {
-    perspective: 1000px;
-  }
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-  .backface-hidden {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-  .rotate-y-180 {
-    transform: rotateY(180deg);
-  }
-  .flashcard.is-flipped {
-    transform: rotateY(180deg);
-  }
-  .text-shadow {
-    text-shadow: var(--text-shadow);
-  }
-  .inline-code {
-    @apply bg-muted text-secondary-foreground/80 px-1 py-0.5 rounded-sm font-mono text-sm;
-  }
+	.perspective-1000 {
+		perspective: 1000px;
+	}
+	.preserve-3d {
+		transform-style: preserve-3d;
+	}
+	.backface-hidden {
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+	}
+	.rotate-y-180 {
+		transform: rotateY(180deg);
+	}
+	.flashcard.is-flipped {
+		transform: rotateY(180deg);
+	}
+	.text-shadow {
+		text-shadow: var(--text-shadow);
+	}
+	.inline-code {
+		@apply bg-muted text-secondary-foreground/80 px-1 py-0.5 rounded-sm font-mono text-sm;
+	}
+	.prose pre {
+		text-align: left;
+	}
+	.prose pre code {
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
 }
