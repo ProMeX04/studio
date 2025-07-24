@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
@@ -471,17 +472,7 @@ export default function Home() {
 		} else {
 			setQuizState(null)
 		}
-
-		// Normal check for needed content
-		const flashcardsNeeded =
-			savedFlashcardMax - (currentFlashcards?.cards.length ?? 0)
-		const quizNeeded =
-			savedQuizMax - (currentQuiz?.questions.length ?? 0)
-
-		if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
-			handleGenerate(savedTopic, savedLanguage, false)
-		}
-	}, [handleGenerate])
+	}, [])
 
 	useEffect(() => {
 		if (isMounted) {
@@ -543,7 +534,7 @@ export default function Home() {
 					console.log(
 						`🚀 Auto-generate needed - F:${needsFlashcards} Q:${needsQuiz}`
 					)
-					handleGenerate(topic, language, false)
+					// handleGenerate(topic, language, false) // Bỏ tự động generate
 				}
 			}
 
@@ -646,8 +637,11 @@ export default function Home() {
 	)
 
 	const handleCurrentCardChange = useCallback((card: Flashcard | null) => {
-		setCurrentFlashcard(card)
-	}, [])
+		if (currentFlashcard?.front !== card?.front || currentFlashcard?.back !== card?.back) {
+			setCurrentFlashcard(card)
+		}
+	}, [currentFlashcard])
+
 
 	const currentQuizAnswer =
 		quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null
@@ -792,3 +786,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
