@@ -28,11 +28,16 @@ interface QuizProps {
 
 const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
+    const codeStyle = { ...vscDarkPlus };
+    // Remove background from the pre tag to make it transparent
+    codeStyle['pre[class*="language-"]'].background = 'transparent';
+    codeStyle['pre[class*="language-"]'].padding = '0';
+
     return !inline && match ? (
       <SyntaxHighlighter
-        style={vscDarkPlus}
+        style={codeStyle}
         language={match[1]}
-        PreTag={Fragment}
+        PreTag="div"
         {...props}
       >
         {String(children).replace(/\n$/, '')}
