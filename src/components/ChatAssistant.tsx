@@ -117,8 +117,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
         description: 'Không thể nhận câu trả lời từ AI. Vui lòng thử lại.',
         variant: 'destructive',
       });
-      // remove the user message if the call fails
-       setMessages(prev => prev.slice(0, prev.length -1));
+      // Do not remove the user message if the call fails
     } finally {
       setIsLoading(false);
     }

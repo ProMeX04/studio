@@ -1,8 +1,5 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { FlashcardSet } from '@/ai/schemas';
-import type { QuizSet, QuizState } from '@/ai/schemas';
-import type { ComponentVisibility } from '@/app/page';
 
 const DB_NAME = 'NewTabAI-DB-guest';
 const DB_VERSION = 2;
@@ -23,15 +20,8 @@ export type DataKey =
   | 'flashcardIsRandom';
 
 export type StoredData =
-  | LabeledData<FlashcardSet>
-  | LabeledData<QuizSet>
-  | AppData<QuizState>
-  | AppData<string>
-  | AppData<number>
-  | AppData<boolean>
-  | AppData<'flashcards' | 'quiz'>
-  | AppData<ComponentVisibility>
-  | AppData<string[]>
+  | LabeledData<any> // Using 'any' for FlashcardSet and QuizSet
+  | AppData<any>;   // Using 'any' for other data types to avoid direct imports
 
 export interface LabeledData<T> {
     id: 'flashcards' | 'quiz';

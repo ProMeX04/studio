@@ -292,8 +292,7 @@ export default function Home() {
     if(topic && language) {
         handleGenerate(topic, language, false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flashcardMax, quizMax]);
+  }, [topic, language, flashcardMax, quizMax, handleGenerate]);
 
 
   const handleBackgroundChange = useCallback(async (newBg: string | null) => {
