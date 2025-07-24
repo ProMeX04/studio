@@ -63,3 +63,4 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     await store.clear();
     await tx.done;
 }
+
