@@ -108,7 +108,8 @@ export default function Home() {
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
 	const [flashcardIsRandom, setFlashcardIsRandom] = useState(false)
-	const [isLoading, setIsLoading] = useState(false)
+	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
+	const [isQuizLoading, setIsQuizLoading] = useState(false)
 	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
@@ -129,7 +130,8 @@ export default function Home() {
 	)
 
 	// Ngăn race condition và cleanup async operations
-	const isGeneratingRef = useRef(false)
+	const isFlashcardGeneratingRef = useRef(false)
+	const isQuizGeneratingRef = useRef(false)
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const isMountedRef = useRef(true)
 
@@ -173,13 +175,15 @@ export default function Home() {
 				})
 				return
 			}
+			
+			const isGeneratingRef = genType === 'flashcards' ? isFlashcardGeneratingRef : isQuizGeneratingRef;
+			const setIsLoading = genType === 'flashcards' ? setIsFlashcardLoading : setIsQuizLoading;
 
-			// Ngăn nhiều lần gọi đồng thời
+			// Ngăn nhiều lần gọi đồng thời cho cùng một loại
 			if (isGeneratingRef.current) {
-				console.log("⚠️ handleGenerate đang chạy, bỏ qua lần gọi này")
 				toast({
 					title: "Đang tạo...",
-					description: "Một quá trình tạo nội dung khác đang chạy.",
+					description: `Một quá trình tạo ${genType === 'flashcards' ? 'flashcard' : 'quiz'} khác đang chạy.`,
 				})
 				return
 			}
@@ -369,16 +373,16 @@ export default function Home() {
 				}
 
 			} catch (error: any) {
-				console.error("🚫 Generation bị hủy hoặc lỗi:", error.message)
+				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
 				if (error.name === "AbortError") {
 					toast({
 						title: "Đã hủy",
-						description: "Quá trình tạo nội dung đã được hủy.",
+						description: `Quá trình tạo ${genType} đã được hủy.`,
 					});
 				} else {
 					toast({
 						title: "Lỗi tạo nội dung",
-						description: `Không thể tạo nội dung: ${error.message}. Vui lòng thử lại.`,
+						description: `Không thể tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
 						variant: "destructive",
 					})
 				}
@@ -471,15 +475,19 @@ export default function Home() {
 			
 			const db = await getDb()
 
+			let topicChanged = false
 			if (topic !== newTopic) {
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
+				topicChanged = true
 			}
 
 			if (language !== newLanguage) {
 				setLanguage(newLanguage)
 				await db.put("data", { id: "language", data: newLanguage })
 			}
+
+			return topicChanged
 		},
 		[topic, language]
 	)
@@ -650,12 +658,17 @@ export default function Home() {
 		currentFlashcard,
 	])
 
+	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =
 		view === "flashcards"
 			? flashcardSet?.cards.length ?? 0
 			: quizSet?.questions.length ?? 0
 	const targetCount = view === "flashcards" ? flashcardMax : quizMax
-	const canGenerateMore = currentCount < targetCount && !isLoading
+	const canGenerateMore =
+		currentCount < targetCount &&
+		(view === "flashcards" ? !isFlashcardLoading : !isQuizLoading)
+	const currentViewIsLoading =
+		view === "flashcards" ? isFlashcardLoading : isQuizLoading
 
 	if (!isMounted) {
 		return null
@@ -716,7 +729,7 @@ export default function Home() {
 					<div className="flex-grow overflow-y-auto flex flex-col">
 						<Learn
 							view={view}
-							isLoading={isLoading}
+							isLoading={currentViewIsLoading}
 							flashcardSet={flashcardSet}
 							quizSet={quizSet}
 							quizState={quizState}
@@ -735,3 +748,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
