@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Fragment } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
@@ -62,29 +62,8 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: ({ node, ...props }) => {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const hasPre = node.children.some((child: any) => child.tagName === "pre");
-					if (hasPre) {
-						return <div>{props.children}</div>
-					}
-					return <p {...props} />
-				},
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
-					if (!inline && match) {
-						return (
-							<Syntax
-								style={codeStyle as any}
-								language={match[1]}
-								PreTag="div"
-								wrapLongLines={true}
-								{...props}
-							>
-								{String(children).replace(/\n$/, "")}
-							</Syntax>
-						)
-					}
 					if (inline) {
 						return (
 							<code
@@ -95,12 +74,11 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
-					// Handle non-inline code without a language match
 					return (
 						<Syntax
 							style={codeStyle as any}
-							language="text"
-							PreTag="div"
+							language={match ? match[1] : "text"}
+							PreTag={Fragment}
 							wrapLongLines={true}
 							{...props}
 						>
