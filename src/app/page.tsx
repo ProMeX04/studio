@@ -40,7 +40,7 @@ interface LearnProps {
 	flashcardSet: FlashcardSet | null
 	quizSet: QuizSet | null
 	quizState: QuizState | null
-	onGenerateNew: (forceNew: boolean) => void
+	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
 	flashcardIsRandom: boolean
 	onCurrentCardChange: (flashcard: Flashcard | null) => void
@@ -59,10 +59,6 @@ function Learn({
 	onCurrentCardChange,
 	canGenerateMore,
 }: LearnProps) {
-	const handleGenerateClick = () => {
-		onGenerateNew(false)
-	}
-
 	const hasLearnContent =
 		(view === "flashcards" &&
 			flashcardSet &&
@@ -84,7 +80,7 @@ function Learn({
 						flashcardSet={flashcardSet}
 						isRandom={flashcardIsRandom}
 						onCurrentCardChange={onCurrentCardChange}
-						onGenerateMore={handleGenerateClick}
+						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 					/>
@@ -94,7 +90,7 @@ function Learn({
 						quizSet={quizSet}
 						initialState={quizState}
 						onStateChange={onQuizStateChange}
-						onGenerateMore={handleGenerateClick}
+						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 					/>
@@ -173,14 +169,15 @@ export default function Home() {
 		async (
 			currentTopic: string,
 			currentLanguage: string,
-			forceNew: boolean = false
+			forceNew: boolean = false,
+			genType: "flashcards" | "quiz"
 		) => {
 			if (!currentTopic.trim()) {
 				return
 			}
 
 			// Ngăn nhiều lần gọi đồng thời
-			if (isGeneratingRef.current && !forceNew) {
+			if (isGeneratingRef.current) {
 				console.log("⚠️ handleGenerate đang chạy, bỏ qua lần gọi này")
 				return
 			}
@@ -199,54 +196,15 @@ export default function Home() {
 
 			const db = await getDb()
 
-			let currentFlashcards: FlashcardSet = {
-				id: "idb-flashcards",
-				topic: currentTopic,
-				cards: [],
-			}
-			let currentQuiz: QuizSet = {
-				id: "idb-quiz",
-				topic: currentTopic,
-				questions: [],
-			}
-
-			if (forceNew) {
-				setFlashcardSet(null)
-				setQuizSet(null)
-				setQuizState(null)
-				await db.delete("data", "flashcards")
-				await db.delete("data", "quiz")
-				await db.delete("data", "quizState")
-			} else {
-				const flashcardData = (await db.get(
-					"data",
-					"flashcards"
-				)) as LabeledData<FlashcardSet>
-				const quizData = (await db.get(
-					"data",
-					"quiz"
-				)) as LabeledData<QuizSet>
-				if (flashcardData && flashcardData.topic === currentTopic) {
-					currentFlashcards = flashcardData.data
-				}
-				if (quizData && quizData.topic === currentTopic) {
-					currentQuiz = quizData.data
-				}
-			}
-
-			// Show existing content immediately
-			setFlashcardSet({ ...currentFlashcards })
-			setQuizSet({ ...currentQuiz })
-
 			try {
-				let flashcardsNeeded =
-					flashcardMax - currentFlashcards.cards.length
-				let quizNeeded = quizMax - currentQuiz.questions.length
-
-				if (flashcardsNeeded <= 0 && quizNeeded <= 0 && !forceNew) {
-					setIsLoading(false)
-					isGeneratingRef.current = false
-					return
+				if (forceNew) {
+					// Xóa dữ liệu cũ của cả 2 loại khi chủ đề thay đổi
+					setFlashcardSet(null)
+					setQuizSet(null)
+					setQuizState(null)
+					await db.delete("data", "flashcards")
+					await db.delete("data", "quiz")
+					await db.delete("data", "quizState")
 				}
 
 				// Helper function với timeout và retry
@@ -259,29 +217,25 @@ export default function Home() {
 						if (signal.aborted) throw new Error("Aborted")
 
 						try {
-							// Timeout wrapper
 							const timeoutPromise = new Promise((_, reject) => {
 								setTimeout(
 									() => reject(new Error("AI_TIMEOUT")),
 									timeoutMs
 								)
 							})
-
 							const result = await Promise.race([
 								aiFunction(),
 								timeoutPromise,
 							])
-
 							return result
 						} catch (error: any) {
 							console.warn(
-								`🔄 AI call attempt ${attempt + 1} failed:`,
+								`🔄 AI call attempt ${
+									attempt + 1
+								} failed:`,
 								error.message
 							)
-
 							if (attempt === retries - 1) throw error
-
-							// Exponential backoff với rate limiting
 							const delay = Math.min(
 								1000 * Math.pow(2, attempt),
 								5000
@@ -293,109 +247,130 @@ export default function Home() {
 					}
 				}
 
-				while (
-					(flashcardsNeeded > 0 || quizNeeded > 0) &&
-					!signal.aborted
-				) {
-					// Rate limiting: chờ giữa các batch
-					await new Promise((resolve) => setTimeout(resolve, 1000))
+				if (genType === "flashcards") {
+					const flashcardData = (await db.get(
+						"data",
+						"flashcards"
+					)) as LabeledData<FlashcardSet>
+					const currentFlashcards =
+						flashcardData && flashcardData.topic === currentTopic
+							? flashcardData.data
+							: { id: "idb-flashcards", topic: currentTopic, cards: [] }
 
-					const generateFlashcardsPromise = async () => {
-						if (flashcardsNeeded > 0) {
-							const count = Math.min(BATCH_SIZE, flashcardsNeeded)
-							try {
-								const existingCards = currentFlashcards.cards
-								const newCards = await safeAICall(() =>
-									generateFlashcards({
-										topic: currentTopic,
-										count,
-										language: currentLanguage,
-										existingCards: existingCards,
-									})
-								)
+					setFlashcardSet({ ...currentFlashcards })
 
-								if (
-									Array.isArray(newCards) &&
-									newCards.length > 0 &&
-									!signal.aborted &&
-									isMountedRef.current
-								) {
-									currentFlashcards.cards.push(...newCards)
-									flashcardsNeeded -= newCards.length
-									await db.put("data", {
-										id: "flashcards",
-										topic: currentTopic,
-										data: currentFlashcards,
-									} as any)
-									setFlashcardSet({ ...currentFlashcards })
-								}
-							} catch (error: any) {
-								console.error(
-									"❌ Flashcard generation batch failed:",
-									error.message
-								)
-								// Stop generating flashcards if one batch fails to avoid retrying the same error
-								flashcardsNeeded = 0
-							}
-						}
+					let flashcardsNeeded = flashcardMax - currentFlashcards.cards.length
+					if (flashcardsNeeded <= 0 && !forceNew) {
+						setIsLoading(false)
+						isGeneratingRef.current = false
+						return
 					}
 
-					const generateQuizPromise = async () => {
-						if (quizNeeded > 0) {
-							const count = Math.min(BATCH_SIZE, quizNeeded)
-							try {
-								const existingQuestions = currentQuiz.questions
-								const newQuestions = await safeAICall(() =>
-									generateQuiz({
-										topic: currentTopic,
-										count,
-										language: currentLanguage,
-										existingQuestions: existingQuestions,
-									})
-								)
+					while (flashcardsNeeded > 0 && !signal.aborted) {
+						const count = Math.min(BATCH_SIZE, flashcardsNeeded)
+						try {
+							const newCards = await safeAICall(() =>
+								generateFlashcards({
+									topic: currentTopic,
+									count,
+									language: currentLanguage,
+									existingCards: currentFlashcards.cards,
+								})
+							)
 
-								if (
-									Array.isArray(newQuestions) &&
-									newQuestions.length > 0 &&
-									!signal.aborted &&
-									isMountedRef.current
-								) {
-									currentQuiz.questions.push(...newQuestions)
-									quizNeeded -= newQuestions.length
-									await db.put("data", {
-										id: "quiz",
-										topic: currentTopic,
-										data: currentQuiz,
-									} as any)
-									setQuizSet({ ...currentQuiz })
-								}
-							} catch (error: any) {
-								console.error(
-									"❌ Quiz generation batch failed:",
-									error.message
-								)
-								// Stop generating quiz if one batch fails
-								quizNeeded = 0
+							if (
+								Array.isArray(newCards) &&
+								newCards.length > 0 &&
+								!signal.aborted &&
+								isMountedRef.current
+							) {
+								currentFlashcards.cards.push(...newCards)
+								flashcardsNeeded -= newCards.length
+								await db.put("data", {
+									id: "flashcards",
+									topic: currentTopic,
+									data: currentFlashcards,
+								} as any)
+								setFlashcardSet({ ...currentFlashcards }) // Update UI
+							} else {
+								// Nếu không có thẻ mới, dừng lại
+								flashcardsNeeded = 0;
 							}
+						} catch (error: any) {
+							console.error("❌ Flashcard generation batch failed:", error.message)
+							flashcardsNeeded = 0
 						}
+						// Rate limiting: chờ giữa các batch
+						if(flashcardsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
 					}
-
-					// Generate in parallel
-					await Promise.all([
-						generateFlashcardsPromise(),
-						generateQuizPromise(),
-					])
 				}
+
+				if (genType === "quiz") {
+					const quizData = (await db.get(
+						"data",
+						"quiz"
+					)) as LabeledData<QuizSet>
+					const currentQuiz =
+						quizData && quizData.topic === currentTopic
+							? quizData.data
+							: { id: "idb-quiz", topic: currentTopic, questions: [] }
+
+					setQuizSet({ ...currentQuiz })
+
+					let quizNeeded = quizMax - currentQuiz.questions.length
+					if (quizNeeded <= 0 && !forceNew) {
+						setIsLoading(false)
+						isGeneratingRef.current = false
+						return
+					}
+
+					while (quizNeeded > 0 && !signal.aborted) {
+						const count = Math.min(BATCH_SIZE, quizNeeded)
+						try {
+							const newQuestions = await safeAICall(() =>
+								generateQuiz({
+									topic: currentTopic,
+									count,
+									language: currentLanguage,
+									existingQuestions: currentQuiz.questions,
+								})
+							)
+
+							if (
+								Array.isArray(newQuestions) &&
+								newQuestions.length > 0 &&
+								!signal.aborted &&
+								isMountedRef.current
+							) {
+								currentQuiz.questions.push(...newQuestions)
+								quizNeeded -= newQuestions.length
+								await db.put("data", {
+									id: "quiz",
+									topic: currentTopic,
+									data: currentQuiz,
+								} as any)
+								setQuizSet({ ...currentQuiz }) // Update UI
+							} else {
+								// Nếu không có câu hỏi mới, dừng lại
+								quizNeeded = 0;
+							}
+						} catch (error: any) {
+							console.error("❌ Quiz generation batch failed:", error.message)
+							quizNeeded = 0
+						}
+						// Rate limiting: chờ giữa các batch
+						if(quizNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+					}
+				}
+
 			} catch (error: any) {
 				console.log("🚫 Generation bị hủy hoặc lỗi:", error.message)
-
 				if (error.name === "AbortError") {
 					console.log("✅ Generation đã được hủy thành công")
 				} else {
 					toast({
 						title: "Lỗi tạo nội dung",
-						description:
-							"Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.",
+						description: "Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.",
 						variant: "destructive",
 					})
 				}
@@ -497,50 +472,18 @@ export default function Home() {
 			broadcastDataChange("language" as DataKey, { data: newLanguage })
 
 			if (topicChanged) {
-				handleGenerate(newTopic, newLanguage, true)
+				// Chỉ tạo cho view hiện tại khi thay đổi chủ đề
+				handleGenerate(newTopic, newLanguage, true, view)
 			}
 		},
-		[topic, language, handleGenerate]
+		[topic, language, handleGenerate, view]
 	)
 
-	// Chỉ gọi handleGenerate khi thay đổi giới hạn số lượng
+	// Không tự động generate khi thay đổi max nữa
 	useEffect(() => {
-		if (topic && language && !isGeneratingRef.current) {
-			// Đơn giản: chỉ check và generate nếu cần
-			const checkAndGenerate = async () => {
-				const db = await getDb()
-				const flashcardData = (await db.get(
-					"data",
-					"flashcards"
-				)) as LabeledData<FlashcardSet>
-				const quizData = (await db.get(
-					"data",
-					"quiz"
-				)) as LabeledData<QuizSet>
+		// No-op
+	}, [flashcardMax, quizMax])
 
-				const currentFlashcards =
-					flashcardData?.topic === topic
-						? flashcardData.data.cards.length
-						: 0
-				const currentQuiz =
-					quizData?.topic === topic
-						? quizData.data.questions.length
-						: 0
-
-				const needsFlashcards = currentFlashcards < flashcardMax
-				const needsQuiz = currentQuiz < quizMax
-
-				if (needsFlashcards || needsQuiz) {
-					console.log(
-						`🚀 Auto-generate needed - F:${needsFlashcards} Q:${needsQuiz}`
-					)
-					// handleGenerate(topic, language, false) // Bỏ tự động generate
-				}
-			}
-
-			checkAndGenerate().catch(console.error)
-		}
-	}, [flashcardMax, quizMax, topic, language, handleGenerate])
 
 	const handleBackgroundChange = useCallback(
 		async (newBg: string | null) => {
@@ -601,7 +544,7 @@ export default function Home() {
 
 	const handleViewChange = useCallback(
 		async (newView: "flashcards" | "quiz") => {
-			if (view === newView) return // Avoid infinite update loop
+			if (view === newView) return
 			setView(newView)
 			const db = await getDb()
 			await db.put("data", { id: "view", data: newView })
@@ -615,12 +558,10 @@ export default function Home() {
 		await db.put("data", { id: "quizState", data: newState })
 	}, [])
 
-	const onGenerateNew = useCallback(
-		(forceNew: boolean) => {
-			handleGenerate(topic, language, forceNew)
-		},
-		[handleGenerate, topic, language]
-	)
+	const onGenerateNew = useCallback(() => {
+		// Gọi generate cho view hiện tại, không force new
+		handleGenerate(topic, language, false, view)
+	}, [handleGenerate, topic, language, view])
 
 	const handleFlashcardSettingsChange = useCallback(
 		async (settings: { isRandom: boolean }) => {
@@ -637,11 +578,8 @@ export default function Home() {
 	)
 
 	const handleCurrentCardChange = useCallback((card: Flashcard | null) => {
-		if (currentFlashcard?.front !== card?.front || currentFlashcard?.back !== card?.back) {
-			setCurrentFlashcard(card)
-		}
-	}, [currentFlashcard])
-
+		setCurrentFlashcard(card)
+	}, [])
 
 	const currentQuizAnswer =
 		quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null
@@ -695,7 +633,6 @@ export default function Home() {
 	}, [
 		view,
 		topic,
-		flashcardSet,
 		quizSet,
 		quizState,
 		currentQuizAnswer,
@@ -707,7 +644,7 @@ export default function Home() {
 			? flashcardSet?.cards.length ?? 0
 			: quizSet?.questions.length ?? 0
 	const targetCount = view === "flashcards" ? flashcardMax : quizMax
-	const canGenerateMore = currentCount < targetCount
+	const canGenerateMore = currentCount < targetCount && !isLoading
 
 	if (!isMounted) {
 		return null
@@ -786,5 +723,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
