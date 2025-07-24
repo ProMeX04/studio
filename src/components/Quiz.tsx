@@ -67,6 +67,19 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	return (
 		<ReactMarkdown
 			components={{
+				p: ({ node, ...props }) => {
+					// Hack to avoid hydration error (<p> cannot have <pre> as a descendant)
+					// by checking if the only child is a 'raw' node with a <pre> tag.
+					// This is a bit of a hack, but it works for now.
+					// A better solution would be to use a different markdown renderer.
+					// that is more flexible.
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const isPre = (node?.children[0] as any)?.tagName === "pre"
+					if (isPre) {
+						return <div>{props.children}</div>
+					}
+					return <p {...props} />
+				},
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
@@ -85,7 +98,10 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					// We check for the inline prop to be sure.
 					if (inline) {
 						return (
-							<code className={cn(className, "inline-code")} {...props}>
+							<code
+								className={cn(className, "inline-code")}
+								{...props}
+							>
 								{children}
 							</code>
 						)
@@ -93,7 +109,10 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					// For code blocks without a language, we just render a plain code block.
 					return (
 						<pre className="p-0 bg-transparent">
-							<code className={cn(className, "inline-code")} {...props}>
+							<code
+								className={cn(className, "inline-code")}
+								{...props}
+							>
 								{children}
 							</code>
 						</pre>
@@ -161,7 +180,8 @@ export function Quiz({
 		() => quizSet?.questions[currentQuestionIndex],
 		[quizSet, currentQuestionIndex]
 	)
-	const hasContent = quizSet && quizSet.questions && quizSet.questions.length > 0;
+	const hasContent =
+		quizSet && quizSet.questions && quizSet.questions.length > 0
 
 	const handleNextQuestion = () => {
 		if (quizSet && currentQuestionIndex < quizSet.questions.length - 1) {
@@ -378,8 +398,8 @@ export function Quiz({
 							<ChevronLeft />
 						</Button>
 						<p className="text-center text-sm text-muted-foreground w-28">
-							Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0} /{" "}
-							{quizSet?.questions.length ?? 0}
+							Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0}{" "}
+							/ {quizSet?.questions.length ?? 0}
 						</p>
 						<Button
 							onClick={handleNextQuestion}

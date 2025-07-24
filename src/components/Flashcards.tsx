@@ -35,8 +35,8 @@ interface FlashcardsProps {
 	onGenerateMore: () => void
 	canGenerateMore: boolean
 	isLoading: boolean
-	initialIndex: number;
-    onIndexChange: (index: number) => void;
+	initialIndex: number
+	onIndexChange: (index: number) => void
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -62,6 +62,19 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
+				p: ({ node, ...props }) => {
+					// Hack to avoid hydration error (<p> cannot have <pre> as a descendant)
+					// by checking if the only child is a 'raw' node with a <pre> tag.
+					// This is a bit of a hack, but it works for now.
+					// A better solution would be to use a different markdown renderer.
+					// that is more flexible.
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const isPre = (node?.children[0] as any)?.tagName === "pre"
+					if (isPre) {
+						return <div>{props.children}</div>
+					}
+					return <p {...props} />
+				},
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
@@ -81,7 +94,10 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					// We check for the inline prop to be sure.
 					if (inline) {
 						return (
-							<code className={cn(className, "inline-code")} {...props}>
+							<code
+								className={cn(className, "inline-code")}
+								{...props}
+							>
 								{children}
 							</code>
 						)
@@ -89,7 +105,10 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					// For code blocks without a language, we just render a plain code block.
 					return (
 						<pre className="p-0 bg-transparent">
-							<code className={cn(className, "inline-code")} {...props}>
+							<code
+								className={cn(className, "inline-code")}
+								{...props}
+							>
 								{children}
 							</code>
 						</pre>
@@ -145,7 +164,7 @@ export function Flashcards({
 	canGenerateMore,
 	isLoading,
 	initialIndex,
-    onIndexChange,
+	onIndexChange,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -155,14 +174,13 @@ export function Flashcards({
 	}, [])
 
 	useEffect(() => {
-        setCurrentCardIndex(initialIndex);
-    }, [initialIndex]);
+		setCurrentCardIndex(initialIndex)
+	}, [initialIndex])
 
 	useEffect(() => {
-        onIndexChange(currentCardIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentCardIndex]);
-
+		onIndexChange(currentCardIndex)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentCardIndex])
 
 	useEffect(() => {
 		if (!flashcardSet?.cards) {
@@ -246,11 +264,14 @@ export function Flashcards({
 							<ChevronLeft />
 						</Button>
 						<p className="text-center text-sm text-muted-foreground w-24">
-							Thẻ {hasContent ? currentCardIndex + 1 : 0} / {totalCards}
+							Thẻ {hasContent ? currentCardIndex + 1 : 0} /{" "}
+							{totalCards}
 						</p>
 						<Button
 							onClick={handleNextCard}
-							disabled={!hasContent || currentCardIndex >= totalCards - 1}
+							disabled={
+								!hasContent || currentCardIndex >= totalCards - 1
+							}
 							variant="outline"
 							size="icon"
 						>
