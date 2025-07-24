@@ -91,9 +91,11 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// For code blocks without a language, we just render a plain code block.
 					return (
-						<code className={className} {...props}>
-							{children}
-						</code>
+						<pre className="p-0 bg-transparent">
+							<code className={cn(className, "inline-code")} {...props}>
+								{children}
+							</code>
+						</pre>
 					)
 				},
 			}}
@@ -358,70 +360,55 @@ export function Quiz({
 						<p className="text-muted-foreground">
 							Chưa có câu hỏi trắc nghiệm nào.
 							<br />
-							Nhập chủ đề trong cài đặt và bắt đầu tạo.
+							Nhấn dấu (+) để bắt đầu tạo.
 						</p>
 					</div>
 				)}
 			</CardContent>
 			<CardFooter className="flex-col !pt-0 gap-2 items-center">
-				{hasContent && quizSet.questions.length > 0 ? (
-					<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
-						<div className="flex items-center justify-center w-full gap-4">
+				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
+					<div className="flex items-center justify-center w-full gap-4">
+						<Button
+							onClick={handlePrevQuestion}
+							disabled={currentQuestionIndex === 0}
+							variant="outline"
+							size="icon"
+						>
+							<ChevronLeft />
+						</Button>
+						<p className="text-center text-sm text-muted-foreground w-28">
+							Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0} /{" "}
+							{quizSet?.questions.length ?? 0}
+						</p>
+						<Button
+							onClick={handleNextQuestion}
+							disabled={
+								!hasContent ||
+								currentQuestionIndex ===
+									(quizSet?.questions.length ?? 0) - 1
+							}
+							variant="outline"
+							size="icon"
+						>
+							<ChevronRight />
+						</Button>
+						{canGenerateMore && (
 							<Button
-								onClick={handlePrevQuestion}
-								disabled={currentQuestionIndex === 0}
+								onClick={onGenerateMore}
+								disabled={isLoading}
 								variant="outline"
 								size="icon"
+								className="ml-2"
 							>
-								<ChevronLeft />
+								{isLoading ? (
+									<Loader className="animate-spin" />
+								) : (
+									<Plus />
+								)}
 							</Button>
-							<p className="text-center text-sm text-muted-foreground w-28">
-								Câu hỏi {currentQuestionIndex + 1} /{" "}
-								{quizSet.questions.length}
-							</p>
-							<Button
-								onClick={handleNextQuestion}
-								disabled={
-									currentQuestionIndex ===
-									quizSet.questions.length - 1
-								}
-								variant="outline"
-								size="icon"
-							>
-								<ChevronRight />
-							</Button>
-							{canGenerateMore && (
-								<Button
-									onClick={onGenerateMore}
-									disabled={isLoading}
-									variant="outline"
-									size="icon"
-									className="ml-2"
-								>
-									{isLoading ? (
-										<Loader className="animate-spin" />
-									) : (
-										<Plus />
-									)}
-								</Button>
-							)}
-						</div>
-					</div>
-				) : (
-					<Button
-						onClick={onGenerateMore}
-						disabled={isLoading}
-						variant="default"
-						size="lg"
-					>
-						{isLoading ? (
-							<Loader className="animate-spin" />
-						) : (
-							<Plus />
 						)}
-						Bắt đầu tạo Bài trắc nghiệm
-					</Button>
-				)}
+					</div>
+				</div>
 			</CardFooter>
 		</Card>
 	)

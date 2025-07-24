@@ -74,8 +74,6 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</Syntax>
 						)
 					}
-					// For inline code, we let react-markdown handle it, but we add our class.
-					// We check for the inline prop to be sure.
 					if (inline) {
 						return (
 							<code className={cn(className, "inline-code")} {...props}>
@@ -85,9 +83,11 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// For code blocks without a language, we just render a plain code block.
 					return (
-						<code className={className} {...props}>
-							{children}
-						</code>
+						<pre className="p-0 bg-transparent">
+							<code className={cn(className, "inline-code")} {...props}>
+								{children}
+							</code>
+						</pre>
 					)
 				},
 			}}
@@ -212,66 +212,50 @@ export function Flashcards({
 						<p className="text-muted-foreground">
 							Chưa có flashcard nào.
 							<br />
-							Nhập chủ đề trong cài đặt và bắt đầu tạo.
+							Nhấn dấu (+) để bắt đầu tạo.
 						</p>
 					</div>
 				)}
 			</CardContent>
 			<CardFooter className="flex-col !pt-8 gap-2 items-center">
-				{hasContent ? (
-					<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
-						<div className="flex items-center justify-center w-full gap-4">
+				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
+					<div className="flex items-center justify-center w-full gap-4">
+						<Button
+							onClick={handlePrevCard}
+							disabled={currentCardIndex === 0}
+							variant="outline"
+							size="icon"
+						>
+							<ChevronLeft />
+						</Button>
+						<p className="text-center text-sm text-muted-foreground w-24">
+							Thẻ {hasContent ? currentCardIndex + 1 : 0} / {totalCards}
+						</p>
+						<Button
+							onClick={handleNextCard}
+							disabled={!hasContent || currentCardIndex >= totalCards - 1}
+							variant="outline"
+							size="icon"
+						>
+							<ChevronRight />
+						</Button>
+						{canGenerateMore && (
 							<Button
-								onClick={handlePrevCard}
-								disabled={currentCardIndex === 0}
+								onClick={onGenerateMore}
+								disabled={isLoading}
 								variant="outline"
 								size="icon"
+								className="ml-2"
 							>
-								<ChevronLeft />
+								{isLoading ? (
+									<Loader className="animate-spin" />
+								) : (
+									<Plus />
+								)}
 							</Button>
-							<p className="text-center text-sm text-muted-foreground w-24">
-								Thẻ {currentCardIndex + 1} / {totalCards}
-							</p>
-							<Button
-								onClick={handleNextCard}
-								disabled={currentCardIndex >= totalCards - 1}
-								variant="outline"
-								size="icon"
-							>
-								<ChevronRight />
-							</Button>
-							{canGenerateMore && (
-								<Button
-									onClick={onGenerateMore}
-									disabled={isLoading}
-									variant="outline"
-									size="icon"
-									className="ml-2"
-								>
-									{isLoading ? (
-										<Loader className="animate-spin" />
-									) : (
-										<Plus />
-									)}
-								</Button>
-							)}
-						</div>
-					</div>
-				) : (
-					<Button
-						onClick={onGenerateMore}
-						disabled={isLoading}
-						variant="default"
-						size="lg"
-					>
-						{isLoading ? (
-							<Loader className="animate-spin" />
-						) : (
-							<Plus />
 						)}
-						Bắt đầu tạo Flashcard
-					</Button>
-				)}
+					</div>
+				</div>
 			</CardFooter>
 		</Card>
 	)
