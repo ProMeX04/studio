@@ -6,8 +6,10 @@ import { Greeting } from '@/components/Greeting';
 import { Search } from '@/components/Search';
 import { QuickLinks } from '@/components/QuickLinks';
 import { Clock } from '@/components/Clock';
-import { Flashcards, FlashcardSet } from '@/components/Flashcards';
-import { Quiz, QuizSet, QuizState } from '@/components/Quiz';
+import { Flashcards } from '@/components/Flashcards';
+import type { FlashcardSet } from '@/ai/schemas';
+import { Quiz } from '@/components/Quiz';
+import type { QuizSet, QuizState } from '@/ai/schemas';
 import { useToast } from '@/hooks/use-toast';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
@@ -29,12 +31,11 @@ interface LearnProps {
   onGenerateNew: (forceNew: boolean) => void;
   generationProgress: number;
   targetCount: number;
-  displayCount: number;
   onQuizStateChange: (newState: QuizState) => void;
   flashcardIsRandom: boolean;
 }
 
-function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, displayCount, onQuizStateChange, flashcardIsRandom }: LearnProps) {
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, onQuizStateChange, flashcardIsRandom }: LearnProps) {
     const { toast } = useToast();
     const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
     const canGenerateMore = currentCount < targetCount;
@@ -55,7 +56,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
 
     return (
      <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
-        <CardContent className="pt-8 flex-grow">
+        <CardContent className="pt-8 flex-grow flex flex-col">
             {isLoading && !hasLearnContent && (
                  <div className="flex flex-col justify-center items-center h-48">
                     <Loader className="animate-spin mb-4" />
@@ -64,7 +65,7 @@ function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNe
             )}
             
             {view === 'flashcards' && (
-                <Flashcards flashcardSet={flashcardSet} displayCount={displayCount} isRandom={flashcardIsRandom} />
+                <Flashcards flashcardSet={flashcardSet} isRandom={flashcardIsRandom} />
             )}
             {view === 'quiz' && (
                 <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
@@ -88,8 +89,6 @@ export default function Home() {
   const [language, setLanguage] = useState('English');
   const [flashcardMax, setFlashcardMax] = useState(50);
   const [quizMax, setQuizMax] = useState(50);
-  const [flashcardDisplayMax, setFlashcardDisplayMax] = useState(10);
-  const [quizDisplayMax, setQuizDisplayMax] = useState(10);
   const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -183,17 +182,17 @@ export default function Home() {
             }
             
             const [newFlashcards, newQuiz] = await Promise.all([
-                promises[0] as Promise<any[]>,
-                promises[1] as Promise<any[]>
+                promises[0] as Promise<FlashcardSet['cards']>,
+                promises[1] as Promise<QuizQuestion[]>
             ]);
 
-            if (newFlashcards.length > 0) {
+            if (newFlashcards && newFlashcards.length > 0) {
               currentFlashcards.cards.push(...newFlashcards);
               setFlashcardSet({ ...currentFlashcards });
               await db.put('data', { id: 'flashcards', topic: currentTopic, data: currentFlashcards });
             }
 
-            if (newQuiz.length > 0) {
+            if (newQuiz && newQuiz.length > 0) {
               currentQuiz.questions.push(...newQuiz);
               setQuizSet({ ...currentQuiz });
               await db.put('data', { id: 'quiz', topic: currentTopic, data: currentQuiz });
@@ -218,8 +217,6 @@ export default function Home() {
         const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
         const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
         const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
-        const savedFlashcardDisplayMax = (await db.get('data', 'flashcardDisplayMax'))?.data as number || 10;
-        const savedQuizDisplayMax = (await db.get('data', 'quizDisplayMax'))?.data as number || 10;
         const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
         const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
         const savedBg = (await db.get('data', 'background'))?.data as string;
@@ -237,8 +234,6 @@ export default function Home() {
         setLanguage(savedLanguage);
         setFlashcardMax(savedFlashcardMax);
         setQuizMax(savedQuizMax);
-        setFlashcardDisplayMax(savedFlashcardDisplayMax);
-        setQuizDisplayMax(savedQuizDisplayMax);
         setFlashcardIsRandom(savedFlashcardIsRandom);
         setVisibility(savedVisibility ?? {
             clock: true,
@@ -358,7 +353,6 @@ export default function Home() {
   
   const handleFlashcardMaxChange = createInstantUpdater(setFlashcardMax, 'flashcardMax');
   const handleQuizMaxChange = createInstantUpdater(setQuizMax, 'quizMax');
-  const handleFlashcardDisplayMaxChange = createInstantUpdater(setFlashcardDisplayMax, 'flashcardDisplayMax');
 
   useEffect(() => {
     const getAssistantContext = (): string => {
@@ -385,7 +379,6 @@ export default function Home() {
 
 
   const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
-  const displayCount = view === 'flashcards' ? flashcardDisplayMax : quizDisplayMax;
   
   const displayedFlashcardSet = flashcardSet ? { ...flashcardSet, cards: flashcardSet.cards } : null;
   const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions } : null;
@@ -418,14 +411,12 @@ export default function Home() {
               onViewChange={handleViewChange}
               onFlashcardMaxChange={handleFlashcardMaxChange}
               onQuizMaxChange={handleQuizMaxChange}
-              onFlashcardDisplayMaxChange={handleFlashcardDisplayMaxChange}
               currentView={view}
               visibility={visibility}
               uploadedBackgrounds={uploadedBackgrounds}
               currentBackgroundImage={backgroundImage}
               flashcardMax={flashcardMax}
               quizMax={quizMax}
-              flashcardDisplayMax={flashcardDisplayMax}
               flashcardIsRandom={flashcardIsRandom}
             />
         </div>
@@ -443,7 +434,7 @@ export default function Home() {
       {/* Right Column */}
       {visibility.learn && (
           <div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
-             <div className="flex-grow overflow-y-auto">
+             <div className="flex-grow overflow-y-auto flex flex-col">
                  <Learn 
                     view={view}
                     isLoading={isLoading}
@@ -453,7 +444,6 @@ export default function Home() {
                     onGenerateNew={onGenerateNew}
                     generationProgress={generationProgress}
                     targetCount={targetCount}
-                    displayCount={displayCount}
                     onQuizStateChange={handleQuizStateChange}
                     flashcardIsRandom={flashcardIsRandom}
                 />
@@ -467,5 +457,3 @@ export default function Home() {
     </main>
   );
 }
-
-    

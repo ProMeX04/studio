@@ -36,7 +36,6 @@ interface SettingsProps {
   onViewChange: (view: 'flashcards' | 'quiz') => void;
   onFlashcardMaxChange: (value: number) => void;
   onQuizMaxChange: (value: number) => void;
-  onFlashcardDisplayMaxChange: (value: number) => void;
   
   currentView: 'flashcards' | 'quiz';
   visibility: ComponentVisibility;
@@ -44,7 +43,6 @@ interface SettingsProps {
   currentBackgroundImage: string | null;
   flashcardMax: number;
   quizMax: number;
-  flashcardDisplayMax: number;
   flashcardIsRandom: boolean;
 }
 
@@ -69,14 +67,12 @@ export function Settings({
     onViewChange,
     onFlashcardMaxChange,
     onQuizMaxChange,
-    onFlashcardDisplayMaxChange,
     currentView,
     visibility,
     uploadedBackgrounds,
     currentBackgroundImage,
     flashcardMax,
     quizMax,
-    flashcardDisplayMax,
     flashcardIsRandom,
 }: SettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -190,20 +186,10 @@ export function Settings({
                     </SelectContent>
                 </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Chế độ</Label>
-                <div className='col-span-3'>
-                    <Tabs value={currentView} onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')} className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-                            <TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                </div>
-            </div>
             
             <Tabs 
-                defaultValue='flashcards'
+                value={currentView}
+                onValueChange={(value) => onViewChange(value as 'flashcards' | 'quiz')}
                 className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2">
@@ -234,19 +220,6 @@ export function Settings({
                     onChange={(e) => onFlashcardMaxChange(parseInt(e.target.value) || 0)}
                     className="col-span-3"
                     placeholder="ví dụ: 50"
-                    />
-                </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="flashcardDisplayMax" className="text-right">
-                    Số lượng hiển thị
-                    </Label>
-                    <Input
-                    id="flashcardDisplayMax"
-                    type="number"
-                    value={flashcardDisplayMax}
-                    onChange={(e) => onFlashcardDisplayMaxChange(parseInt(e.target.value) || 0)}
-                    className="col-span-3"
-                    placeholder="ví dụ: 10"
                     />
                 </div>
               </TabsContent>

@@ -1,8 +1,8 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { FlashcardSet } from '@/components/Flashcards';
-import { QuizSet, QuizState } from '@/components/Quiz';
-import { ComponentVisibility } from '@/app/page';
+import type { FlashcardSet } from '@/ai/schemas';
+import type { QuizSet, QuizState } from '@/ai/schemas';
+import type { ComponentVisibility } from '@/app/page';
 
 const DB_NAME = 'NewTabAI-DB-guest';
 const DB_VERSION = 2;
@@ -20,8 +20,6 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'flashcardDisplayMax'
-  | 'quizDisplayMax'
   | 'flashcardIsRandom';
 
 export type StoredData =
@@ -75,7 +73,3 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     await store.clear();
     await tx.done;
 }
-
-    
-
-    
