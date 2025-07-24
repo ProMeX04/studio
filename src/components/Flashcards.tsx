@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
@@ -11,6 +11,10 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+
+// Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Syntax: any = SyntaxHighlighter
 
 interface Flashcard {
 	front: string
@@ -52,19 +56,21 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
+				// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+				// @ts-ignore - kiểu của ReactMarkdown
 				code({ node, inline, className, children, ...props }) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
 						return (
-							<SyntaxHighlighter
-								style={codeStyle}
+							<Syntax
+								style={codeStyle as any}
 								language={match[1]}
 								PreTag="div"
 								wrapLongLines={true}
 								{...props}
 							>
 								{String(children).replace(/\n$/, "")}
-							</SyntaxHighlighter>
+							</Syntax>
 						)
 					}
 					return (
@@ -125,25 +131,50 @@ export function Flashcards({
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 
+	// Giữ một mảng thẻ đã hiển thị để tránh bị xáo trộn lại khi thêm mới
+	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
+
 	const shuffle = useCallback((cards: Flashcard[]) => {
 		return [...cards].sort(() => Math.random() - 0.5)
 	}, [])
 
-	const displayedCards = useMemo(() => {
-		if (!flashcardSet?.cards) return []
-		return isRandom ? shuffle(flashcardSet.cards) : flashcardSet.cards
-	}, [flashcardSet, isRandom, shuffle])
-
+	// Cập nhật displayedCards chỉ khi số lượng thẻ tăng lên hoặc chế độ random thay đổi
 	useEffect(() => {
-		// Reset to first card whenever the cards or randomness change
-		setCurrentCardIndex(0)
-	}, [displayedCards])
+		if (!flashcardSet?.cards) {
+			setDisplayedCards([])
+			setCurrentCardIndex(0)
+			return
+		}
 
-	// Notify parent when current card changes
+		if (isRandom) {
+			if (displayedCards.length === 0) {
+				// Lần đầu tiên: xáo trộn toàn bộ
+				setDisplayedCards(shuffle(flashcardSet.cards))
+			} else if (flashcardSet.cards.length > displayedCards.length) {
+				// Có thẻ mới, chỉ xáo trộn phần mới rồi gắn vào cuối
+				const newCards = flashcardSet.cards.slice(displayedCards.length)
+				setDisplayedCards((prev) => [...prev, ...shuffle(newCards)])
+			}
+		} else {
+			// Không random: giữ nguyên thứ tự server gửi, chỉ nối thêm
+			if (flashcardSet.cards.length > displayedCards.length) {
+				setDisplayedCards(flashcardSet.cards)
+			}
+		}
+	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
+
+	// Nếu số thẻ tăng làm index vượt quá, điều chỉnh về cuối cùng
+	useEffect(() => {
+		if (currentCardIndex >= displayedCards.length) {
+			setCurrentCardIndex(Math.max(0, displayedCards.length - 1))
+		}
+	}, [displayedCards.length, currentCardIndex])
+
+	// Thông báo cho parent khi current card thay đổi
 	useEffect(() => {
 		if (onCurrentCardChange) {
 			const card = displayedCards[currentCardIndex] ?? null
-			onCurrentCardChange(card || null)
+			onCurrentCardChange(card)
 		}
 	}, [currentCardIndex, displayedCards, onCurrentCardChange])
 
@@ -177,7 +208,9 @@ export function Flashcards({
 			<CardContent className="flex-grow pt-8 flex items-center justify-center">
 				{currentCard && (
 					<FlashcardItem
-						key={`${flashcardSet.id}-${currentCard.front}-${currentCardIndex}`}
+						key={`${flashcardSet?.id ?? ""}-${
+							currentCard.front
+						}-${currentCardIndex}`}
 						card={currentCard}
 					/>
 				)}

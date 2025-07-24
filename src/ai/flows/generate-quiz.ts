@@ -50,11 +50,45 @@ const generateQuizFlow = ai.defineFlow(
     outputSchema: GenerateQuizOutputSchema,
   },
   async input => {
-    const { output } = await prompt(input);
-    if (!output) {
-      throw new Error('AI failed to generate quiz questions.');
-    }
+    try {
+      const { output } = await prompt(input);
 
-    return output;
+      // Validate response
+      if (!output) {
+        throw new Error('AI_EMPTY_RESPONSE');
+      }
+
+      if (!Array.isArray(output)) {
+        throw new Error('AI_INVALID_FORMAT');
+      }
+
+      // Validate each question
+      for (const question of output) {
+        if (!question.question || !question.options || !question.answer || !question.explanation) {
+          throw new Error('AI_INVALID_QUESTION');
+        }
+
+        if (!Array.isArray(question.options) || question.options.length !== 4) {
+          throw new Error('AI_INVALID_OPTIONS');
+        }
+
+        if (!question.options.includes(question.answer)) {
+          throw new Error('AI_ANSWER_NOT_IN_OPTIONS');
+        }
+      }
+
+      console.log(`✅ Generated ${output.length} valid quiz questions`);
+      return output;
+
+    } catch (error: any) {
+      console.error('❌ Quiz generation error:', error.message);
+
+      // Rethrow với message rõ ràng
+      if (error.message.startsWith('AI_')) {
+        throw error;
+      }
+
+      throw new Error('AI_GENERATION_FAILED');
+    }
   }
 );

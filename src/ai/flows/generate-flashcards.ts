@@ -7,7 +7,7 @@
  * - generateFlashcards - A function that generates flashcards for a given topic.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
 import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsInput, GenerateFlashcardsOutput } from '@/ai/schemas';
 
 export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
@@ -16,8 +16,8 @@ export async function generateFlashcards(input: GenerateFlashcardsInput): Promis
 
 const prompt = ai.definePrompt({
   name: 'generateFlashcardsPrompt',
-  input: {schema: GenerateFlashcardsInputSchema},
-  output: {schema: GenerateFlashcardsOutputSchema},
+  input: { schema: GenerateFlashcardsInputSchema },
+  output: { schema: GenerateFlashcardsOutputSchema },
   prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a "front" and a "back".
 
 {{#if existingCards}}
@@ -45,11 +45,37 @@ const generateFlashcardsFlow = ai.defineFlow(
     outputSchema: GenerateFlashcardsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (!output) {
-      throw new Error('AI failed to generate flashcards.');
+    try {
+      const { output } = await prompt(input);
+
+      // Validate response
+      if (!output) {
+        throw new Error('AI_EMPTY_RESPONSE');
+      }
+
+      if (!Array.isArray(output)) {
+        throw new Error('AI_INVALID_FORMAT');
+      }
+
+      // Validate each flashcard
+      for (const card of output) {
+        if (!card.front || !card.back || typeof card.front !== 'string' || typeof card.back !== 'string') {
+          throw new Error('AI_INVALID_FLASHCARD');
+        }
+      }
+
+      console.log(`✅ Generated ${output.length} valid flashcards`);
+      return output;
+
+    } catch (error: any) {
+      console.error('❌ Flashcard generation error:', error.message);
+
+      // Rethrow với message rõ ràng
+      if (error.message.startsWith('AI_')) {
+        throw error;
+      }
+
+      throw new Error('AI_GENERATION_FAILED');
     }
-    
-    return output;
   }
 );
