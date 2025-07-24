@@ -173,12 +173,21 @@ export default function Home() {
 			genType: "flashcards" | "quiz"
 		) => {
 			if (!currentTopic.trim()) {
+				toast({
+					title: "Chủ đề trống",
+					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
+					variant: "destructive",
+				})
 				return
 			}
 
 			// Ngăn nhiều lần gọi đồng thời
 			if (isGeneratingRef.current) {
 				console.log("⚠️ handleGenerate đang chạy, bỏ qua lần gọi này")
+				toast({
+					title: "Đang tạo...",
+					description: "Một quá trình tạo nội dung khác đang chạy.",
+				})
 				return
 			}
 
@@ -196,58 +205,53 @@ export default function Home() {
 
 			const db = await getDb()
 
-			try {
-				if (forceNew) {
-					// Xóa dữ liệu cũ của cả 2 loại khi chủ đề thay đổi
-					setFlashcardSet(null)
-					setQuizSet(null)
-					setQuizState(null)
-					await db.delete("data", "flashcards")
-					await db.delete("data", "quiz")
-					await db.delete("data", "quizState")
-				}
+			// Helper function với timeout và retry
+			const safeAICall = async (
+				aiFunction: () => Promise<any>,
+				retries = 3,
+				timeoutMs = 30000
+			): Promise<any> => {
+				for (let attempt = 0; attempt < retries; attempt++) {
+					if (signal.aborted) throw new Error("Aborted")
 
-				// Helper function với timeout và retry
-				const safeAICall = async (
-					aiFunction: () => Promise<any>,
-					retries = 3,
-					timeoutMs = 30000
-				): Promise<any> => {
-					for (let attempt = 0; attempt < retries; attempt++) {
-						if (signal.aborted) throw new Error("Aborted")
-
-						try {
-							const timeoutPromise = new Promise((_, reject) => {
-								setTimeout(
-									() => reject(new Error("AI_TIMEOUT")),
-									timeoutMs
-								)
-							})
-							const result = await Promise.race([
-								aiFunction(),
-								timeoutPromise,
-							])
-							return result
-						} catch (error: any) {
-							console.warn(
-								`🔄 AI call attempt ${
-									attempt + 1
-								} failed:`,
-								error.message
+					try {
+						const timeoutPromise = new Promise((_, reject) => {
+							setTimeout(
+								() => reject(new Error("AI_TIMEOUT")),
+								timeoutMs
 							)
-							if (attempt === retries - 1) throw error
-							const delay = Math.min(
-								1000 * Math.pow(2, attempt),
-								5000
-							)
-							await new Promise((resolve) =>
-								setTimeout(resolve, delay)
-							)
-						}
+						})
+						const result = await Promise.race([
+							aiFunction(),
+							timeoutPromise,
+						])
+						return result
+					} catch (error: any) {
+						console.warn(
+							`🔄 AI call attempt ${
+								attempt + 1
+							} failed:`,
+							error.message
+						)
+						if (attempt === retries - 1) throw error
+						const delay = Math.min(
+							1000 * Math.pow(2, attempt),
+							5000
+						)
+						await new Promise((resolve) =>
+							setTimeout(resolve, delay)
+						)
 					}
 				}
+			}
 
+			try {
 				if (genType === "flashcards") {
+					if (forceNew) {
+						setFlashcardSet(null)
+						await db.delete("data", "flashcards")
+					}
+
 					const flashcardData = (await db.get(
 						"data",
 						"flashcards"
@@ -257,7 +261,9 @@ export default function Home() {
 							? flashcardData.data
 							: { id: "idb-flashcards", topic: currentTopic, cards: [] }
 
-					setFlashcardSet({ ...currentFlashcards })
+					if (isMountedRef.current) {
+						setFlashcardSet({ ...currentFlashcards })
+					}
 
 					let flashcardsNeeded = flashcardMax - currentFlashcards.cards.length
 					if (flashcardsNeeded <= 0 && !forceNew) {
@@ -266,39 +272,38 @@ export default function Home() {
 						return
 					}
 
+
 					while (flashcardsNeeded > 0 && !signal.aborted) {
 						const count = Math.min(BATCH_SIZE, flashcardsNeeded)
-						try {
-							const newCards = await safeAICall(() =>
-								generateFlashcards({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingCards: currentFlashcards.cards,
-								})
-							)
+						const newCards = await safeAICall(() =>
+							generateFlashcards({
+								topic: currentTopic,
+								count,
+								language: currentLanguage,
+								existingCards: currentFlashcards.cards,
+							})
+						)
 
-							if (
-								Array.isArray(newCards) &&
-								newCards.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentFlashcards.cards.push(...newCards)
-								flashcardsNeeded -= newCards.length
-								await db.put("data", {
-									id: "flashcards",
-									topic: currentTopic,
-									data: currentFlashcards,
-								} as any)
-								setFlashcardSet({ ...currentFlashcards }) // Update UI
-							} else {
-								// Nếu không có thẻ mới, dừng lại
-								flashcardsNeeded = 0;
-							}
-						} catch (error: any) {
-							console.error("❌ Flashcard generation batch failed:", error.message)
-							flashcardsNeeded = 0
+						if (
+							Array.isArray(newCards) &&
+							newCards.length > 0 &&
+							!signal.aborted &&
+							isMountedRef.current
+						) {
+							currentFlashcards.cards.push(...newCards)
+							flashcardsNeeded -= newCards.length
+
+							// Hiển thị ngay lập tức
+							setFlashcardSet({ ...currentFlashcards }) 
+
+							await db.put("data", {
+								id: "flashcards",
+								topic: currentTopic,
+								data: currentFlashcards,
+							} as any)
+						} else {
+							// Nếu không có thẻ mới, dừng lại
+							flashcardsNeeded = 0;
 						}
 						// Rate limiting: chờ giữa các batch
 						if(flashcardsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -306,6 +311,13 @@ export default function Home() {
 				}
 
 				if (genType === "quiz") {
+					if (forceNew) {
+						setQuizSet(null)
+						setQuizState(null)
+						await db.delete("data", "quiz")
+						await db.delete("data", "quizState")
+					}
+
 					const quizData = (await db.get(
 						"data",
 						"quiz"
@@ -315,7 +327,9 @@ export default function Home() {
 							? quizData.data
 							: { id: "idb-quiz", topic: currentTopic, questions: [] }
 
-					setQuizSet({ ...currentQuiz })
+					if (isMountedRef.current) {
+						setQuizSet({ ...currentQuiz })
+					}
 
 					let quizNeeded = quizMax - currentQuiz.questions.length
 					if (quizNeeded <= 0 && !forceNew) {
@@ -326,37 +340,35 @@ export default function Home() {
 
 					while (quizNeeded > 0 && !signal.aborted) {
 						const count = Math.min(BATCH_SIZE, quizNeeded)
-						try {
-							const newQuestions = await safeAICall(() =>
-								generateQuiz({
-									topic: currentTopic,
-									count,
-									language: currentLanguage,
-									existingQuestions: currentQuiz.questions,
-								})
-							)
+						const newQuestions = await safeAICall(() =>
+							generateQuiz({
+								topic: currentTopic,
+								count,
+								language: currentLanguage,
+								existingQuestions: currentQuiz.questions,
+							})
+						)
 
-							if (
-								Array.isArray(newQuestions) &&
-								newQuestions.length > 0 &&
-								!signal.aborted &&
-								isMountedRef.current
-							) {
-								currentQuiz.questions.push(...newQuestions)
-								quizNeeded -= newQuestions.length
-								await db.put("data", {
-									id: "quiz",
-									topic: currentTopic,
-									data: currentQuiz,
-								} as any)
-								setQuizSet({ ...currentQuiz }) // Update UI
-							} else {
-								// Nếu không có câu hỏi mới, dừng lại
-								quizNeeded = 0;
-							}
-						} catch (error: any) {
-							console.error("❌ Quiz generation batch failed:", error.message)
-							quizNeeded = 0
+						if (
+							Array.isArray(newQuestions) &&
+							newQuestions.length > 0 &&
+							!signal.aborted &&
+							isMountedRef.current
+						) {
+							currentQuiz.questions.push(...newQuestions)
+							quizNeeded -= newQuestions.length
+							
+							// Hiển thị ngay lập tức
+							setQuizSet({ ...currentQuiz })
+
+							await db.put("data", {
+								id: "quiz",
+								topic: currentTopic,
+								data: currentQuiz,
+							} as any)
+						} else {
+							// Nếu không có câu hỏi mới, dừng lại
+							quizNeeded = 0;
 						}
 						// Rate limiting: chờ giữa các batch
 						if(quizNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -364,7 +376,7 @@ export default function Home() {
 				}
 
 			} catch (error: any) {
-				console.log("🚫 Generation bị hủy hoặc lỗi:", error.message)
+				console.error("🚫 Generation bị hủy hoặc lỗi:", error.message)
 				if (error.name === "AbortError") {
 					console.log("✅ Generation đã được hủy thành công")
 				} else {
@@ -376,7 +388,9 @@ export default function Home() {
 				}
 			} finally {
 				isGeneratingRef.current = false
-				setIsLoading(false)
+				if (isMountedRef.current) {
+					setIsLoading(false)
+				}
 			}
 		},
 		[toast, flashcardMax, quizMax]
@@ -458,8 +472,7 @@ export default function Home() {
 	const onSettingsSave = useCallback(
 		async (settings: { topic: string; language: string }) => {
 			const { topic: newTopic, language: newLanguage } = settings
-			const topicChanged = newTopic !== topic || newLanguage !== language
-
+			
 			setTopic(newTopic)
 			setLanguage(newLanguage)
 
@@ -471,13 +484,17 @@ export default function Home() {
 			broadcastDataChange("topic" as DataKey, { data: newTopic })
 			broadcastDataChange("language" as DataKey, { data: newLanguage })
 
-			if (topicChanged) {
-				// Chỉ tạo cho view hiện tại khi thay đổi chủ đề
-				handleGenerate(newTopic, newLanguage, true, view)
-			}
 		},
-		[topic, language, handleGenerate, view]
+		[]
 	)
+
+	const onGenerateFromSettings = useCallback(
+		() => {
+			handleGenerate(topic, language, true, view);
+		}, 
+		[handleGenerate, topic, language, view]
+	)
+
 
 	// Không tự động generate khi thay đổi max nữa
 	useEffect(() => {
@@ -663,6 +680,7 @@ export default function Home() {
 					{visibility.greeting && <Greeting />}
 					<Settings
 						onSettingsSave={onSettingsSave}
+						onGenerateNew={onGenerateFromSettings}
 						onVisibilityChange={handleVisibilityChange}
 						onBackgroundChange={handleBackgroundChange}
 						onUploadedBackgroundsChange={

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -6,6 +7,7 @@ import {
 	CheckCircle,
 	Upload,
 	Trash2,
+	RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 
 interface SettingsProps {
 	onSettingsSave: (settings: { topic: string; language: string }) => void
+	onGenerateNew: () => void;
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
@@ -67,6 +70,7 @@ const MAX_UPLOADED_IMAGES = 6
 
 export function Settings({
 	onSettingsSave,
+	onGenerateNew,
 	onVisibilityChange,
 	onBackgroundChange,
 	onUploadedBackgroundsChange,
@@ -149,8 +153,9 @@ export function Settings({
 		}
 	}
 
-	const handleFinalSave = () => {
+	const handleFinalSaveAndGenerate = () => {
 		onSettingsSave({ topic, language })
+		onGenerateNew();
 		setIsOpen(false)
 	}
 
@@ -442,7 +447,10 @@ export function Settings({
 					</div>
 				</div>
 				<SheetFooter>
-					<Button onClick={handleFinalSave}>Lưu thay đổi</Button>
+					<Button onClick={handleFinalSaveAndGenerate}>
+						<RefreshCw className="mr-2 h-4 w-4" />
+						Tạo lại từ đầu
+					</Button>
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>
