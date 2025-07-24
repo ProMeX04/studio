@@ -1,0 +1,459 @@
+
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
+import { Greeting } from '@/components/Greeting';
+import { Search } from '@/components/Search';
+import { QuickLinks } from '@/components/QuickLinks';
+import { Clock } from '@/components/Clock';
+import { Flashcards } from '@/components/Flashcards';
+import type { FlashcardSet } from '@/ai/schemas';
+import { Quiz } from '@/components/Quiz';
+import type { QuizSet, QuizState } from '@/ai/schemas';
+import { useToast } from '@/hooks/use-toast';
+import { generateFlashcards } from '@/ai/flows/generate-flashcards';
+import { generateQuiz } from '@/ai/flows/generate-quiz';
+import { Loader } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Settings } from '@/components/Settings';
+import { getDb, LabeledData, AppData } from '@/lib/idb';
+import { ChatAssistant } from '@/components/ChatAssistant';
+import type { QuizQuestion } from '@/ai/schemas';
+
+const BATCH_SIZE = 10;
+
+interface LearnProps {
+  view: 'flashcards' | 'quiz';
+  isLoading: boolean;
+  flashcardSet: FlashcardSet | null;
+  quizSet: QuizSet | null;
+  quizState: QuizState | null;
+  onGenerateNew: (forceNew: boolean) => void;
+  generationProgress: number;
+  targetCount: number;
+  onQuizStateChange: (newState: QuizState) => void;
+  flashcardIsRandom: boolean;
+}
+
+function Learn({ view, isLoading, flashcardSet, quizSet, quizState, onGenerateNew, targetCount, onQuizStateChange, flashcardIsRandom }: LearnProps) {
+    const { toast } = useToast();
+    const currentCount = view === 'flashcards' ? flashcardSet?.cards.length || 0 : quizSet?.questions.length || 0;
+    const canGenerateMore = currentCount < targetCount;
+
+    const handleGenerateClick = () => {
+        if (canGenerateMore) {
+             onGenerateNew(false); // Never force new, always append
+        } else {
+             toast({
+                title: "Đã đạt số lượng tối đa",
+                description: "Vui lòng tăng số lượng tối đa trong cài đặt để tạo thêm.",
+             });
+        }
+    }
+    
+    const hasLearnContent = (view === 'flashcards' && flashcardSet && flashcardSet.cards.length > 0) || 
+                            (view === 'quiz' && quizSet && quizSet.questions.length > 0);
+
+    return (
+     <Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
+        <CardContent className="pt-8 flex-grow flex flex-col">
+            {isLoading && !hasLearnContent && (
+                 <div className="flex flex-col justify-center items-center h-48">
+                    <Loader className="animate-spin mb-4" />
+                    <p>Đang tạo nội dung mới cho chủ đề của bạn...</p>
+                 </div>
+            )}
+            
+            {view === 'flashcards' && (
+                <Flashcards flashcardSet={flashcardSet} isRandom={flashcardIsRandom} />
+            )}
+            {view === 'quiz' && (
+                <Quiz quizSet={quizSet} initialState={quizState} onStateChange={onQuizStateChange} />
+            )}
+        </CardContent>
+     </Card>
+  );
+}
+
+export interface ComponentVisibility {
+  clock: boolean;
+  greeting: boolean;
+  search: boolean;
+  quickLinks: boolean;
+  learn: boolean;
+}
+
+export default function Home() {
+  const [view, setView] = useState<'flashcards' | 'quiz'>('flashcards');
+  const [topic, setTopic] = useState('');
+  const [language, setLanguage] = useState('English');
+  const [flashcardMax, setFlashcardMax] = useState(50);
+  const [quizMax, setQuizMax] = useState(50);
+  const [flashcardIsRandom, setFlashcardIsRandom] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
+  const [quizSet, setQuizSet] = useState<QuizSet | null>(null);
+  const [quizState, setQuizState] = useState<QuizState | null>(null);
+  const { toast } = useToast();
+  const [visibility, setVisibility] = useState<ComponentVisibility>({
+    clock: true,
+    greeting: true,
+    search: true,
+    quickLinks: true,
+    learn: true,
+  });
+  const [backgroundImage, setBackgroundImage] = useState('');
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const [assistantContext, setAssistantContext] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleGenerate = useCallback(async (currentTopic: string, currentLanguage: string, forceNew: boolean = false) => {
+    if (!currentTopic.trim()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    setGenerationProgress(0);
+    const db = await getDb();
+
+    let currentFlashcards: FlashcardSet = { id: 'idb-flashcards', topic: currentTopic, cards: [] };
+    let currentQuiz: QuizSet = { id: 'idb-quiz', topic: currentTopic, questions: [] };
+
+    if (forceNew) {
+      setFlashcardSet(null);
+      setQuizSet(null);
+      setQuizState(null);
+      await db.delete('data', 'flashcards');
+      await db.delete('data', 'quiz');
+      await db.delete('data', 'quizState');
+    } else {
+      const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
+      const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
+      if (flashcardData && flashcardData.topic === currentTopic) {
+        currentFlashcards = flashcardData.data;
+      }
+      if (quizData && quizData.topic === currentTopic) {
+        currentQuiz = quizData.data;
+      }
+    }
+    
+    setFlashcardSet(currentFlashcards);
+    setQuizSet(currentQuiz);
+    
+    try {
+        const flashcardsNeeded = flashcardMax - currentFlashcards.cards.length;
+        const quizNeeded = quizMax - currentQuiz.questions.length;
+
+        if (flashcardsNeeded <= 0 && quizNeeded <= 0 && !forceNew) {
+            setIsLoading(false);
+            return;
+        }
+
+        const flashcardBatches = Math.ceil(Math.max(0, flashcardsNeeded) / BATCH_SIZE);
+        const quizBatches = Math.ceil(Math.max(0, quizNeeded) / BATCH_SIZE);
+        const totalBatches = Math.max(flashcardBatches, quizBatches);
+
+
+        if (totalBatches <= 0 && !forceNew) {
+            setIsLoading(false);
+            return;
+        }
+
+        for (let i = 0; i < totalBatches; i++) {
+            const numToGenerateFlashcards = Math.min(BATCH_SIZE, flashcardMax - currentFlashcards.cards.length);
+            const numToGenerateQuiz = Math.min(BATCH_SIZE, quizMax - currentQuiz.questions.length);
+
+            const promises = [];
+            if (numToGenerateFlashcards > 0) {
+                promises.push(generateFlashcards({ topic: currentTopic, count: numToGenerateFlashcards, language: currentLanguage, existingCards: currentFlashcards.cards }));
+            } else {
+                promises.push(Promise.resolve([]));
+            }
+
+            if (numToGenerateQuiz > 0) {
+                 promises.push(generateQuiz({ topic: currentTopic, count: numToGenerateQuiz, language: currentLanguage, existingQuestions: currentQuiz.questions }));
+            } else {
+                 promises.push(Promise.resolve([]));
+            }
+            
+            const [newFlashcards, newQuiz] = await Promise.all([
+                promises[0] as Promise<FlashcardSet['cards']>,
+                promises[1] as Promise<QuizQuestion[]>
+            ]);
+
+            if (newFlashcards && newFlashcards.length > 0) {
+              currentFlashcards.cards.push(...newFlashcards);
+              setFlashcardSet({ ...currentFlashcards });
+              await db.put('data', { id: 'flashcards', topic: currentTopic, data: currentFlashcards });
+            }
+
+            if (newQuiz && newQuiz.length > 0) {
+              currentQuiz.questions.push(...newQuiz);
+              setQuizSet({ ...currentQuiz });
+              await db.put('data', { id: 'quiz', topic: currentTopic, data: currentQuiz });
+            }
+
+            setGenerationProgress(((i + 1) / totalBatches) * 100);
+        }
+
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Lỗi', description: 'Không thể tạo nội dung. Vui lòng thử lại.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast, flashcardMax, quizMax]);
+
+  const loadInitialData = useCallback(async () => {
+        const db = await getDb();
+
+        const savedView = (await db.get('data', 'view'))?.data as 'flashcards' | 'quiz' || 'flashcards';
+        const savedTopic = (await db.get('data', 'topic'))?.data as string || 'Lịch sử La Mã';
+        const savedLanguage = (await db.get('data', 'language'))?.data as string || 'Vietnamese';
+        const savedFlashcardMax = (await db.get('data', 'flashcardMax'))?.data as number || 50;
+        const savedQuizMax = (await db.get('data', 'quizMax'))?.data as number || 50;
+        const savedFlashcardIsRandom = (await db.get('data', 'flashcardIsRandom'))?.data as boolean || false;
+        const savedVisibility = (await db.get('data', 'visibility'))?.data as ComponentVisibility;
+        const savedBg = (await db.get('data', 'background'))?.data as string;
+        const savedUploadedBgs = (await db.get('data', 'uploadedBackgrounds'))?.data as string[] || [];
+        
+        const flashcardData = await db.get('data', 'flashcards') as LabeledData<FlashcardSet>;
+        const quizData = await db.get('data', 'quiz') as LabeledData<QuizSet>;
+        const quizStateData = await db.get('data', 'quizState') as AppData<QuizState>;
+
+        if (savedBg) setBackgroundImage(savedBg);
+        setUploadedBackgrounds(savedUploadedBgs);
+        
+        setView(savedView);
+        setTopic(savedTopic);
+        setLanguage(savedLanguage);
+        setFlashcardMax(savedFlashcardMax);
+        setQuizMax(savedQuizMax);
+        setFlashcardIsRandom(savedFlashcardIsRandom);
+        setVisibility(savedVisibility ?? {
+            clock: true,
+            greeting: true,
+            search: true,
+            quickLinks: true,
+            learn: true,
+        });
+        
+        const currentFlashcards = (flashcardData && flashcardData.topic === savedTopic) ? flashcardData.data : null;
+        const currentQuiz = (quizData && quizData.topic === savedTopic) ? quizData.data : null;
+
+        setFlashcardSet(currentFlashcards);
+        setQuizSet(currentQuiz);
+
+        if (quizData && quizData.topic === savedTopic && quizStateData) {
+            setQuizState(quizStateData.data);
+        } else {
+            setQuizState(null);
+        }
+
+        const flashcardsNeeded = savedFlashcardMax - (currentFlashcards?.cards.length ?? 0);
+        const quizNeeded = savedQuizMax - (currentQuiz?.questions.length ?? 0);
+
+        if (savedTopic && (flashcardsNeeded > 0 || quizNeeded > 0)) {
+           handleGenerate(savedTopic, savedLanguage, false);
+        }
+  }, [handleGenerate]);
+
+  useEffect(() => {
+    if (isMounted) {
+      loadInitialData();
+    }
+  }, [isMounted, loadInitialData]);
+
+  const onSettingsSave = useCallback(async (settings: {
+    topic: string;
+    language: string;
+  }) => {
+      const { topic: newTopic, language: newLanguage } = settings;
+      const topicChanged = newTopic !== topic || newLanguage !== language;
+      
+      setTopic(newTopic);
+      setLanguage(newLanguage);
+      
+      const db = await getDb();
+      await db.put('data', { id: 'topic', data: newTopic });
+      await db.put('data', { id: 'language', data: newLanguage });
+      
+      if (topicChanged) {
+        handleGenerate(newTopic, newLanguage, true);
+      }
+  }, [topic, language, handleGenerate]);
+
+  useEffect(() => {
+    if(topic && language) {
+        handleGenerate(topic, language, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flashcardMax, quizMax]);
+
+
+  const handleBackgroundChange = useCallback(async (newBg: string | null) => {
+    const db = await getDb();
+    if (newBg) {
+      setBackgroundImage(newBg);
+      await db.put('data', { id: 'background', data: newBg });
+    } else {
+      setBackgroundImage('');
+      await db.delete('data', 'background');
+    }
+  }, []);
+
+  const handleUploadedBackgroundsChange = useCallback(async (newUploadedBgs: string[]) => {
+    setUploadedBackgrounds(newUploadedBgs);
+    const db = await getDb();
+    await db.put('data', { id: 'uploadedBackgrounds', data: newUploadedBgs });
+  }, []);
+  
+  const handleVisibilityChange = useCallback(async (newVisibility: ComponentVisibility) => {
+    setVisibility(newVisibility);
+    const db = await getDb();
+    await db.put('data', { id: 'visibility', data: newVisibility });
+  }, []);
+  
+  const handleViewChange = useCallback(async (newView: 'flashcards' | 'quiz') => {
+    setView(newView);
+    const db = await getDb();
+    await db.put('data', { id: 'view', data: newView });
+  }, []);
+
+  const handleQuizStateChange = useCallback(async (newState: QuizState) => {
+    setQuizState(newState);
+    const db = await getDb();
+    await db.put('data', { id: 'quizState', data: newState });
+  }, []);
+
+  const onGenerateNew = useCallback((forceNew: boolean) => {
+     handleGenerate(topic, language, forceNew);
+  }, [handleGenerate, topic, language]);
+
+  const handleFlashcardSettingsChange = useCallback(async (settings: { isRandom: boolean }) => {
+    setFlashcardIsRandom(settings.isRandom);
+    const db = await getDb();
+    await db.put('data', { id: 'flashcardIsRandom', data: settings.isRandom });
+  }, []);
+
+  const currentQuizAnswer = quizState?.answers?.[quizState.currentQuestionIndex]?.selected ?? null;
+
+  const createInstantUpdater = <T,>(setter: (value: T) => void, dbKey: string) => {
+      return useCallback(async (value: T) => {
+        setter(value);
+        const db = await getDb();
+        await db.put('data', { id: dbKey, data: value });
+      }, [setter, dbKey]);
+  };
+  
+  const handleFlashcardMaxChange = createInstantUpdater(setFlashcardMax, 'flashcardMax');
+  const handleQuizMaxChange = createInstantUpdater(setQuizMax, 'quizMax');
+
+  useEffect(() => {
+    const getAssistantContext = (): string => {
+        let context = `Người dùng đang học về chủ đề: ${topic}.`;
+        if (view === 'quiz' && quizSet && quizState) {
+            const currentQuestion: QuizQuestion | undefined = quizSet.questions[quizState.currentQuestionIndex];
+            if (currentQuestion) {
+                context += ` Họ đang ở câu hỏi trắc nghiệm: "${currentQuestion.question}" với các lựa chọn: ${currentQuestion.options.join(', ')}. Câu trả lời đúng là ${currentQuestion.answer}.`;
+                const userAnswer = quizState.answers[quizState.currentQuestionIndex]?.selected;
+                if (userAnswer) {
+                     context += ` Người dùng đã chọn "${userAnswer}".`;
+                }
+            }
+        } else if (view === 'flashcards' && flashcardSet?.cards.length > 0) {
+            const cardContext = flashcardSet.cards.map(card => `Mặt trước: "${card.front}", Mặt sau: "${card.back}"`).join('; ');
+            context += ` Họ đang xem các flashcard sau: ${cardContext}.`;
+        }
+        return context;
+      }
+
+      setAssistantContext(getAssistantContext());
+
+  }, [view, topic, flashcardSet, quizSet, quizState, currentQuizAnswer]);
+
+
+  const targetCount = view === 'flashcards' ? flashcardMax : quizMax;
+  
+  const displayedFlashcardSet = flashcardSet ? { ...flashcardSet, cards: flashcardSet.cards } : null;
+  const displayedQuizSet = quizSet ? { ...quizSet, questions: quizSet.questions } : null;
+
+  if (!isMounted) {
+    return null;
+  }
+
+  return (
+    <main className="relative min-h-screen w-full lg:grid lg:grid-cols-2 lg:gap-8">
+      {backgroundImage && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        >
+          <div className="absolute inset-0 bg-black/60"></div>
+        </div>
+      )}
+
+      {/* Left Column */}
+      <div className="relative flex flex-col justify-between p-4 sm:p-8 md:p-12">
+        <div className="flex justify-between items-start">
+            {visibility.greeting && <Greeting />}
+            <Settings 
+              onSettingsSave={onSettingsSave} 
+              onVisibilityChange={handleVisibilityChange} 
+              onBackgroundChange={handleBackgroundChange}
+              onUploadedBackgroundsChange={handleUploadedBackgroundsChange}
+              onFlashcardSettingsChange={handleFlashcardSettingsChange}
+              onViewChange={handleViewChange}
+              onFlashcardMaxChange={handleFlashcardMaxChange}
+              onQuizMaxChange={handleQuizMaxChange}
+              currentView={view}
+              visibility={visibility}
+              uploadedBackgrounds={uploadedBackgrounds}
+              currentBackgroundImage={backgroundImage}
+              flashcardMax={flashcardMax}
+              quizMax={quizMax}
+              flashcardIsRandom={flashcardIsRandom}
+            />
+        </div>
+
+        <div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
+            {visibility.clock && <Clock />}
+            {visibility.search && <Search />}
+        </div>
+
+        <div className="w-full">
+          {visibility.quickLinks && <QuickLinks />}
+        </div>
+      </div>
+      
+      {/* Right Column */}
+      {visibility.learn && (
+          <div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
+             <div className="flex-grow overflow-y-auto flex flex-col">
+                 <Learn 
+                    view={view}
+                    isLoading={isLoading}
+                    flashcardSet={displayedFlashcardSet}
+                    quizSet={displayedQuizSet}
+                    quizState={quizState}
+                    onGenerateNew={onGenerateNew}
+                    generationProgress={generationProgress}
+                    targetCount={targetCount}
+                    onQuizStateChange={handleQuizStateChange}
+                    flashcardIsRandom={flashcardIsRandom}
+                />
+             </div>
+             <div className="flex-shrink-0">
+                <ChatAssistant context={assistantContext} />
+             </div>
+          </div>
+      )}
+
+    </main>
+  );
+}
