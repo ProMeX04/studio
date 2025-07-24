@@ -34,16 +34,19 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const baseStyle = {
         background: 'transparent',
         padding: '0',
-        fontSize: '14px', // Increased from default
     };
 
     codeStyle['pre[class*="language-"]'] = {
         ...codeStyle['pre[class*="language-"]'],
-        ...baseStyle
+        ...baseStyle,
+        fontSize: '16px', // Increased from default
     };
      codeStyle['code[class*="language-"]'] = {
         ...codeStyle['code[class*="language-"]'],
-        ...baseStyle
+        ...baseStyle,
+        background: 'transparent',
+        padding: '0',
+        fontSize: '16px', // Increased from default
     };
 
 
