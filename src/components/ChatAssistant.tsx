@@ -19,6 +19,10 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { AIOperationError } from "@/lib/ai-utils"
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Syntax: any = SyntaxHighlighter
+
+
 interface ChatAssistantProps {
 	context: string;
 	initialQuestion?: string;
@@ -243,11 +247,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
 											message.role === "user"
 												? "bg-primary/80 text-primary-foreground float-right"
-												: "bg-muted text-muted-foreground",
-											{
-												"max-w-full":
-													message.role === "model",
-											}
+												: "bg-muted text-muted-foreground"
 										)}
 									>
                                         {message.text ? (
@@ -305,7 +305,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                             }
                                                             return (
                                                                 <div className="w-full overflow-x-auto">
-                                                                    <SyntaxHighlighter
+                                                                    <Syntax
                                                                         style={
                                                                             codeStyle
                                                                         }
@@ -321,7 +321,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                                             /\n$/,
                                                                             ""
                                                                         )}
-                                                                    </SyntaxHighlighter>
+                                                                    </Syntax>
                                                                 </div>
                                                             )
                                                         }
