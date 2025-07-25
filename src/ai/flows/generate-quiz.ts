@@ -31,7 +31,7 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
     : '';
 
   const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of quiz questions:
-${JSON.stringify(GenerateQuizOutputSchema._def.typeName)}
+${JSON.stringify(GenerateQuizOutputSchema.json())}
 
 Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
@@ -79,8 +79,8 @@ ${existingQuestionsPrompt}
       });
 
       const responseText = result.response.text();
-      const parsedJson = JSON.parse(responseText);
-      const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
+      // When using responseMimeType: "application/json", the SDK already parses the JSON.
+      const validatedOutput = GenerateQuizOutputSchema.parse(JSON.parse(responseText));
 
       // Additional validation for answer being in options
       for (const question of validatedOutput) {

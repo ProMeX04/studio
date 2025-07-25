@@ -25,7 +25,7 @@ export async function explainQuizOption(input: ExplainQuizOptionClientInput): Pr
   const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
   
   const promptText = `You are a helpful quiz tutor. Your response MUST be a JSON object that adheres to the following Zod schema:
-${JSON.stringify(explanationOnlySchema.shape)}
+${JSON.stringify(explanationOnlySchema.json())}
 
 ${input.selectedOption === input.correctAnswer 
     ? `The user has chosen the CORRECT answer and wants a more detailed explanation.
@@ -86,8 +86,8 @@ Use standard Markdown for formatting:
     });
     
     const responseText = result.response.text();
-    const parsedJson = JSON.parse(responseText);
-    const validatedOutput = explanationOnlySchema.parse(parsedJson);
+    // When using responseMimeType: "application/json", the SDK already parses the JSON.
+    const validatedOutput = explanationOnlySchema.parse(JSON.parse(responseText));
 
     return {
         explanation: validatedOutput.explanation,
