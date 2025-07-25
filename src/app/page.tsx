@@ -33,6 +33,7 @@ import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const BATCH_SIZE = 5;
 
@@ -89,12 +90,11 @@ function Learn({
 			if (flashcardIndex > 0) onFlashcardIndexChange(flashcardIndex - 1);
 		} else if (quizSet && quizState) {
 			if (quizState.currentQuestionIndex > 0) {
-				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex - 1 });
+				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex + 1 });
 			}
 		}
 	};
 	
-
 	return (
 		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 relative flex flex-col">
 			<CardContent className="flex-grow flex flex-col p-0">
@@ -744,7 +744,7 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col justify-start items-center p-4 sm:p-6 md:p-8 max-h-screen h-screen">
+				<div className="relative flex flex-col justify-start items-center p-4 sm:p-6 md:p-8 max-h-screen overflow-y-auto">
 					<div className="flex flex-col w-full h-full">
 						<Learn
 							view={view}
@@ -768,3 +768,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
