@@ -157,7 +157,7 @@ function Learn({
 		const currentCard = flashcardSet.cards[flashcardIndex];
 		if(!currentCard) return;
 
-		const originalIndex = (currentCard as any).originalIndex;
+		const originalIndex = flashcardIndex; // Index is now stable
 		
 		const newUnderstoodIndices = [...flashcardState.understoodIndices];
 		const indexPosition = newUnderstoodIndices.indexOf(originalIndex);
@@ -172,11 +172,8 @@ function Learn({
 
 	const isCurrentCardUnderstood = useMemo(() => {
 		if (!flashcardState || !flashcardSet) return false;
-		const currentCard = flashcardSet.cards[flashcardIndex];
-		if (!currentCard) return false;
-		const originalIndex = (currentCard as any).originalIndex;
-		return flashcardState.understoodIndices.includes(originalIndex);
-	}, [flashcardState, flashcardSet, flashcardIndex]);
+		return flashcardState.understoodIndices.includes(flashcardIndex);
+	}, [flashcardState, flashcardIndex]);
 
 
 	return (
@@ -207,7 +204,7 @@ function Learn({
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
 						topic={topic}
-						understoodIndices={flashcardState?.understoodIndices || []}
+						isCurrentUnderstood={isCurrentCardUnderstood}
 					/>
 				) : (
 					<Quiz
@@ -334,10 +331,6 @@ export default function Home() {
 	const [language, setLanguage] = useState("English")
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
-	const [flashcardIsRandom, setFlashcardIsRandom] = useState(false)
-	const [quizIsRandom, setQuizIsRandom] = useState(false)
-	const [flashcardRandomNotUnderstoodOnly, setFlashcardRandomNotUnderstoodOnly] = useState(false);
-	const [quizRandomUnansweredOnly, setQuizRandomUnansweredOnly] = useState(false);
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
 	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
@@ -608,27 +601,14 @@ export default function Home() {
 			((await db.get("data", "flashcardMax"))?.data as number) || 50
 		const savedQuizMax =
 			((await db.get("data", "quizMax"))?.data as number) || 50
-		const savedFlashcardIsRandom =
-			((await db.get("data", "flashcardIsRandom"))?.data as boolean) ||
-			false
-		const savedQuizIsRandom =
-			((await db.get("data", "quizIsRandom"))?.data as boolean) ||
-			false
-		const savedFlashcardRandomNotUnderstoodOnly =
-			((await db.get("data", "flashcardRandomNotUnderstoodOnly"))?.data as boolean) ||
-			false;
-		const savedQuizRandomUnansweredOnly =
-			((await db.get("data", "quizRandomUnansweredOnly"))?.data as boolean) ||
-			false;
+		
 		const savedVisibility = (await db.get("data", "visibility"))
 			?.data as ComponentVisibility
 		const savedBg = (await db.get("data", "background"))?.data as string
 		const savedUploadedBgs =
 			((await db.get("data", "uploadedBackgrounds"))?.data as string[]) ||
 			[]
-		let savedFlashcardIndex =
-			((await db.get("data", "flashcardIndex"))?.data as number) || 0
-
+		
 		const flashcardData = (await db.get(
 			"data",
 			"flashcards"
@@ -645,10 +625,7 @@ export default function Home() {
 		setLanguage(savedLanguage)
 		setFlashcardMax(savedFlashcardMax)
 		setQuizMax(savedQuizMax)
-		setFlashcardIsRandom(savedFlashcardIsRandom)
-		setQuizIsRandom(savedQuizIsRandom)
-		setFlashcardRandomNotUnderstoodOnly(savedFlashcardRandomNotUnderstoodOnly);
-		setQuizRandomUnansweredOnly(savedQuizRandomUnansweredOnly);
+		
 		setVisibility(
 			savedVisibility ?? {
 				clock: true,
@@ -675,35 +652,32 @@ export default function Home() {
 			: { understoodIndices: [] };
 		setFlashcardState(currentFlashcardState);
 
-
-		if (quizData && quizData.topic === savedTopic && quizStateData) {
-			setQuizState(quizStateData.data)
-		} else {
-			setQuizState({ currentQuestionIndex: 0, answers: {} })
-		}
-
-		// Logic to set a random "not understood" card on load
-		if (
-			currentFlashcards &&
-			currentFlashcards.cards.length > 0 &&
-			savedFlashcardIsRandom &&
-			savedFlashcardRandomNotUnderstoodOnly
-		) {
-			const notUnderstoodOriginalIndices = currentFlashcards.cards
-				.map((_, index) => index)
-				.filter(index => !currentFlashcardState.understoodIndices.includes(index));
-	
-			if (notUnderstoodOriginalIndices.length > 0) {
-				const randomIndexInNotUnderstoodList = Math.floor(Math.random() * notUnderstoodOriginalIndices.length);
-				const randomOriginalIndex = notUnderstoodOriginalIndices[randomIndexInNotUnderstoodList];
-				// This index is for the original, unshuffled array.
-				// The shuffling logic will place this card correctly later.
-				savedFlashcardIndex = randomOriginalIndex; 
+		let initialFlashcardIndex = 0;
+		if (currentFlashcards && currentFlashcards.cards.length > 0) {
+			const firstUnseenIndex = currentFlashcards.cards.findIndex(
+				(_, index) => !currentFlashcardState.understoodIndices.includes(index)
+			);
+			if (firstUnseenIndex !== -1) {
+				initialFlashcardIndex = firstUnseenIndex;
 			}
 		}
+		setFlashcardIndex(initialFlashcardIndex);
 
-		setFlashcardIndex(savedFlashcardIndex);
 
+		let currentQuizState = { currentQuestionIndex: 0, answers: {} };
+		if (quizData && quizData.topic === savedTopic && quizStateData) {
+			currentQuizState = quizStateData.data;
+		}
+		
+		if (currentQuiz && currentQuiz.questions.length > 0) {
+			const firstUnansweredIndex = currentQuiz.questions.findIndex(
+				(_, index) => !currentQuizState.answers[index]
+			);
+			if (firstUnansweredIndex !== -1) {
+				currentQuizState.currentQuestionIndex = firstUnansweredIndex;
+			}
+		}
+		setQuizState(currentQuizState);
 
 	}, [])
 
@@ -730,20 +704,12 @@ export default function Home() {
 			language: string
 			flashcardMax: number
 			quizMax: number
-			flashcardIsRandom: boolean
-			quizIsRandom: boolean
-			flashcardRandomNotUnderstoodOnly: boolean;
-			quizRandomUnansweredOnly: boolean;
 		}) => {
 			const {
 				topic: newTopic,
 				language: newLanguage,
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
-				flashcardIsRandom: newFlashcardIsRandom,
-				quizIsRandom: newQuizIsRandom,
-				flashcardRandomNotUnderstoodOnly: newFlashcardRandomNotUnderstoodOnly,
-				quizRandomUnansweredOnly: newQuizRandomUnansweredOnly
 			} = settings
 			const db = await getDb()
 			
@@ -768,40 +734,12 @@ export default function Home() {
 				setQuizMax(newQuizMax)
 				await db.put("data", { id: "quizMax", data: newQuizMax })
 			}
-			if (flashcardIsRandom !== newFlashcardIsRandom) {
-				setFlashcardIsRandom(newFlashcardIsRandom)
-				await db.put("data", {
-					id: "flashcardIsRandom",
-					data: newFlashcardIsRandom,
-				})
-			}
-			if (quizIsRandom !== newQuizIsRandom) {
-				setQuizIsRandom(newQuizIsRandom)
-				await db.put("data", {
-					id: "quizIsRandom",
-					data: newQuizIsRandom,
-				})
-			}
-			if (flashcardRandomNotUnderstoodOnly !== newFlashcardRandomNotUnderstoodOnly) {
-				setFlashcardRandomNotUnderstoodOnly(newFlashcardRandomNotUnderstoodOnly);
-				await db.put("data", { id: "flashcardRandomNotUnderstoodOnly", data: newFlashcardRandomNotUnderstoodOnly });
-			}
-			if (quizRandomUnansweredOnly !== newQuizRandomUnansweredOnly) {
-				setQuizRandomUnansweredOnly(newQuizRandomUnansweredOnly);
-				await db.put("data", { id: "quizRandomUnansweredOnly", data: newQuizRandomUnansweredOnly });
-			}
-
-			// Logic đã được chuyển sang onGenerateFromSettings
 		},
 		[
 			topic, 
 			language, 
 			flashcardMax, 
 			quizMax, 
-			flashcardIsRandom, 
-			quizIsRandom,
-			flashcardRandomNotUnderstoodOnly,
-			quizRandomUnansweredOnly
 		]
 	)
 
@@ -811,107 +749,6 @@ export default function Home() {
 		}, 
 		[handleGenerate, language, view]
 	)
-
-	// Smart Shuffle logic for Flashcards
-	const processedFlashcardSet = useMemo(() => {
-		if (!flashcardSet?.cards) return null;
-	
-		// Step 1: Create a mutable, indexed copy of the original cards
-		let indexedCards = flashcardSet.cards.map((card, index) => ({
-			...card,
-			originalIndex: index
-		}));
-	
-		if (flashcardIsRandom) {
-			if (flashcardRandomNotUnderstoodOnly && flashcardState) {
-				const understood = [];
-				const notUnderstood = [];
-				
-				for (const card of indexedCards) {
-					if (flashcardState.understoodIndices.includes(card.originalIndex)) {
-						understood.push(card);
-					} else {
-						notUnderstood.push(card);
-					}
-				}
-				
-				const shuffledNotUnderstood = notUnderstood.sort(() => Math.random() - 0.5);
-				indexedCards = [...shuffledNotUnderstood, ...understood];
-			} else {
-				indexedCards.sort(() => Math.random() - 0.5);
-			}
-		}
-	
-		return { ...flashcardSet, cards: indexedCards };
-	
-	}, [flashcardIsRandom, flashcardRandomNotUnderstoodOnly, flashcardState, flashcardSet]);
-
-	// Effect to adjust index after shuffle/filter
-	useEffect(() => {
-		if (!processedFlashcardSet || !flashcardSet || !flashcardSet.cards[flashcardIndex]) return;
-	
-		// Find the card from the original set that corresponds to the current index
-		// The `flashcardIndex` here is the index in the *original* (unshuffled) array
-		const currentOriginalCard = flashcardSet.cards[flashcardIndex];
-		if (!currentOriginalCard) {
-			if (processedFlashcardSet.cards.length > 0) {
-				// Fallback if the index is out of bounds
-				handleFlashcardIndexChange(0); 
-			}
-			return;
-		};
-	
-		// Find the new position of that card in the processed (shuffled/sorted) set
-		// The index returned here is for the *processed* array
-		const newProcessedIndex = processedFlashcardSet.cards.findIndex(
-			card => card.originalIndex === flashcardIndex
-		);
-		
-		if (newProcessedIndex !== -1 && newProcessedIndex !== flashcardIndex) {
-			// Update the parent's index state to reflect the new position in the shuffled array
-			// Note: This does NOT save to DB. The parent handler does.
-			// This might cause a loop if not handled carefully.
-			// The goal is to sync the *view* index (what the user sees) with the data.
-			// Let's reconsider. The component should be driven by an index relative to the *processed* set.
-		}
-		// The logic is complex. Let's simplify. `Flashcards.tsx` will now receive the processed set.
-		// The index it manages internally is for the *processed* set.
-		// When we save, we need to save the `originalIndex`.
-		// Let's re-evaluate the whole flow.
-	
-	// Intentionally only run when the processed set changes structure.
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [processedFlashcardSet]);
-	
-	const shuffledQuizSet = useMemo(() => {
-		if (!quizSet?.questions) return null;
-		if (quizIsRandom) {
-			const originalQuestions = [...quizSet.questions];
-			let shuffledQuestions = [...originalQuestions];
-	
-			if (quizRandomUnansweredOnly && quizState) {
-				const answered = [];
-				const unanswered = [];
-				const answeredIndices = Object.keys(quizState.answers).map(Number);
-	
-				for (let i = 0; i < originalQuestions.length; i++) {
-					if (answeredIndices.includes(i)) {
-						answered.push(originalQuestions[i]);
-					} else {
-						unanswered.push(originalQuestions[i]);
-					}
-				}
-	
-				const shuffledUnanswered = unanswered.sort(() => Math.random() - 0.5);
-				shuffledQuestions = [...shuffledUnanswered, ...answered];
-			} else {
-				shuffledQuestions = originalQuestions.sort(() => Math.random() - 0.5);
-			}
-			
-			return { ...quizSet, questions: shuffledQuestions };
-		}
-		return quizSet;
-	}, [quizIsRandom, quizRandomUnansweredOnly, quizState, quizSet]);
 
 
 	const handleBackgroundChange = useCallback(
@@ -1020,9 +857,12 @@ export default function Home() {
 		};
 		setFlashcardState(newFlashcardState);
 		setShowFlashcardSummary(false);
+		setFlashcardIndex(0); // Go back to the first card
 
 		const db = await getDb();
 		await db.put("data", { id: "flashcardState", data: newFlashcardState });
+		await db.put("data", { id: "flashcardIndex", data: 0 });
+
 
 		toast({
 			title: "Bắt đầu lại",
@@ -1037,17 +877,11 @@ export default function Home() {
 
 	const handleFlashcardIndexChange = useCallback(
 		async (index: number) => {
-			// This index is relative to the *processed* (shuffled/filtered) array
 			setFlashcardIndex(index);
-	
-			// To save the correct state, we need the original index.
-			const card = processedFlashcardSet?.cards[index];
-			if (card && typeof card.originalIndex === 'number') {
-				const db = await getDb();
-				await db.put("data", { id: "flashcardIndex", data: card.originalIndex });
-			}
+			const db = await getDb();
+			await db.put("data", { id: "flashcardIndex", data: index });
 		},
-		[processedFlashcardSet] 
+		[] 
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
@@ -1062,40 +896,6 @@ export default function Home() {
 	const currentViewIsLoading =
 		view === "flashcards" ? isFlashcardLoading : isQuizLoading
 	
-	// When the processed flashcard set changes (e.g., due to shuffling or marking a card),
-	// find the new position of the current card and update the index.
-	useEffect(() => {
-		if (!processedFlashcardSet || !flashcardSet) return;
-	
-		const currentOriginalIndex = flashcardIndex; // This is now the original index
-	
-		const newProcessedIndex = processedFlashcardSet.cards.findIndex(
-			card => card.originalIndex === currentOriginalIndex
-		);
-	
-		if (newProcessedIndex !== -1) {
-			// We found the card in the new processed list.
-			// The `Learn` component and its children should now operate on this new processed index.
-			// This state is local to this effect's scope for now.
-			// The actual state update will happen via onFlashcardIndexChange if needed.
-			// Let's rename `flashcardIndex` to `processedFlashcardIndex` for clarity.
-		} else {
-			// The current card is no longer in the processed set (e.g., filtered out).
-			// Go to the first card of the new set.
-			if (processedFlashcardSet.cards.length > 0) {
-				// The index here is for the processed set.
-				// setFlashcardIndex(0); // This would trigger a save. Let the child component handle it.
-			}
-		}
-	
-	}, [processedFlashcardSet, flashcardIndex, flashcardSet]);
-	
-	const finalFlashcardIndex = useMemo(() => {
-		if (!processedFlashcardSet) return 0;
-		const idx = processedFlashcardSet.cards.findIndex(c => c.originalIndex === flashcardIndex);
-		return idx === -1 ? 0 : idx;
-	}, [processedFlashcardSet, flashcardIndex]);
-
 
 	if (!isMounted) {
 		return null
@@ -1109,10 +909,6 @@ export default function Home() {
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
-		flashcardIsRandom: flashcardIsRandom,
-		quizIsRandom: quizIsRandom,
-		flashcardRandomNotUnderstoodOnly: flashcardRandomNotUnderstoodOnly,
-		quizRandomUnansweredOnly: quizRandomUnansweredOnly
 	}
 
 	const globalSettingsProps = {
@@ -1158,14 +954,14 @@ export default function Home() {
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
-							flashcardSet={processedFlashcardSet}
-							quizSet={shuffledQuizSet}
+							flashcardSet={flashcardSet}
+							quizSet={quizSet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
 							canGenerateMore={canGenerateMore}
-							flashcardIndex={finalFlashcardIndex}
+							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
@@ -1185,9 +981,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
-
-    
-
-

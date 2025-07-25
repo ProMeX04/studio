@@ -34,7 +34,6 @@ const Syntax: any = SyntaxHighlighter
 interface Flashcard {
 	front: string
 	back: string;
-	originalIndex: number; // Keep track of the original position
 }
 
 export interface FlashcardSet {
@@ -48,7 +47,7 @@ interface FlashcardsProps {
 	initialIndex: number
 	onIndexChange: (index: number) => void
 	topic: string;
-	understoodIndices: number[];
+	isCurrentUnderstood: boolean;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -145,18 +144,13 @@ function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: 
 
 export function Flashcards({
 	flashcardSet,
-	initialIndex, // This is the index in the PROCESSED array
+	initialIndex, 
 	onIndexChange,
 	topic,
-	understoodIndices,
+	isCurrentUnderstood,
 }: FlashcardsProps) {
-	// The component now fully trusts the initialIndex from the parent.
-	// It doesn't need its own internal index state.
 	
 	useEffect(() => {
-		// This effect is to inform the parent about any index change that might happen inside this component
-		// in the future (e.g., if we add direct jumps).
-		// For now, it just syncs the initial index.
 		onIndexChange(initialIndex);
 	}, [initialIndex, onIndexChange]);
 
@@ -164,19 +158,14 @@ export function Flashcards({
 	const currentCard = flashcardSet?.cards[initialIndex];
 	const hasContent = totalCards > 0 && !!currentCard;
 	
-	const isUnderstood = React.useMemo(() => {
-		if (!currentCard) return false;
-		return understoodIndices.includes(currentCard.originalIndex);
-	}, [currentCard, understoodIndices]);
-
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
 				{hasContent ? (
 					<FlashcardItem
-						key={`${flashcardSet?.id ?? ""}-${currentCard.originalIndex}`}
+						key={`${flashcardSet?.id ?? ""}-${initialIndex}`}
 						card={currentCard}
-						isUnderstood={isUnderstood}
+						isUnderstood={isCurrentUnderstood}
 					/>
 				) : (
 					<div className="text-center h-48 flex flex-col items-center justify-center">
@@ -191,6 +180,3 @@ export function Flashcards({
 		</div>
 	)
 }
-
-    
-

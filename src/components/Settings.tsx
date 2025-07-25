@@ -72,10 +72,6 @@ interface LearnSettingsProps {
 		language: string
 		flashcardMax: number
 		quizMax: number
-		flashcardIsRandom: boolean
-		quizIsRandom: boolean
-		flashcardRandomNotUnderstoodOnly: boolean;
-		quizRandomUnansweredOnly: boolean;
 	}) => void
 	onGenerateNew: (topic: string) => void
 	currentView: "flashcards" | "quiz"
@@ -83,10 +79,6 @@ interface LearnSettingsProps {
 	language: string
 	flashcardMax: number
 	quizMax: number
-	flashcardIsRandom: boolean
-	quizIsRandom: boolean
-	flashcardRandomNotUnderstoodOnly: boolean;
-	quizRandomUnansweredOnly: boolean;
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -114,10 +106,6 @@ export function Settings(props: SettingsProps) {
 	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
-	const [flashcardIsRandom, setFlashcardIsRandom] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardIsRandom : false)
-	const [quizIsRandom, setQuizIsRandom] = useState(isLearnScope ? (props as LearnSettingsProps).quizIsRandom : false)
-	const [flashcardRandomNotUnderstoodOnly, setFlashcardRandomNotUnderstoodOnly] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardRandomNotUnderstoodOnly : false);
-	const [quizRandomUnansweredOnly, setQuizRandomUnansweredOnly] = useState(isLearnScope ? (props as LearnSettingsProps).quizRandomUnansweredOnly : false);
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
@@ -130,10 +118,6 @@ export function Settings(props: SettingsProps) {
 			setLanguage(learnProps.language)
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
-			setFlashcardIsRandom(learnProps.flashcardIsRandom)
-			setQuizIsRandom(learnProps.quizIsRandom)
-			setFlashcardRandomNotUnderstoodOnly(learnProps.flashcardRandomNotUnderstoodOnly)
-			setQuizRandomUnansweredOnly(learnProps.quizRandomUnansweredOnly)
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -145,10 +129,6 @@ export function Settings(props: SettingsProps) {
 				language,
 				flashcardMax,
 				quizMax,
-				flashcardIsRandom,
-				quizIsRandom,
-				flashcardRandomNotUnderstoodOnly,
-				quizRandomUnansweredOnly
 			})
 		}
 	}
@@ -251,33 +231,6 @@ export function Settings(props: SettingsProps) {
 
 					{isFlashcardView && (
 						<div className="space-y-4 pt-2">
-							<div className="flex items-center justify-between pl-10">
-								<Label
-									htmlFor="flashcardIsRandom"
-									className="text-right"
-								>
-									Ngẫu nhiên thẻ
-								</Label>
-								<Switch
-									id="flashcardIsRandom"
-									checked={flashcardIsRandom}
-									onCheckedChange={setFlashcardIsRandom}
-								/>
-							</div>
-							<div className="flex items-center justify-between pl-10">
-								<Label
-									htmlFor="flashcardRandomNotUnderstoodOnly"
-									className={cn("text-right", !flashcardIsRandom && "text-muted-foreground")}
-								>
-									Chỉ ngẫu nhiên thẻ chưa hiểu
-								</Label>
-								<Switch
-									id="flashcardRandomNotUnderstoodOnly"
-									checked={flashcardRandomNotUnderstoodOnly}
-									onCheckedChange={setFlashcardRandomNotUnderstoodOnly}
-									disabled={!flashcardIsRandom}
-								/>
-							</div>
 							<div className="grid grid-cols-4 items-center gap-4">
 								<Label
 									htmlFor="flashcardMax"
@@ -304,33 +257,6 @@ export function Settings(props: SettingsProps) {
 
 					{isQuizView && (
 						<div className="space-y-4 pt-2">
-								<div className="flex items-center justify-between pl-10">
-								<Label
-									htmlFor="quizIsRandom"
-									className="text-right"
-								>
-									Ngẫu nhiên câu hỏi
-								</Label>
-								<Switch
-									id="quizIsRandom"
-									checked={quizIsRandom}
-									onCheckedChange={setQuizIsRandom}
-								/>
-							</div>
-							<div className="flex items-center justify-between pl-10">
-								<Label
-									htmlFor="quizRandomUnansweredOnly"
-									className={cn("text-right", !quizIsRandom && "text-muted-foreground")}
-								>
-									Chỉ ngẫu nhiên câu chưa làm
-								</Label>
-								<Switch
-									id="quizRandomUnansweredOnly"
-									checked={quizRandomUnansweredOnly}
-									onCheckedChange={setQuizRandomUnansweredOnly}
-									disabled={!quizIsRandom}
-								/>
-							</div>
 							<div className="grid grid-cols-4 items-center gap-4">
 								<Label htmlFor="quizMax" className="text-right">
 									Số lượng tối đa
@@ -606,9 +532,3 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
-    
-
-
-
-    

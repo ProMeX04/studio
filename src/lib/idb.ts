@@ -18,11 +18,7 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'flashcardIsRandom'
-  | 'quizIsRandom'
-  | 'flashcardIndex'
-  | 'flashcardRandomNotUnderstoodOnly' // New key
-  | 'quizRandomUnansweredOnly'; // New key
+  | 'flashcardIndex';
 
 export type LabeledData<T> = {
   id: string;
@@ -53,8 +49,12 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-        // No specific migration needed for adding new optional keys in v3
-        // The loadInitialData function will handle defaults if keys are missing.
+        if (oldVersion < 3) {
+            // In v3, we remove old randomization keys.
+            // We can do this by just letting the app load without them,
+            // as the new loadInitialData doesn't use them.
+            // No explicit deletion needed unless we want to clean up.
+        }
       },
     });
   }
@@ -98,5 +98,3 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
-
-    
