@@ -9,6 +9,8 @@ import {
 	Trash2,
 	RefreshCw,
 	AlertTriangle,
+	Brush,
+	BookOpen,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -48,7 +50,23 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
 
-interface SettingsProps {
+interface CommonSettingsProps {
+	scope: "global" | "learn";
+}
+
+interface GlobalSettingsProps {
+	scope: "global";
+	onClearAllData: () => void
+	onVisibilityChange: (visibility: ComponentVisibility) => void
+	onBackgroundChange: (background: string | null) => void
+	onUploadedBackgroundsChange: (backgrounds: string[]) => void
+	visibility: ComponentVisibility
+	uploadedBackgrounds: string[]
+	currentBackgroundImage: string | null
+}
+
+interface LearnSettingsProps {
+	scope: "learn";
 	onSettingsChange: (settings: {
 		topic: string
 		language: string
@@ -56,23 +74,17 @@ interface SettingsProps {
 		quizMax: number
 		flashcardIsRandom: boolean
 	}) => void
-	onClearAllData: () => void
 	onGenerateNew: (topic: string) => void
-	onVisibilityChange: (visibility: ComponentVisibility) => void
-	onBackgroundChange: (background: string | null) => void
-	onUploadedBackgroundsChange: (backgrounds: string[]) => void
 	onViewChange: (view: "flashcards" | "quiz") => void
-
 	currentView: "flashcards" | "quiz"
-	visibility: ComponentVisibility
-	uploadedBackgrounds: string[]
-	currentBackgroundImage: string | null
 	topic: string
 	language: string
 	flashcardMax: number
 	quizMax: number
 	flashcardIsRandom: boolean
 }
+
+type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
 
 const languages = [
 	{ value: "Vietnamese", label: "Tiếng Việt" },
@@ -86,91 +98,85 @@ const languages = [
 
 const MAX_UPLOADED_IMAGES = 6
 
-export function Settings({
-	onSettingsChange,
-	onClearAllData,
-	onGenerateNew,
-	onVisibilityChange,
-	onBackgroundChange,
-	onUploadedBackgroundsChange,
-	onViewChange,
-	currentView,
-	visibility,
-	uploadedBackgrounds,
-	currentBackgroundImage,
-	topic: initialTopic,
-	language: initialLanguage,
-	flashcardMax: initialFlashcardMax,
-	quizMax: initialQuizMax,
-	flashcardIsRandom: initialFlashcardIsRandom,
-}: SettingsProps) {
+export function Settings(props: SettingsProps) {
+	const { scope } = props;
+	const isLearnScope = scope === "learn";
+
 	const [isOpen, setIsOpen] = useState(false)
-	// Local state for settings panel
-	const [topic, setTopic] = useState(initialTopic)
-	const [language, setLanguage] = useState(initialLanguage)
-	const [flashcardMax, setFlashcardMax] = useState(initialFlashcardMax)
-	const [quizMax, setQuizMax] = useState(initialQuizMax)
-	const [flashcardIsRandom, setFlashcardIsRandom] =
-		useState(initialFlashcardIsRandom)
+	
+	// Local state for learn settings
+	const [topic, setTopic] = useState(isLearnScope ? (props as LearnSettingsProps).topic : "")
+	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
+	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
+	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
+	const [flashcardIsRandom, setFlashcardIsRandom] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardIsRandom : false)
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
-		setTopic(initialTopic)
-		setLanguage(initialLanguage)
-		setFlashcardMax(initialFlashcardMax)
-		setQuizMax(initialQuizMax)
-		setFlashcardIsRandom(initialFlashcardIsRandom)
-	}, [
-		isOpen,
-		initialTopic,
-		initialLanguage,
-		initialFlashcardMax,
-		initialQuizMax,
-		initialFlashcardIsRandom,
-	])
+		if (isLearnScope) {
+			const learnProps = props as LearnSettingsProps;
+			setTopic(learnProps.topic)
+			setLanguage(learnProps.language)
+			setFlashcardMax(learnProps.flashcardMax)
+			setQuizMax(learnProps.quizMax)
+			setFlashcardIsRandom(learnProps.flashcardIsRandom)
+		}
+	}, [isOpen, props, isLearnScope])
 
 	const handleLocalSettingsSave = () => {
-		onSettingsChange({
-			topic,
-			language,
-			flashcardMax,
-			quizMax,
-			flashcardIsRandom,
-		})
+		if (isLearnScope) {
+			const learnProps = props as LearnSettingsProps;
+			learnProps.onSettingsChange({
+				topic,
+				language,
+				flashcardMax,
+				quizMax,
+				flashcardIsRandom,
+			})
+		}
 	}
 
 	const handleGenerateNew = () => {
-		handleLocalSettingsSave() // Save current settings first
-		onGenerateNew(topic)      // Then generate with the new topic
-		setIsOpen(false)
+		if (isLearnScope) {
+			const learnProps = props as LearnSettingsProps;
+			handleLocalSettingsSave() // Save current settings first
+			learnProps.onGenerateNew(topic)      // Then generate with the new topic
+			setIsOpen(false)
+		}
 	}
 	
 	const handleClearData = () => {
-		onClearAllData()
-		setIsOpen(false)
+		if (!isLearnScope) {
+			const globalProps = props as GlobalSettingsProps;
+			globalProps.onClearAllData()
+			setIsOpen(false)
+		}
 	}
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		if (file) {
-			const MAX_FILE_SIZE = 2 * 1024 * 1024
-			if (file.size > MAX_FILE_SIZE) {
-				alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.")
-				return
+		if (!isLearnScope) {
+			const globalProps = props as GlobalSettingsProps;
+			const file = e.target.files?.[0]
+			if (file) {
+				const MAX_FILE_SIZE = 2 * 1024 * 1024
+				if (file.size > MAX_FILE_SIZE) {
+					alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.")
+					return
+				}
+				const reader = new FileReader()
+				reader.onload = (event) => {
+					const result = event.target?.result as string
+					const newUploadedBgs = [result, ...globalProps.uploadedBackgrounds].slice(
+						0,
+						MAX_UPLOADED_IMAGES
+					)
+					globalProps.onUploadedBackgroundsChange(newUploadedBgs)
+					globalProps.onBackgroundChange(result)
+				}
+				reader.readAsDataURL(file)
 			}
-			const reader = new FileReader()
-			reader.onload = (event) => {
-				const result = event.target?.result as string
-				const newUploadedBgs = [result, ...uploadedBackgrounds].slice(
-					0,
-					MAX_UPLOADED_IMAGES
-				)
-				onUploadedBackgroundsChange(newUploadedBgs)
-				onBackgroundChange(result)
-			}
-			reader.readAsDataURL(file)
 		}
 	}
 
@@ -181,326 +187,134 @@ export function Settings({
 			["e", "E", "+", "-"].includes(e.key) && e.preventDefault(),
 	}
 
-	return (
-		<Sheet
-			open={isOpen}
-			onOpenChange={(open) => {
-				if (!open) {
-					// Save settings when closing the sheet
-					handleLocalSettingsSave()
-				}
-				setIsOpen(open)
-			}}
-		>
-			<SheetTrigger asChild>
-				<Button variant="outline" size="icon" className="h-9 w-9">
-					<SettingsIcon />
-					<span className="sr-only">Cài đặt</span>
-				</Button>
-			</SheetTrigger>
-			<SheetContent
-				side="right"
-				className="max-h-[100vh] w-[400px] sm:max-w-[540px] overflow-y-auto"
-			>
-				<SheetHeader>
-					<SheetTitle>Cài đặt</SheetTitle>
-				</SheetHeader>
-				<div className="grid gap-6 py-4">
-					<Separator />
-					<div className="space-y-4">
-						<Label className="font-medium text-foreground">
-							Hình nền
-						</Label>
-						<div className="flex items-center gap-2">
-							<Button
-								variant="outline"
-								className="w-full"
-								onClick={() => fileInputRef.current?.click()}
-							>
-								<Upload className="mr-2 h-4 w-4" />
-								Tải ảnh lên
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => onBackgroundChange(null)}
-								aria-label="Xóa hình nền"
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
-						</div>
-						<input
-							type="file"
-							ref={fileInputRef}
-							onChange={handleBackgroundUpload}
-							className="hidden"
-							accept="image/*"
-						/>
-						<div className="grid grid-cols-3 gap-2">
-							{uploadedBackgrounds.map((bg, index) => (
-								<div
-									key={`uploaded-${index}`}
-									className="relative cursor-pointer group"
-									onClick={() => onBackgroundChange(bg)}
+	const renderLearnSettings = () => {
+		if (!isLearnScope) return null;
+		const learnProps = props as LearnSettingsProps;
+		return (
+			<div className="space-y-4">
+				<div className="grid grid-cols-4 items-center gap-4">
+					<Label htmlFor="topic" className="text-right">
+						Chủ đề
+					</Label>
+					<Input
+						id="topic"
+						value={topic}
+						onChange={(e) => setTopic(e.target.value)}
+						className="col-span-3"
+						placeholder="ví dụ: Lịch sử La Mã"
+					/>
+				</div>
+				<div className="grid grid-cols-4 items-center gap-4">
+					<Label htmlFor="language" className="text-right">
+						Ngôn ngữ
+					</Label>
+					<Select
+						value={language}
+						onValueChange={setLanguage}
+					>
+						<SelectTrigger className="col-span-3">
+							<SelectValue placeholder="Chọn một ngôn ngữ" />
+						</SelectTrigger>
+						<SelectContent>
+							{languages.map((lang) => (
+								<SelectItem
+									key={lang.value}
+									value={lang.value}
 								>
-									<Image
-										src={bg}
-										alt={`Uploaded background ${index + 1}`}
-										width={100}
-										height={60}
-										className={cn(
-											"rounded-md object-cover aspect-video",
-											currentBackgroundImage === bg &&
-												"ring-2 ring-primary ring-offset-2 ring-offset-background"
-										)}
-									/>
-									{currentBackgroundImage === bg && (
-										<CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />
-									)}
-								</div>
+									{lang.label}
+								</SelectItem>
 							))}
-						</div>
-					</div>
-					<Separator />
-					<div className="space-y-4">
-						<Label className="font-medium text-foreground">
-							Cài đặt học tập
-						</Label>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="topic" className="text-right">
-								Chủ đề
+						</SelectContent>
+					</Select>
+				</div>
+
+				<Tabs
+					value={learnProps.currentView}
+					onValueChange={(value) =>
+						learnProps.onViewChange(value as "flashcards" | "quiz")
+					}
+					className="w-full"
+				>
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="flashcards">
+							Flashcard
+						</TabsTrigger>
+						<TabsTrigger value="quiz">
+							Trắc nghiệm
+						</TabsTrigger>
+					</TabsList>
+					<TabsContent
+						value="flashcards"
+						className="space-y-4 pt-4"
+					>
+						<div className="flex items-center justify-between pl-10">
+							<Label
+								htmlFor="flashcardIsRandom"
+								className="text-right"
+							>
+								Ngẫu nhiên thẻ
 							</Label>
-							<Input
-								id="topic"
-								value={topic}
-								onChange={(e) => setTopic(e.target.value)}
-								className="col-span-3"
-								placeholder="ví dụ: Lịch sử La Mã"
+							<Switch
+								id="flashcardIsRandom"
+								checked={flashcardIsRandom}
+								onCheckedChange={setFlashcardIsRandom}
 							/>
 						</div>
 						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="language" className="text-right">
-								Ngôn ngữ
+							<Label
+								htmlFor="flashcardMax"
+								className="text-right"
+							>
+								Số lượng tối đa
 							</Label>
-							<Select
-								value={language}
-								onValueChange={setLanguage}
-							>
-								<SelectTrigger className="col-span-3">
-									<SelectValue placeholder="Chọn một ngôn ngữ" />
-								</SelectTrigger>
-								<SelectContent>
-									{languages.map((lang) => (
-										<SelectItem
-											key={lang.value}
-											value={lang.value}
-										>
-											{lang.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<Input
+								id="flashcardMax"
+								type="number"
+								value={flashcardMax}
+								onChange={(e) =>
+									setFlashcardMax(
+										parseInt(e.target.value) || 0
+									)
+								}
+								className="col-span-3"
+								placeholder="ví dụ: 50"
+								{...numericInputProps}
+							/>
 						</div>
-
-						<Tabs
-							value={currentView}
-							onValueChange={(value) =>
-								onViewChange(value as "flashcards" | "quiz")
-							}
-							className="w-full"
-						>
-							<TabsList className="grid w-full grid-cols-2">
-								<TabsTrigger value="flashcards">
-									Flashcard
-								</TabsTrigger>
-								<TabsTrigger value="quiz">
-									Trắc nghiệm
-								</TabsTrigger>
-							</TabsList>
-							<TabsContent
-								value="flashcards"
-								className="space-y-4 pt-4"
+					</TabsContent>
+					<TabsContent
+						value="quiz"
+						className="space-y-4 pt-4"
+					>
+						<div className="grid grid-cols-4 items-center gap-4">
+							<Label
+								htmlFor="quizMax"
+								className="text-right"
 							>
-								<div className="flex items-center justify-between pl-10">
-									<Label
-										htmlFor="flashcardIsRandom"
-										className="text-right"
-									>
-										Ngẫu nhiên thẻ
-									</Label>
-									<Switch
-										id="flashcardIsRandom"
-										checked={flashcardIsRandom}
-										onCheckedChange={setFlashcardIsRandom}
-									/>
-								</div>
-								<div className="grid grid-cols-4 items-center gap-4">
-									<Label
-										htmlFor="flashcardMax"
-										className="text-right"
-									>
-										Số lượng tối đa
-									</Label>
-									<Input
-										id="flashcardMax"
-										type="number"
-										value={flashcardMax}
-										onChange={(e) =>
-											setFlashcardMax(
-												parseInt(e.target.value) || 0
-											)
-										}
-										className="col-span-3"
-										placeholder="ví dụ: 50"
-										{...numericInputProps}
-									/>
-								</div>
-							</TabsContent>
-							<TabsContent
-								value="quiz"
-								className="space-y-4 pt-4"
-							>
-								<div className="grid grid-cols-4 items-center gap-4">
-									<Label
-										htmlFor="quizMax"
-										className="text-right"
-									>
-										Số lượng tối đa
-									</Label>
-									<Input
-										id="quizMax"
-										type="number"
-										value={quizMax}
-										onChange={(e) =>
-											setQuizMax(
-												parseInt(e.target.value) || 0
-											)
-										}
-										className="col-span-3"
-										placeholder="ví dụ: 50"
-										{...numericInputProps}
-									/>
-								</div>
-							</TabsContent>
-						</Tabs>
-						<div className="flex justify-center pt-2">
-							<AlertDialog>
-								<AlertDialogTrigger asChild>
-									<Button variant="destructive">
-										<RefreshCw className="mr-2 h-4 w-4" />
-										Tạo lại & Xóa dữ liệu cũ
-									</Button>
-								</AlertDialogTrigger>
-								<AlertDialogContent>
-									<AlertDialogHeader>
-										<AlertDialogTitle>
-											<div className="flex items-center gap-2">
-												<AlertTriangle className="text-destructive" />
-												<span>Bạn có chắc chắn không?</span>
-											</div>
-										</AlertDialogTitle>
-										<AlertDialogDescription>
-											Hành động này sẽ xóa vĩnh viễn tất cả flashcard hoặc bài trắc nghiệm của chủ đề <strong>{topic}</strong> và tạo lại từ đầu. Hành động này không thể hoàn tác.
-										</AlertDialogDescription>
-									</AlertDialogHeader>
-									<AlertDialogFooter>
-										<AlertDialogCancel>Hủy</AlertDialogCancel>
-										<AlertDialogAction
-											onClick={handleGenerateNew}
-										>
-											Vâng, tạo lại
-										</AlertDialogAction>
-									</AlertDialogFooter>
-								</AlertDialogContent>
-							</AlertDialog>
+								Số lượng tối đa
+							</Label>
+							<Input
+								id="quizMax"
+								type="number"
+								value={quizMax}
+								onChange={(e) =>
+									setQuizMax(
+										parseInt(e.target.value) || 0
+									)
+								}
+								className="col-span-3"
+								placeholder="ví dụ: 50"
+								{...numericInputProps}
+							/>
 						</div>
-					</div>
-					<Separator />
-					<div className="space-y-2">
-						<Label className="font-medium text-foreground">
-							Thành phần hiển thị
-						</Label>
-						<div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
-							<div className="flex items-center space-x-2">
-								<Switch
-									id="clock-visible"
-									checked={visibility.clock}
-									onCheckedChange={(checked) =>
-										onVisibilityChange({
-											...visibility,
-											clock: checked,
-										})
-									}
-								/>
-								<Label htmlFor="clock-visible">Đồng hồ</Label>
-							</div>
-							<div className="flex items-center space-x-2">
-								<Switch
-									id="greeting-visible"
-									checked={visibility.greeting}
-									onCheckedChange={(checked) =>
-										onVisibilityChange({
-											...visibility,
-											greeting: checked,
-										})
-									}
-								/>
-								<Label htmlFor="greeting-visible">
-									Lời chào
-								</Label>
-							</div>
-							<div className="flex items-center space-x-2">
-								<Switch
-									id="search-visible"
-									checked={visibility.search}
-									onCheckedChange={(checked) =>
-										onVisibilityChange({
-											...visibility,
-											search: checked,
-										})
-									}
-								/>
-								<Label htmlFor="search-visible">Tìm kiếm</Label>
-							</div>
-							<div className="flex items-center space-x-2">
-								<Switch
-									id="quicklinks-visible"
-									checked={visibility.quickLinks}
-									onCheckedChange={(checked) =>
-										onVisibilityChange({
-											...visibility,
-											quickLinks: checked,
-										})
-									}
-								/>
-								<Label htmlFor="quicklinks-visible">
-									Liên kết nhanh
-								</Label>
-							</div>
-							<div className="flex items-center space-x-2">
-								<Switch
-									id="learn-visible"
-									checked={visibility.learn}
-									onCheckedChange={(checked) =>
-										onVisibilityChange({
-											...visibility,
-											learn: checked,
-										})
-									}
-								/>
-								<Label htmlFor="learn-visible">
-									Phần học tập
-								</Label>
-							</div>
-						</div>
-					</div>
-				</div>
-				<SheetFooter>
+					</TabsContent>
+				</Tabs>
+				<div className="flex justify-center pt-2">
 					<AlertDialog>
 						<AlertDialogTrigger asChild>
 							<Button variant="destructive">
-								<Trash2 className="mr-2 h-4 w-4" />
-								Xóa toàn bộ dữ liệu
+								<RefreshCw className="mr-2 h-4 w-4" />
+								Tạo lại & Xóa dữ liệu cũ
 							</Button>
 						</AlertDialogTrigger>
 						<AlertDialogContent>
@@ -512,28 +326,241 @@ export function Settings({
 									</div>
 								</AlertDialogTitle>
 								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả
-									flashcard, bài trắc nghiệm, lịch sử và cài
-									đặt của bạn. Hành động này không thể hoàn
-									tác.
+									Hành động này sẽ xóa vĩnh viễn tất cả flashcard hoặc bài trắc nghiệm của chủ đề <strong>{topic}</strong> và tạo lại từ đầu. Hành động này không thể hoàn tác.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Hủy</AlertDialogCancel>
 								<AlertDialogAction
-									onClick={handleClearData}
-									className={cn(
-										buttonVariants({
-											variant: "destructive",
-										})
-									)}
+									onClick={handleGenerateNew}
 								>
-									Vâng, xóa tất cả
+									Vâng, tạo lại
 								</AlertDialogAction>
 							</AlertDialogFooter>
 						</AlertDialogContent>
 					</AlertDialog>
-				</SheetFooter>
+				</div>
+			</div>
+		)
+	}
+
+	const renderGlobalSettings = () => {
+		if (isLearnScope) return null;
+		const globalProps = props as GlobalSettingsProps;
+		return (
+			<>
+				<div className="space-y-4">
+					<Label className="font-medium text-foreground">
+						Hình nền
+					</Label>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							className="w-full"
+							onClick={() => fileInputRef.current?.click()}
+						>
+							<Upload className="mr-2 h-4 w-4" />
+							Tải ảnh lên
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => globalProps.onBackgroundChange(null)}
+							aria-label="Xóa hình nền"
+						>
+							<Trash2 className="h-4 w-4" />
+						</Button>
+					</div>
+					<input
+						type="file"
+						ref={fileInputRef}
+						onChange={handleBackgroundUpload}
+						className="hidden"
+						accept="image/*"
+					/>
+					<div className="grid grid-cols-3 gap-2">
+						{globalProps.uploadedBackgrounds.map((bg, index) => (
+							<div
+								key={`uploaded-${index}`}
+								className="relative cursor-pointer group"
+								onClick={() => globalProps.onBackgroundChange(bg)}
+							>
+								<Image
+									src={bg}
+									alt={`Uploaded background ${index + 1}`}
+									width={100}
+									height={60}
+									className={cn(
+										"rounded-md object-cover aspect-video",
+										globalProps.currentBackgroundImage === bg &&
+											"ring-2 ring-primary ring-offset-2 ring-offset-background"
+									)}
+								/>
+								{globalProps.currentBackgroundImage === bg && (
+									<CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />
+								)}
+							</div>
+						))}
+					</div>
+				</div>
+				<Separator />
+				<div className="space-y-2">
+					<Label className="font-medium text-foreground">
+						Thành phần hiển thị
+					</Label>
+					<div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="clock-visible"
+								checked={globalProps.visibility.clock}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										clock: checked,
+									})
+								}
+							/>
+							<Label htmlFor="clock-visible">Đồng hồ</Label>
+						</div>
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="greeting-visible"
+								checked={globalProps.visibility.greeting}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										greeting: checked,
+									})
+								}
+							/>
+							<Label htmlFor="greeting-visible">
+								Lời chào
+							</Label>
+						</div>
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="search-visible"
+								checked={globalProps.visibility.search}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										search: checked,
+									})
+								}
+							/>
+							<Label htmlFor="search-visible">Tìm kiếm</Label>
+						</div>
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="quicklinks-visible"
+								checked={globalProps.visibility.quickLinks}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										quickLinks: checked,
+									})
+								}
+							/>
+							<Label htmlFor="quicklinks-visible">
+								Liên kết nhanh
+							</Label>
+						</div>
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="learn-visible"
+								checked={globalProps.visibility.learn}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										learn: checked,
+									})
+								}
+							/>
+							<Label htmlFor="learn-visible">
+								Phần học tập
+							</Label>
+						</div>
+					</div>
+				</div>
+			</>
+		)
+	}
+
+	return (
+		<Sheet
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open && isLearnScope) {
+					// Save settings when closing the sheet only for learn scope
+					handleLocalSettingsSave()
+				}
+				setIsOpen(open)
+			}}
+		>
+			<SheetTrigger asChild>
+				<Button variant={isLearnScope ? "outline" : "ghost"} size="icon" className={cn(isLearnScope && "h-9 w-9")}>
+					<SettingsIcon />
+					<span className="sr-only">Cài đặt</span>
+				</Button>
+			</SheetTrigger>
+			<SheetContent
+				side="right"
+				className="max-h-[100vh] w-[400px] sm:max-w-[540px] overflow-y-auto"
+			>
+				<SheetHeader>
+					<SheetTitle>
+						<div className="flex items-center gap-2">
+							{isLearnScope ? <BookOpen /> : <Brush />}
+							<span>{isLearnScope ? "Cài đặt học tập" : "Cài đặt giao diện"}</span>
+						</div>
+					</SheetTitle>
+				</SheetHeader>
+				<div className="grid gap-6 py-4">
+					<Separator />
+					{isLearnScope ? renderLearnSettings() : renderGlobalSettings()}
+				</div>
+
+				{!isLearnScope && (
+					<SheetFooter>
+						<AlertDialog>
+							<AlertDialogTrigger asChild>
+								<Button variant="destructive">
+									<Trash2 className="mr-2 h-4 w-4" />
+									Xóa toàn bộ dữ liệu
+								</Button>
+							</AlertDialogTrigger>
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>
+										<div className="flex items-center gap-2">
+											<AlertTriangle className="text-destructive" />
+											<span>Bạn có chắc chắn không?</span>
+										</div>
+									</AlertDialogTitle>
+									<AlertDialogDescription>
+										Hành động này sẽ xóa vĩnh viễn tất cả
+										flashcard, bài trắc nghiệm, lịch sử và cài
+										đặt của bạn. Hành động này không thể hoàn
+										tác.
+									</AlertDialogDescription>
+								</AlertDialogHeader>
+								<AlertDialogFooter>
+									<AlertDialogCancel>Hủy</AlertDialogCancel>
+									<AlertDialogAction
+										onClick={handleClearData}
+										className={cn(
+											buttonVariants({
+												variant: "destructive",
+											})
+										)}
+									>
+										Vâng, xóa tất cả
+									</AlertDialogAction>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
+					</SheetFooter>
+				)}
 			</SheetContent>
 		</Sheet>
 	)

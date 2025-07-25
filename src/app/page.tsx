@@ -227,7 +227,7 @@ function Learn({
 								)}
 							</Button>
 							
-							<Settings {...settingsProps} />
+							<Settings {...settingsProps} scope="learn" />
 
 						</div>
 					</div>
@@ -776,24 +776,26 @@ export default function Home() {
 		return null
 	}
 	
-	const settingsProps = {
+	const learnSettingsProps = {
 		onSettingsChange: onSettingsSave,
-		onClearAllData: handleClearAllData,
-		onVisibilityChange: handleVisibilityChange,
-		onBackgroundChange: handleBackgroundChange,
-		onUploadedBackgroundsChange:
-			handleUploadedBackgroundsChange,
-		onViewChange: handleViewChange,
 		onGenerateNew: onGenerateFromSettings,
+		onViewChange: handleViewChange,
 		currentView: view,
-		visibility: visibility,
-		uploadedBackgrounds: uploadedBackgrounds,
-		currentBackgroundImage: backgroundImage,
 		topic: topic,
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		flashcardIsRandom: flashcardIsRandom,
+	}
+
+	const globalSettingsProps = {
+		onClearAllData: handleClearAllData,
+		onVisibilityChange: handleVisibilityChange,
+		onBackgroundChange: handleBackgroundChange,
+		onUploadedBackgroundsChange: handleUploadedBackgroundsChange,
+		visibility: visibility,
+		uploadedBackgrounds: uploadedBackgrounds,
+		currentBackgroundImage: backgroundImage,
 	}
 
 	return (
@@ -811,6 +813,7 @@ export default function Home() {
 			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
 				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
 					{visibility.greeting && <Greeting />}
+					<Settings {...globalSettingsProps} scope="global" />
 				</div>
 
 				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
@@ -843,7 +846,7 @@ export default function Home() {
 							topic={topic}
 							showQuizSummary={showQuizSummary}
 							setShowQuizSummary={setShowQuizSummary}
-							settingsProps={settingsProps}
+							settingsProps={learnSettingsProps}
 						/>
 					</div>
 				</div>
