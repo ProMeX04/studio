@@ -230,17 +230,12 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 							<div
 								key={message.id || index}
 								className={cn(
-									"flex items-start gap-3",
+									"flex items-start",
 									message.role === "user"
 										? "justify-end"
 										: "justify-start"
 								)}
 							>
-								{message.role === "model" && (
-									<div className="p-2 bg-primary rounded-full text-primary-foreground">
-										<Sparkles className="h-5 w-5" />
-									</div>
-								)}
 								<div className="space-y-2">
 									<div
 										className={cn(
@@ -261,24 +256,23 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                     p: ({ node, ...props }) => {
                                                         return <p {...props} className="break-words" />;
                                                     },
-                                                    pre({ node, className, children, ...props }) {
-                                                      const match = /language-(\w+)/.exec(className || '');
-                                                      return match ? (
-                                                        <div className="w-full overflow-x-auto">
-                                                          <Syntax
-                                                            style={vscDarkPlus}
-                                                            language={match[1]}
-                                                            PreTag="pre"
-                                                            {...props}
-                                                          >
-                                                            {String(children).replace(/\n$/, '')}
-                                                          </Syntax>
-                                                        </div>
-                                                      ) : (
-                                                        <pre className={cn(className, "w-full overflow-x-auto")} {...props}>
-                                                          {children}
-                                                        </pre>
-                                                      );
+                                                    pre({ node, ...props }) {
+                                                        const children = props.children as any[];
+                                                        const codeNode = children?.[0];
+                                                        const language = codeNode?.props?.className?.replace('language-', '') || 'text';
+                                                        const code = codeNode?.props?.children?.[0] || '';
+                                                        
+                                                        return (
+                                                            <pre {...props} className="w-full overflow-x-auto bg-black/80 text-white p-2 rounded-md my-2">
+                                                                <Syntax
+                                                                    style={vscDarkPlus}
+                                                                    language={language}
+                                                                    PreTag="div"
+                                                                >
+                                                                    {String(code).replace(/\n$/, '')}
+                                                                </Syntax>
+                                                            </pre>
+                                                        );
                                                     },
                                                     code({
                                                         node,
@@ -287,23 +281,21 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                         children,
                                                         ...props
                                                     }) {
-                                                        if (!inline) {
-                                                            // For block code, it's handled by the 'pre' component above.
-                                                            // We render the children directly.
-                                                            return <>{children}</>
+                                                        if (inline) {
+                                                            return (
+                                                                <code
+                                                                    className={cn(
+                                                                        className,
+                                                                        "inline-code"
+                                                                    )}
+                                                                    {...props}
+                                                                >
+                                                                    {children}
+                                                                </code>
+                                                            )
                                                         }
-                                                        // For inline code
-                                                        return (
-                                                            <code
-                                                                className={cn(
-                                                                    className,
-                                                                    "inline-code"
-                                                                )}
-                                                                {...props}
-                                                            >
-                                                                {children}
-                                                            </code>
-                                                        )
+                                                        // Block code is handled by 'pre' component
+                                                        return null;
                                                     },
                                                 }}
                                             >
@@ -339,11 +331,6 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 											</div>
 										)}
 								</div>
-								{message.role === "user" && (
-									<div className="p-2 bg-muted rounded-full text-muted-foreground">
-										<User className="h-5 w-5" />
-									</div>
-								)}
 							</div>
 						))}
 						
@@ -361,5 +348,3 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
-
-    
