@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 2;
+const DB_VERSION = 3; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -20,7 +20,9 @@ export type DataKey =
   | 'quizMax'
   | 'flashcardIsRandom'
   | 'quizIsRandom'
-  | 'flashcardIndex';
+  | 'flashcardIndex'
+  | 'flashcardRandomNotUnderstoodOnly' // New key
+  | 'quizRandomUnansweredOnly'; // New key
 
 export type LabeledData<T> = {
   id: string;
@@ -51,13 +53,8 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-         // In version 2, we remove the 'generationState' key if it exists
-        if (oldVersion < 2) {
-          const store = transaction.objectStore('data');
-          store.delete('generationState').catch(() => {
-            // Ignore error if key doesn't exist
-          });
-        }
+        // No specific migration needed for adding new optional keys in v3
+        // The loadInitialData function will handle defaults if keys are missing.
       },
     });
   }
@@ -101,3 +98,5 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
+
+    

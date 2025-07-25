@@ -44,7 +44,6 @@ export interface FlashcardSet {
 
 interface FlashcardsProps {
 	flashcardSet: FlashcardSet | null
-	isRandom: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
 	topic: string;
@@ -145,18 +144,12 @@ function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: 
 
 export function Flashcards({
 	flashcardSet,
-	isRandom,
 	initialIndex,
 	onIndexChange,
 	topic,
 	understoodIndices,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
-	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
-
-	const shuffle = useCallback((cards: Flashcard[]) => {
-		return [...cards].sort(() => Math.random() - 0.5)
-	}, [])
 
 	useEffect(() => {
 		setCurrentCardIndex(initialIndex)
@@ -168,40 +161,18 @@ export function Flashcards({
 	}, [currentCardIndex])
 
 	useEffect(() => {
-		if (!flashcardSet?.cards) {
-			setDisplayedCards([])
-			// Do not reset index here to avoid race conditions
-			return
-		}
+        if (flashcardSet && currentCardIndex >= flashcardSet.cards.length && flashcardSet.cards.length > 0) {
+            setCurrentCardIndex(flashcardSet.cards.length - 1);
+        } else if (!flashcardSet || flashcardSet.cards.length === 0) {
+            setCurrentCardIndex(0);
+        }
+    }, [flashcardSet, currentCardIndex]);
 
-		if (isRandom) {
-			if (displayedCards.length === 0) {
-				setDisplayedCards(shuffle(flashcardSet.cards))
-			} else if (flashcardSet.cards.length > displayedCards.length) {
-				const newCards = flashcardSet.cards.slice(displayedCards.length)
-				setDisplayedCards((prev) => [...prev, ...shuffle(newCards)])
-			} else if (flashcardSet.cards.length < displayedCards.length) {
-				setDisplayedCards(shuffle(flashcardSet.cards))
-			}
-		} else {
-			setDisplayedCards(flashcardSet.cards)
-		}
-	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
+	const totalCards = flashcardSet?.cards.length ?? 0
+	const currentCard = flashcardSet?.cards[currentCardIndex];
+	const hasContent = totalCards > 0;
 
-	useEffect(() => {
-		if (
-			currentCardIndex >= displayedCards.length &&
-			displayedCards.length > 0
-		) {
-			setCurrentCardIndex(displayedCards.length - 1)
-		} else if (displayedCards.length === 0) {
-			setCurrentCardIndex(0)
-		}
-	}, [displayedCards.length, currentCardIndex])
-
-	const totalCards = displayedCards.length
-	const currentCard = displayedCards[currentCardIndex]
-	const hasContent = flashcardSet && flashcardSet.cards.length > 0
+	// Determine if the current card is understood. The index passed to this component is the "true" index from the original array
 	const isUnderstood = understoodIndices.includes(currentCardIndex);
 
 	return (
@@ -228,3 +199,5 @@ export function Flashcards({
 		</div>
 	)
 }
+
+    

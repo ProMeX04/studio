@@ -47,8 +47,6 @@ interface LearnProps {
 	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
 	onQuizReset: () => void;
-	flashcardIsRandom: boolean
-	quizIsRandom: boolean
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
@@ -74,8 +72,6 @@ function Learn({
 	onGenerateNew,
 	onQuizStateChange,
 	onQuizReset,
-	flashcardIsRandom,
-	quizIsRandom,
 	canGenerateMore,
 	flashcardIndex,
 	onFlashcardIndexChange,
@@ -196,7 +192,6 @@ function Learn({
 				) : view === "flashcards" ? (
 					<Flashcards
 						flashcardSet={flashcardSet}
-						isRandom={flashcardIsRandom}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
 						topic={topic}
@@ -329,6 +324,8 @@ export default function Home() {
 	const [quizMax, setQuizMax] = useState(50)
 	const [flashcardIsRandom, setFlashcardIsRandom] = useState(false)
 	const [quizIsRandom, setQuizIsRandom] = useState(false)
+	const [flashcardRandomNotUnderstoodOnly, setFlashcardRandomNotUnderstoodOnly] = useState(false);
+	const [quizRandomUnansweredOnly, setQuizRandomUnansweredOnly] = useState(false);
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
 	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
@@ -605,6 +602,12 @@ export default function Home() {
 		const savedQuizIsRandom =
 			((await db.get("data", "quizIsRandom"))?.data as boolean) ||
 			false
+		const savedFlashcardRandomNotUnderstoodOnly =
+			((await db.get("data", "flashcardRandomNotUnderstoodOnly"))?.data as boolean) ||
+			false;
+		const savedQuizRandomUnansweredOnly =
+			((await db.get("data", "quizRandomUnansweredOnly"))?.data as boolean) ||
+			false;
 		const savedVisibility = (await db.get("data", "visibility"))
 			?.data as ComponentVisibility
 		const savedBg = (await db.get("data", "background"))?.data as string
@@ -632,6 +635,8 @@ export default function Home() {
 		setQuizMax(savedQuizMax)
 		setFlashcardIsRandom(savedFlashcardIsRandom)
 		setQuizIsRandom(savedQuizIsRandom)
+		setFlashcardRandomNotUnderstoodOnly(savedFlashcardRandomNotUnderstoodOnly);
+		setQuizRandomUnansweredOnly(savedQuizRandomUnansweredOnly);
 		setVisibility(
 			savedVisibility ?? {
 				clock: true,
@@ -698,6 +703,8 @@ export default function Home() {
 			quizMax: number
 			flashcardIsRandom: boolean
 			quizIsRandom: boolean
+			flashcardRandomNotUnderstoodOnly: boolean;
+			quizRandomUnansweredOnly: boolean;
 		}) => {
 			const {
 				topic: newTopic,
@@ -705,7 +712,9 @@ export default function Home() {
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
 				flashcardIsRandom: newFlashcardIsRandom,
-				quizIsRandom: newQuizIsRandom
+				quizIsRandom: newQuizIsRandom,
+				flashcardRandomNotUnderstoodOnly: newFlashcardRandomNotUnderstoodOnly,
+				quizRandomUnansweredOnly: newQuizRandomUnansweredOnly
 			} = settings
 			const db = await getDb()
 			
@@ -744,10 +753,27 @@ export default function Home() {
 					data: newQuizIsRandom,
 				})
 			}
+			if (flashcardRandomNotUnderstoodOnly !== newFlashcardRandomNotUnderstoodOnly) {
+				setFlashcardRandomNotUnderstoodOnly(newFlashcardRandomNotUnderstoodOnly);
+				await db.put("data", { id: "flashcardRandomNotUnderstoodOnly", data: newFlashcardRandomNotUnderstoodOnly });
+			}
+			if (quizRandomUnansweredOnly !== newQuizRandomUnansweredOnly) {
+				setQuizRandomUnansweredOnly(newQuizRandomUnansweredOnly);
+				await db.put("data", { id: "quizRandomUnansweredOnly", data: newQuizRandomUnansweredOnly });
+			}
 
 			// Logic đã được chuyển sang onGenerateFromSettings
 		},
-		[topic, language, flashcardMax, quizMax, flashcardIsRandom, quizIsRandom]
+		[
+			topic, 
+			language, 
+			flashcardMax, 
+			quizMax, 
+			flashcardIsRandom, 
+			quizIsRandom,
+			flashcardRandomNotUnderstoodOnly,
+			quizRandomUnansweredOnly
+		]
 	)
 
 	const onGenerateFromSettings = useCallback(
@@ -757,11 +783,66 @@ export default function Home() {
 		[handleGenerate, language, view]
 	)
 
-
-	// Không tự động generate khi thay đổi max nữa
+	// Smart Shuffle logic
 	useEffect(() => {
-		// No-op
-	}, [flashcardMax, quizMax])
+		if (flashcardIsRandom && flashcardSet?.cards) {
+			const originalCards = [...flashcardSet.cards];
+			let shuffledCards = [...originalCards];
+	
+			if (flashcardRandomNotUnderstoodOnly && flashcardState) {
+				const understood = [];
+				const notUnderstood = [];
+				
+				for (let i = 0; i < originalCards.length; i++) {
+					if (flashcardState.understoodIndices.includes(i)) {
+						understood.push(originalCards[i]);
+					} else {
+						notUnderstood.push(originalCards[i]);
+					}
+				}
+				
+				const shuffledNotUnderstood = notUnderstood.sort(() => Math.random() - 0.5);
+				shuffledCards = [...shuffledNotUnderstood, ...understood];
+			} else {
+				shuffledCards = originalCards.sort(() => Math.random() - 0.5);
+			}
+			
+			// Only update if the order has actually changed to prevent infinite loops
+			if (JSON.stringify(shuffledCards) !== JSON.stringify(flashcardSet.cards)) {
+				setFlashcardSet({ ...flashcardSet, cards: shuffledCards });
+			}
+		}
+	}, [flashcardIsRandom, flashcardRandomNotUnderstoodOnly, flashcardState, flashcardSet]);
+	
+	useEffect(() => {
+		if (quizIsRandom && quizSet?.questions) {
+			const originalQuestions = [...quizSet.questions];
+			let shuffledQuestions = [...originalQuestions];
+	
+			if (quizRandomUnansweredOnly && quizState) {
+				const answered = [];
+				const unanswered = [];
+				const answeredIndices = Object.keys(quizState.answers).map(Number);
+	
+				for (let i = 0; i < originalQuestions.length; i++) {
+					if (answeredIndices.includes(i)) {
+						answered.push(originalQuestions[i]);
+					} else {
+						unanswered.push(originalQuestions[i]);
+					}
+				}
+	
+				const shuffledUnanswered = unanswered.sort(() => Math.random() - 0.5);
+				shuffledQuestions = [...shuffledUnanswered, ...answered];
+			} else {
+				shuffledQuestions = originalQuestions.sort(() => Math.random() - 0.5);
+			}
+			
+			if (JSON.stringify(shuffledQuestions) !== JSON.stringify(quizSet.questions)) {
+				setQuizSet({ ...quizSet, questions: shuffledQuestions });
+			}
+		}
+	}, [quizIsRandom, quizRandomUnansweredOnly, quizState, quizSet]);
 
 
 	const handleBackgroundChange = useCallback(
@@ -919,7 +1000,9 @@ export default function Home() {
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		flashcardIsRandom: flashcardIsRandom,
-		quizIsRandom: quizIsRandom
+		quizIsRandom: quizIsRandom,
+		flashcardRandomNotUnderstoodOnly: flashcardRandomNotUnderstoodOnly,
+		quizRandomUnansweredOnly: quizRandomUnansweredOnly
 	}
 
 	const globalSettingsProps = {
@@ -971,8 +1054,6 @@ export default function Home() {
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
-							flashcardIsRandom={flashcardIsRandom}
-							quizIsRandom={quizIsRandom}
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
@@ -994,5 +1075,7 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
 
     
