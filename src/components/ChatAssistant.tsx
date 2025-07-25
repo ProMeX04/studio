@@ -244,7 +244,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 								<div className="space-y-2">
 									<div
 										className={cn(
-											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1 prose-chat",
+											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
 											message.role === "user"
 												? "bg-primary/80 text-primary-foreground float-right"
 												: "bg-muted text-muted-foreground"
@@ -259,8 +259,11 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                 rehypePlugins={[rehypeKatex]}
                                                 components={{
                                                     p: ({ node, ...props }) => {
-                                                        return <div {...props} />;
+                                                        return <p {...props} className="break-words" />;
                                                     },
+                                                    pre: ({ node, ...props }) => (
+                                                        <pre {...props} className="w-full overflow-x-auto" />
+                                                    ),
                                                     code({
                                                         node,
                                                         inline,
@@ -302,25 +305,23 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                                     },
                                                             }
                                                             return (
-                                                                <div className="w-full overflow-x-auto">
-                                                                    <Syntax
-                                                                        style={
-                                                                            codeStyle
-                                                                        }
-                                                                        language={
-                                                                            match[1]
-                                                                        }
-                                                                        PreTag="div"
-                                                                        {...props}
-                                                                    >
-                                                                        {String(
-                                                                            children
-                                                                        ).replace(
-                                                                            /\n$/,
-                                                                            ""
-                                                                        )}
-                                                                    </Syntax>
-                                                                </div>
+                                                                <Syntax
+                                                                    style={
+                                                                        codeStyle
+                                                                    }
+                                                                    language={
+                                                                        match[1]
+                                                                    }
+                                                                    PreTag="pre"
+                                                                    {...props}
+                                                                >
+                                                                    {String(
+                                                                        children
+                                                                    ).replace(
+                                                                        /\n$/,
+                                                                        ""
+                                                                    )}
+                                                                </Syntax>
                                                             )
                                                         }
                                                         return (

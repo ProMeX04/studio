@@ -77,33 +77,22 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: (props: any) => {
-					const hasCodeBlock = React.Children.toArray(props.children).some(
-						(child: any) =>
-							child?.type === 'code' &&
-							child?.props?.node?.tagName === 'code' &&
-							/language-(\w+)/.exec(child?.props?.className || "")
-					);
-
-					if (hasCodeBlock) {
-						return <div>{props.children}</div>;
-					}
-					return <p {...props} className="markdown-paragraph">{props.children}</p>;
-				},
+				p: (props: any) => <p {...props} className="markdown-paragraph" />,
+				pre: ({ node, ...props }) => (
+					<pre {...props} className="w-full overflow-x-auto" />
+				),
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline && match) {
 						return (
-							<div className="w-full overflow-x-auto">
-								<Syntax
-									style={codeStyle as any}
-									language={match ? match[1] : "text"}
-									PreTag="div"
-									{...props}
-								>
-									{String(children).replace(/\n$/, "")}
-								</Syntax>
-							</div>
+							<Syntax
+								style={codeStyle as any}
+								language={match ? match[1] : "text"}
+								PreTag="pre"
+								{...props}
+							>
+								{String(children).replace(/\n$/, "")}
+							</Syntax>
 						)
 					}
 					// Handle inline code
@@ -239,7 +228,7 @@ export function Flashcards({
 
 	const handleActivateChat = (initialQuestion?: string) => {
 		if (currentCard) {
-			const context = `Flashcard hiện tại - Mặt trước: ${card.front} - Mặt sau: ${card.back}`;
+			const context = `Flashcard hiện tại - Mặt trước: ${currentCard.front} - Mặt sau: ${currentCard.back}`;
 			onActivateChat(context, initialQuestion);
 		}
 	};
