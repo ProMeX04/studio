@@ -80,15 +80,14 @@ function ChatInputForm({
 export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssistantProps) {
 	
 	const getInitialMessages = (): ChatMessage[] => {
-		// DEBUG: Show the full context as the first message instead of the initial question.
 		if (initialQuestion) {
-			const debugMessage: ChatMessage = {
+			const userMessage: ChatMessage = {
 				id: Date.now().toString(),
 				role: 'user',
-				text: `**[DEBUG MODE] Ngữ cảnh được gửi đến AI:**\n\n---\n\n${context}\n\n---\n\n**Câu hỏi của người dùng:**\n\n${initialQuestion}`
+				text: initialQuestion,
 			};
 			return [
-				debugMessage,
+				userMessage,
 				{ id: (Date.now() + 1).toString(), role: 'model', text: '' },
 			];
 		}
@@ -214,20 +213,14 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 			return [...newMessages, userMessage, assistantMessage];
 		});
 
-		// For subsequent questions, the history will contain the debug message,
-		// but the askQuestionStreamFlow is designed to only use context on the first turn.
-		// This is acceptable for debugging.
 		await streamResponse(questionToSend, currentHistory, assistantMessageId);
 
 	}, [input, isLoading, messages, streamResponse]);
 	
 	// Effect to handle the initial question stream
 	useEffect(() => {
-		// This effect triggers when the component is created with an initial question.
 		if (initialQuestion && messages.length === 2 && messages[0].role === 'user' && messages[1].role === 'model') {
 			const assistantMessageId = messages[1].id!;
-			// The history sent here is empty, which is correct for the first turn.
-			// The context prop is passed separately to streamResponse.
 			streamResponse(initialQuestion, [], assistantMessageId);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps

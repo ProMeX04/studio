@@ -39,7 +39,9 @@ Here is the conversation history so far:
 Here is the user's new question:
 "{{{question}}}"
 
-Please provide a concise and helpful answer to the user's question based on the provided context and history. After the answer, you can optionally provide two relevant follow-up questions the user might have. These suggestions should help the user explore the topic further.
+Please provide a concise and helpful answer to the user's question based on the provided context and history. If the user's question is a general greeting or does not seem related to the context, politely ask how you can help them with the learning topic.
+
+After the answer, you can optionally provide two relevant follow-up questions the user might have. These suggestions should help the user explore the topic further.
 The entire response should be a single markdown-formatted text stream.
 `,
       });
