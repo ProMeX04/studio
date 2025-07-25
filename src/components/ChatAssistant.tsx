@@ -154,9 +154,12 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		const assistantMessageId = (Date.now() + 1).toString();
 		const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
 
+		const currentHistory = messages;
+		
 		setMessages(prev => {
 			const newMessages = [...prev];
 			const lastMessage = newMessages[newMessages.length - 1];
+			// Xóa suggestions của tin nhắn AI gần nhất nếu có
 			if (lastMessage?.role === 'model') {
 				delete lastMessage.suggestions;
 			}
@@ -170,7 +173,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 			const stream = await askQuestionStream({
 				context,
 				question: questionToSend,
-				history: messages,
+				history: currentHistory, // Sử dụng history trước khi thêm tin nhắn mới
 			});
 	
 			await processStream(stream, assistantMessageId);
@@ -201,11 +204,15 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 
 	useEffect(() => {
 		if (initialQuestion) {
+			// Dummy event for handleSubmit
 			const dummyEvent = { preventDefault: () => {} } as React.FormEvent;
+			
+			// Call handleSubmit with the initial question
+			// This will send the question to the AI
 			handleSubmit(dummyEvent, initialQuestion);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialQuestion]);
+	}, [initialQuestion]); // Chỉ chạy một lần khi initialQuestion được set
 
 
 	return (
@@ -345,3 +352,5 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
+
+    
