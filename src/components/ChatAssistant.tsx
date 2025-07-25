@@ -210,7 +210,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 
 
 	return (
-		<Card className="h-full w-full flex flex-col bg-background/50 backdrop-blur-lg shadow-2xl rounded-none border-l-0 border-r-2 border-y-0 border-border">
+		<Card className="h-full w-full flex flex-col bg-background/50 backdrop-blur-lg shadow-2xl rounded-2xl border max-h-[90vh]">
 			<CardHeader className="flex flex-row items-center justify-between">
 				<CardTitle>Trợ lý AI</CardTitle>
 				<Button variant="ghost" size="icon" onClick={() => {
