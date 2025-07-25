@@ -14,7 +14,7 @@ import type { QuizState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { Loader, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader, Plus, ChevronLeft, ChevronRight, Award } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -33,6 +33,7 @@ import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
+import { QuizSummary } from "@/components/QuizSummary"
 
 const BATCH_SIZE = 5;
 
@@ -52,6 +53,8 @@ interface LearnProps {
 	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
 	topic: string
+	showQuizSummary: boolean
+	setShowQuizSummary: (show: boolean) => void
 }
 
 function Learn({
@@ -70,6 +73,8 @@ function Learn({
 	onViewChange,
 	language,
 	topic,
+	showQuizSummary,
+	setShowQuizSummary,
 }: LearnProps) {
 	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
 	const currentIndex = view === "flashcards" ? flashcardIndex : (quizState?.currentQuestionIndex ?? 0);
@@ -95,11 +100,26 @@ function Learn({
 			}
 		}
 	};
+
+	const correctAnswers = quizSet && quizState ? Object.values(quizState.answers).filter(
+		(answer, index) => quizSet.questions[index]?.answer === answer.selected
+	).length : 0;
+
+	const allQuestionsAnswered = quizSet && quizState ? Object.keys(quizState.answers).length === quizSet.questions.length : false;
+	const shouldShowSummary = (showQuizSummary || allQuestionsAnswered) && view === 'quiz';
 	
 	return (
 		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 flex flex-col">
 			<CardContent className="flex-grow flex flex-col p-0">
-				{view === "flashcards" && (
+				{shouldShowSummary && quizSet ? (
+					<QuizSummary
+						correctAnswers={correctAnswers}
+						totalQuestions={quizSet.questions.length}
+						onReset={onQuizReset}
+						onBack={() => setShowQuizSummary(false)}
+						isCompleted={allQuestionsAnswered}
+					/>
+				) : view === "flashcards" ? (
 					<Flashcards
 						flashcardSet={flashcardSet}
 						isRandom={flashcardIsRandom}
@@ -107,13 +127,11 @@ function Learn({
 						onIndexChange={onFlashcardIndexChange}
 						topic={topic}
 					/>
-				)}
-				{view === "quiz" && (
+				) : (
 					<Quiz
 						quizSet={quizSet}
 						initialState={quizState}
 						onStateChange={onQuizStateChange}
-						onReset={onQuizReset}
 						language={language}
 						topic={topic}
 					/>
@@ -138,7 +156,7 @@ function Learn({
 						<div className="flex items-center gap-2">
 							<Button
 								onClick={handlePrev}
-								disabled={currentIndex === 0 || !hasContent}
+								disabled={currentIndex === 0 || !hasContent || shouldShowSummary}
 								variant="outline"
 								size="icon"
 								className="h-9 w-9"
@@ -152,7 +170,7 @@ function Learn({
 
 							<Button
 								onClick={handleNext}
-								disabled={!hasContent || currentIndex >= totalItems - 1}
+								disabled={!hasContent || currentIndex >= totalItems - 1 || shouldShowSummary}
 								variant="outline"
 								size="icon"
 								className="h-9 w-9"
@@ -160,9 +178,21 @@ function Learn({
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 
+							{view === 'quiz' && (
+								<Button
+									onClick={() => setShowQuizSummary(true)}
+									disabled={!hasContent || shouldShowSummary}
+									variant="outline"
+									size="icon"
+									className="h-9 w-9"
+								>
+									<Award className="w-4 h-4" />
+								</Button>
+							)}
+
 							<Button
 								onClick={onGenerateNew}
-								disabled={isLoading || !canGenerateMore}
+								disabled={isLoading || !canGenerateMore || shouldShowSummary}
 								variant="outline"
 								size="icon"
 								className="h-9 w-9"
@@ -214,6 +244,7 @@ export default function Home() {
 	const [isMounted, setIsMounted] = useState(false)
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
+	const [showQuizSummary, setShowQuizSummary] = useState(false);
 
 	// Ngăn race condition và cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -359,6 +390,7 @@ export default function Home() {
 					if (forceNew) {
 						setQuizSet(null)
 						setQuizState(null)
+						setShowQuizSummary(false);
 						await db.delete("data", "quiz")
 						await db.delete("data", "quizState")
 					}
@@ -657,6 +689,7 @@ export default function Home() {
 		async (newView: "flashcards" | "quiz") => {
 			if (view === newView) return
 			setView(newView)
+			setShowQuizSummary(false); // Hide summary when switching views
 			const db = await getDb()
 			await db.put("data", { id: "view", data: newView })
 		},
@@ -673,6 +706,7 @@ export default function Home() {
 		// 1. Clear state locally
 		setQuizSet(null);
 		setQuizState(null);
+		setShowQuizSummary(false);
 	
 		// 2. Clear from DB
 		const db = await getDb();
@@ -781,6 +815,8 @@ export default function Home() {
 							onViewChange={handleViewChange}
 							language={language}
 							topic={topic}
+							showQuizSummary={showQuizSummary}
+							setShowQuizSummary={setShowQuizSummary}
 						/>
 					</div>
 				</div>

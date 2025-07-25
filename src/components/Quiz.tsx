@@ -45,7 +45,6 @@ interface QuizProps {
 	quizSet: QuizSet | null
 	initialState: QuizState | null
 	onStateChange: (newState: QuizState) => void
-	onReset: () => void;
 	language: string
 	topic: string;
 }
@@ -109,7 +108,6 @@ export function Quiz({
 	quizSet,
 	initialState,
 	onStateChange,
-	onReset,
 	language,
 	topic,
 }: QuizProps) {
@@ -124,7 +122,6 @@ export function Quiz({
 		Set<string>
 	>(new Set()) // Track which explanations are visible
 	const { toast } = useToast()
-	const [isCompleted, setIsCompleted] = useState(false);
 
 	const currentAnswerState = answers[currentQuestionIndex] || {
 		selected: null,
@@ -132,17 +129,6 @@ export function Quiz({
 		explanations: {},
 	}
 	const { selected: selectedAnswer, isAnswered } = currentAnswerState
-
-	// Check for quiz completion
-    useEffect(() => {
-        if (quizSet && quizSet.questions.length > 0) {
-            const allAnswered = Object.keys(answers).length === quizSet.questions.length;
-            const allQuestionsLoaded = quizSet.questions.length > 0;
-            setIsCompleted(allAnswered && allQuestionsLoaded);
-        } else {
-            setIsCompleted(false);
-        }
-    }, [answers, quizSet]);
 
 
 	// Update state only when initialState changes, not when quizSet changes.
@@ -163,7 +149,6 @@ export function Quiz({
 		if (!quizSet) {
 			setCurrentQuestionIndex(0)
 			setAnswers({})
-			setIsCompleted(false)
 		}
 	}, [quizSet])
 
@@ -281,21 +266,6 @@ export function Quiz({
 			return "bg-destructive/50 border-destructive backdrop-blur-sm"
 		return "border-border bg-background/80 backdrop-blur-sm"
 	}
-
-	if (isCompleted && quizSet) {
-        const correctAnswers = Object.values(answers).filter(
-            (answer, index) => quizSet.questions[index]?.answer === answer.selected
-        ).length;
-        const totalQuestions = quizSet.questions.length;
-
-        return (
-            <QuizSummary
-                correctAnswers={correctAnswers}
-                totalQuestions={totalQuestions}
-                onReset={onReset}
-            />
-        );
-    }
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
