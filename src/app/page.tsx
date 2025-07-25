@@ -749,7 +749,7 @@ export default function Home() {
 			{/* Left Column */}
 			{isChatActive ? (
 				<div className="relative flex h-full flex-col justify-center items-center p-4 sm:p-8 md:p-12">
-					<div className="w-full max-w-2xl h-full">
+					<div className="w-full max-w-2xl h-full flex justify-center items-center">
 						<ChatAssistant 
 							context={chatContext}
 							initialQuestion={initialChatQuestion}
