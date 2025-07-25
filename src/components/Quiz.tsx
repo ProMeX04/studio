@@ -128,15 +128,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// Handle non-inline code
 					return (
-						<Syntax
-							style={codeStyle as any}
-							language={match ? match[1] : "text"}
-							PreTag="div"
-							wrapLongLines={true}
-							{...props}
-						>
-							{String(children).replace(/\n$/, "")}
-						</Syntax>
+						<div>
+							<Syntax
+								style={codeStyle as any}
+								language={match ? match[1] : "text"}
+								PreTag="div"
+								wrapLongLines={true}
+								{...props}
+							>
+								{String(children).replace(/\n$/, "")}
+							</Syntax>
+						</div>
 					)
 				},
 			}}
@@ -371,7 +373,7 @@ export function Quiz({
 			<CardContent className="flex-grow flex flex-col justify-center items-center">
 				{hasContent && currentQuestion ? (
 					<div className="w-full max-w-5xl mx-auto space-y-6">
-						<div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
+						<div className="text-3xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
 							<MarkdownRenderer>
 								{currentQuestion.question}
 							</MarkdownRenderer>
@@ -387,7 +389,7 @@ export function Quiz({
 									<Label
 										htmlFor={`option-${index}`}
 										className={cn(
-											"w-full flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors text-lg",
+											"w-full flex items-center justify-between gap-4 p-5 rounded-lg border transition-colors text-xl",
 											getOptionClass(option)
 										)}
 									>

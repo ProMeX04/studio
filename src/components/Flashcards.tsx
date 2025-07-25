@@ -130,15 +130,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// Handle non-inline code
 					return (
-						<Syntax
-							style={codeStyle as any}
-							language={match ? match[1] : "text"}
-							PreTag="div"
-							wrapLongLines={true}
-							{...props}
-						>
-							{String(children).replace(/\n$/, "")}
-						</Syntax>
+						<div>
+							<Syntax
+								style={codeStyle as any}
+								language={match ? match[1] : "text"}
+								PreTag="div"
+								wrapLongLines={true}
+								{...props}
+							>
+								{String(children).replace(/\n$/, "")}
+							</Syntax>
+						</div>
 					)
 				},
 			}}
@@ -162,7 +164,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 		>
 			<div
 				className={cn(
-					"flashcard w-full h-full preserve-3d transition-transform duration-500 min-h-[28rem] cursor-pointer",
+					"flashcard w-full h-full preserve-3d transition-transform duration-500 min-h-[34rem] cursor-pointer",
 					isFlipped && "is-flipped"
 				)}
 			>
