@@ -279,12 +279,6 @@ export function Quiz({
 			return "bg-destructive/50 border-destructive backdrop-blur-sm"
 		return "border-border bg-background/80 backdrop-blur-sm"
 	}
-	
-	const handleActivateChat = (initialQuestion?: string) => {
-		// Placeholder for new feature
-		console.log("Activating new feature with question:", initialQuestion)
-	};
-
 
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
@@ -416,17 +410,6 @@ export function Quiz({
 						>
 							<ChevronLeft />
 						</Button>
-
-						{hasContent && currentQuestion && (
-							<div className="flex-1 mx-2">
-								<ChatInput
-									onActivate={handleActivateChat}
-									placeholder="Hỏi AI về câu hỏi này..."
-									title="Chat về Quiz"
-									className="w-full"
-								/>
-							</div>
-						)}
 
 						<Button
 							onClick={handleNextQuestion}

@@ -217,12 +217,6 @@ export function Flashcards({
 		}
 	}
 
-	const handleActivateChat = (initialQuestion?: string) => {
-		// Placeholder for new feature
-		console.log("Activating new feature with question:", initialQuestion)
-	};
-
-
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<CardContent className="flex-grow flex items-center justify-center">
@@ -256,17 +250,6 @@ export function Flashcards({
 						>
 							<ChevronLeft />
 						</Button>
-
-						{hasContent && currentCard && (
-							<div className="flex-1 mx-2">
-								<ChatInput
-									onActivate={handleActivateChat}
-									placeholder="Hỏi AI về flashcard này..."
-									title="Chat về Flashcard"
-									className="w-full"
-								/>
-							</div>
-						)}
 
 						<Button
 							onClick={handleNextCard}
