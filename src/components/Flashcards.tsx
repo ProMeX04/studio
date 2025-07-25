@@ -51,7 +51,7 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
-	onActivateChat: (context: string, initialQuestion?: string) => void;
+	onActivateChat: (initialQuestion?: string) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -227,10 +227,7 @@ export function Flashcards({
 	}
 
 	const handleActivateChat = (initialQuestion?: string) => {
-		if (currentCard) {
-			const context = `Flashcard hiện tại - Mặt trước: ${currentCard.front} - Mặt sau: ${currentCard.back}`;
-			onActivateChat(context, initialQuestion);
-		}
+		onActivateChat(initialQuestion);
 	};
 
 

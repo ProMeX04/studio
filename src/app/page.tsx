@@ -54,7 +54,7 @@ interface LearnProps {
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
-	onActivateChat: (context: string, initialQuestion?: string) => void
+	onActivateChat: (initialQuestion?: string) => void
 }
 
 function Learn({
@@ -686,14 +686,14 @@ export default function Home() {
 		setCurrentFlashcard(card)
 	}, [])
 
-	const getLiveContext = (): string => {
-		let context = `Người dùng đang học về chủ đề: ${topic}.`;
+	const handleActivateChat = useCallback((initialQuestion?: string) => {
+		let currentContext = `Người dùng đang học về chủ đề: ${topic}.`;
 		
 		if (view === "quiz" && quizSet && quizState) {
 			const currentQuestion: QuizQuestion | undefined =
 				quizSet.questions[quizState.currentQuestionIndex]
 			if (currentQuestion) {
-				context += ` Họ đang ở câu hỏi trắc nghiệm: "${
+				currentContext += ` Họ đang ở câu hỏi trắc nghiệm: "${
 					currentQuestion.question
 				}" với các lựa chọn: ${currentQuestion.options.join(
 					", "
@@ -703,20 +703,17 @@ export default function Home() {
 					quizState.answers[quizState.currentQuestionIndex]
 						?.selected
 				if (userAnswer) {
-					context += ` Người dùng đã chọn "${userAnswer}".`
+					currentContext += ` Người dùng đã chọn "${userAnswer}".`
 				}
 			}
 		} else if (view === "flashcards" && currentFlashcard) {
-			context += ` Người dùng đang xem flashcard: Mặt trước "${currentFlashcard.front}", Mặt sau "${currentFlashcard.back}".`
+			currentContext += ` Người dùng đang xem flashcard: Mặt trước "${currentFlashcard.front}", Mặt sau "${currentFlashcard.back}".`
 		}
-		return context
-	}
 
-	const handleActivateChat = useCallback((context: string, initialQuestion?: string) => {
-		setChatContext(context);
+		setChatContext(currentContext);
 		setInitialChatQuestion(initialQuestion || "");
 		setIsChatActive(true);
-	}, []);
+	}, [topic, view, quizSet, quizState, currentFlashcard]);
 
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
@@ -820,7 +817,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
-
-    

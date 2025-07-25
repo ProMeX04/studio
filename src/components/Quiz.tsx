@@ -49,7 +49,7 @@ interface QuizProps {
 	canGenerateMore: boolean
 	isLoading: boolean
 	language: string
-	onActivateChat: (context: string, initialQuestion?: string) => void;
+	onActivateChat: (initialQuestion?: string) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -281,10 +281,7 @@ export function Quiz({
 	}
 	
 	const handleActivateChat = (initialQuestion?: string) => {
-		if (currentQuestion) {
-			const context = `Câu hỏi Quiz: ${currentQuestion.question} - Đáp án đúng: ${currentQuestion.answer} - Giải thích: ${currentQuestion.explanation}`;
-			onActivateChat(context, initialQuestion);
-		}
+		onActivateChat(initialQuestion);
 	};
 
 
