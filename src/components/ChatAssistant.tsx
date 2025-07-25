@@ -1,14 +1,14 @@
 
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect }from "react"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Loader, Send, Sparkles, User, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { askQuestion } from "@/ai/flows/ask-question"
-import { type ChatMessage } from "@/ai/schemas"
+import { askQuestionStream } from "@/ai/flows/ask-question-stream"
+import type { ChatMessage } from "@/ai/schemas"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import { ScrollArea } from "./ui/scroll-area"
 import ReactMarkdown from "react-markdown"
@@ -17,6 +17,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import { AIOperationError } from "@/lib/ai-utils"
 
 interface ChatAssistantProps {
 	context: string;
@@ -27,7 +28,7 @@ interface ChatAssistantProps {
 interface ChatInputFormProps {
 	input: string;
 	setInput: (value: string) => void;
-	handleSubmit: (e: React.FormEvent, question?: string) => Promise<void>;
+	handleSubmit: (e: React.FormEvent) => Promise<void>;
 	isLoading: boolean;
 	className?: string;
 }
@@ -48,7 +49,7 @@ function ChatInputForm({
 
 	return (
 		<form
-			onSubmit={(e) => handleSubmit(e)}
+			onSubmit={handleSubmit}
 			className={cn("flex w-full items-center gap-2", className)}
 		>
 			<Textarea
@@ -71,14 +72,16 @@ function ChatInputForm({
 	)
 }
 
+
 export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssistantProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState("")
 	const [isLoading, setIsLoading] = useState(false)
 	const { toast } = useToast()
 	const scrollAreaRef = useRef<HTMLDivElement>(null)
+	const abortControllerRef = useRef<AbortController | null>(null)
 
-	const scrollToBottom = () => {
+	const scrollToBottom = useCallback(() => {
 		setTimeout(() => {
 			if (scrollAreaRef.current) {
 				const viewport = scrollAreaRef.current.querySelector("div")
@@ -87,66 +90,141 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 				}
 			}
 		}, 100);
-	}
+	}, [])
 
 	useEffect(() => {
 		scrollToBottom()
-	}, [messages])
-
-	const handleSubmit = async (e: React.FormEvent, question?: string) => {
-		e.preventDefault()
-		const questionToSend = question || input
-		if (!questionToSend.trim() || isLoading) return
-
-		const userMessage: ChatMessage = { role: "user", text: questionToSend }
-
-		// Hide suggestions from previous model message
-		setMessages((prev) => {
-			const newMessages = [...prev]
-			const lastMessage = newMessages[newMessages.length - 1]
-			if (lastMessage?.role === "model") {
-				lastMessage.suggestions = undefined
+	}, [messages, scrollToBottom])
+	
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if(abortControllerRef.current) {
+				abortControllerRef.current.abort();
 			}
-			return [...newMessages, userMessage]
-		})
+		}
+	}, [])
 
-		setInput("")
-		setIsLoading(true)
+	const processStream = useCallback(async (stream: ReadableStream<string>, assistantMessageId: string) => {
+		const reader = stream.getReader();
+		const decoder = new TextDecoder();
+		let accumulatedResponse = "";
 
 		try {
-			const result = await askQuestion({
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				
+				const chunk = decoder.decode(value, { stream: true });
+				accumulatedResponse += chunk;
+
+				try {
+					const parsedResponse = JSON.parse(accumulatedResponse + '"}'); // Attempt to close JSON
+					setMessages(prev => prev.map(msg => 
+						msg.id === assistantMessageId 
+						? { ...msg, text: parsedResponse.answer, suggestions: parsedResponse.suggestions } 
+						: msg
+					));
+				} catch (e) {
+					// Incomplete JSON, update text only
+					setMessages(prev => prev.map(msg => 
+						msg.id === assistantMessageId 
+						? { ...msg, text: accumulatedResponse } 
+						: msg
+					));
+				}
+			}
+
+			// Final parse
+			try {
+				const finalResponse = JSON.parse(accumulatedResponse);
+				setMessages(prev => prev.map(msg => 
+					msg.id === assistantMessageId 
+					? { ...msg, text: finalResponse.answer, suggestions: finalResponse.suggestions } 
+					: msg
+				));
+			} catch(e) {
+				console.error("Final parse of stream failed:", e);
+				// Keep the raw text if final parse fails
+				setMessages(prev => prev.map(msg => 
+					msg.id === assistantMessageId 
+					? { ...msg, text: accumulatedResponse } 
+					: msg
+				));
+			}
+
+		} catch (error) {
+			console.error("Error processing stream:", error);
+			setMessages(prev => prev.map(msg => 
+				msg.id === assistantMessageId 
+				? { ...msg, text: "Xin lỗi, đã có lỗi xảy ra khi xử lý phản hồi." } 
+				: msg
+			));
+		}
+	}, []);
+
+
+	const handleSubmit = useCallback(async (e: React.FormEvent, question?: string) => {
+		e.preventDefault();
+		const questionToSend = question || input;
+		if (!questionToSend.trim() || isLoading) return;
+	
+		setIsLoading(true);
+		setInput("");
+	
+		// Add user message
+		const userMessage: ChatMessage = { id: Date.now().toString(), role: "user", text: questionToSend };
+		
+		// Add empty assistant message
+		const assistantMessageId = (Date.now() + 1).toString();
+		const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
+
+		setMessages(prev => {
+			const newMessages = [...prev];
+			const lastMessage = newMessages[newMessages.length - 1];
+			if (lastMessage?.role === 'model') {
+				delete lastMessage.suggestions;
+			}
+			return [...newMessages, userMessage, assistantMessage];
+		});
+
+		abortControllerRef.current = new AbortController();
+	
+		try {
+			const stream = await askQuestionStream({
 				context,
 				question: questionToSend,
 				history: messages,
-			})
-
-			if (result.answer) {
-				const modelMessage: ChatMessage = {
-					role: "model",
-					text: result.answer,
-					suggestions: result.suggestions,
-				}
-				setMessages((prev) => [...prev, modelMessage])
-			} else {
-				throw new Error("AI did not return an answer.")
-			}
+			});
+	
+			await processStream(stream, assistantMessageId);
+	
 		} catch (error) {
-			console.error("Error asking question:", error)
+			console.error("Error asking question:", error);
+			const errorMessage = error instanceof AIOperationError && error.code === 'ABORTED'
+				? "Yêu cầu đã được hủy."
+				: "Không thể nhận câu trả lời từ AI. Vui lòng thử lại.";
+
+			setMessages(prev => prev.map(msg => 
+				msg.id === assistantMessageId 
+				? { ...msg, text: errorMessage } 
+				: msg
+			));
+			
 			toast({
 				title: "Lỗi",
-				description:
-					"Không thể nhận câu trả lời từ AI. Vui lòng thử lại.",
+				description: errorMessage,
 				variant: "destructive",
-			})
-			// Do not remove the user message if the call fails
+			});
 		} finally {
-			setIsLoading(false)
+			setIsLoading(false);
+			abortControllerRef.current = null;
 		}
-	}
+	}, [input, isLoading, context, messages, toast, processStream]);
+	
 
 	useEffect(() => {
 		if (initialQuestion) {
-			// Create a dummy event object
 			const dummyEvent = { preventDefault: () => {} } as React.FormEvent;
 			handleSubmit(dummyEvent, initialQuestion);
 		}
@@ -154,18 +232,16 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 	}, [initialQuestion]);
 
 
-	const chatInputProps = {
-		input,
-		setInput,
-		handleSubmit,
-		isLoading,
-	}
-
 	return (
 		<Card className="h-full w-full flex flex-col bg-background/50 backdrop-blur-lg shadow-2xl rounded-none border-l-0 border-r-2 border-y-0 border-border">
 			<CardHeader className="flex flex-row items-center justify-between">
 				<CardTitle>Trợ lý AI</CardTitle>
-				<Button variant="ghost" size="icon" onClick={onClose}>
+				<Button variant="ghost" size="icon" onClick={() => {
+					if (abortControllerRef.current) {
+						abortControllerRef.current.abort();
+					}
+					onClose();
+				}}>
 					<X className="h-5 w-5" />
 				</Button>
 			</CardHeader>
@@ -179,7 +255,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 						)}
 						{messages.map((message, index) => (
 							<div
-								key={index}
+								key={message.id || index}
 								className={cn(
 									"flex items-start gap-3",
 									message.role === "user"
@@ -205,92 +281,97 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 											}
 										)}
 									>
-										<ReactMarkdown
-											remarkPlugins={[
-												remarkGfm,
-												remarkMath,
-											]}
-											rehypePlugins={[rehypeKatex]}
-											components={{
-												p: 'div',
-												code({
-													node,
-													inline,
-													className,
-													children,
-													...props
-												}) {
-													const match =
-														/language-(\w+)/.exec(
-															className || ""
-														)
-													if (!inline && match) {
-														const codeStyle = {
-															...vscDarkPlus,
-															'pre[class*="language-"]':
-																{
-																	...vscDarkPlus[
-																		'pre[class*="language-"]'
-																	],
-																	background:
-																		"transparent",
-																	padding:
-																		"0",
-																	margin: "0",
-																	fontSize:
-																		"16px",
-																},
-															'code[class*="language-"]':
-																{
-																	...vscDarkPlus[
-																		'code[class*="language-"]'
-																	],
-																	background:
-																		"transparent",
-																	padding:
-																		"0",
-																	fontSize:
-																		"16px",
-																},
-														}
-														return (
-															<SyntaxHighlighter
-																style={
-																	codeStyle
-																}
-																language={
-																	match[1]
-																}
-																PreTag="div"
-																{...props}
-															>
-																{String(
-																	children
-																).replace(
-																	/\n$/,
-																	""
-																)}
-															</SyntaxHighlighter>
-														)
-													}
-													return (
-														<code
-															className={cn(
-																className,
-																"inline-code"
-															)}
-															{...props}
-														>
-															{children}
-														</code>
-													)
-												},
-											}}
-										>
-											{message.text}
-										</ReactMarkdown>
+                                        {message.text ? (
+                                            <ReactMarkdown
+                                                remarkPlugins={[
+                                                    remarkGfm,
+                                                    remarkMath,
+                                                ]}
+                                                rehypePlugins={[rehypeKatex]}
+                                                components={{
+                                                    p: 'div',
+                                                    code({
+                                                        node,
+                                                        inline,
+                                                        className,
+                                                        children,
+                                                        ...props
+                                                    }) {
+                                                        const match =
+                                                            /language-(\w+)/.exec(
+                                                                className || ""
+                                                            )
+                                                        if (!inline && match) {
+                                                            const codeStyle = {
+                                                                ...vscDarkPlus,
+                                                                'pre[class*="language-"]':
+                                                                    {
+                                                                        ...vscDarkPlus[
+                                                                            'pre[class*="language-"]'
+                                                                        ],
+                                                                        background:
+                                                                            "transparent",
+                                                                        padding:
+                                                                            "0",
+                                                                        margin: "0",
+                                                                        fontSize:
+                                                                            "16px",
+                                                                    },
+                                                                'code[class*="language-"]':
+                                                                    {
+                                                                        ...vscDarkPlus[
+                                                                            'code[class*="language-"]'
+                                                                        ],
+                                                                        background:
+                                                                            "transparent",
+                                                                        padding:
+                                                                            "0",
+                                                                        fontSize:
+                                                                            "16px",
+                                                                    },
+                                                            }
+                                                            return (
+                                                                <SyntaxHighlighter
+                                                                    style={
+                                                                        codeStyle
+                                                                    }
+                                                                    language={
+                                                                        match[1]
+                                                                    }
+                                                                    PreTag="div"
+                                                                    {...props}
+                                                                >
+                                                                    {String(
+                                                                        children
+                                                                    ).replace(
+                                                                        /\n$/,
+                                                                        ""
+                                                                    )}
+                                                                </SyntaxHighlighter>
+                                                            )
+                                                        }
+                                                        return (
+                                                            <code
+                                                                className={cn(
+                                                                    className,
+                                                                    "inline-code"
+                                                                )}
+                                                                {...props}
+                                                            >
+                                                                {children}
+                                                            </code>
+                                                        )
+                                                    },
+                                                }}
+                                            >
+                                                {message.text}
+                                            </ReactMarkdown>
+                                        ) : (
+                                           <Loader className="animate-spin text-muted-foreground" />
+                                        )}
 									</div>
 									{message.role === "model" &&
+										!isLoading &&
 										message.suggestions &&
 										message.suggestions.length > 0 && (
 											<div className="flex flex-wrap gap-2 pt-2">
@@ -322,21 +403,17 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 								)}
 							</div>
 						))}
-						{isLoading && (
-							<div className="flex items-start gap-3 justify-start">
-								<div className="p-2 bg-primary rounded-full text-primary-foreground">
-									<Sparkles className="h-5 w-5" />
-								</div>
-								<div className="bg-muted rounded-lg p-3">
-									<Loader className="animate-spin text-muted-foreground" />
-								</div>
-							</div>
-						)}
+						
 					</div>
 				</ScrollArea>
 			</CardContent>
 			<CardFooter>
-				<ChatInputForm {...chatInputProps} />
+				<ChatInputForm 
+					input={input}
+					setInput={setInput}
+					handleSubmit={handleSubmit}
+					isLoading={isLoading}
+				/>
 			</CardFooter>
 		</Card>
 	)

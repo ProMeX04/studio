@@ -75,6 +75,7 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 
 // Chat Assistant
 export const ChatMessageSchema = z.object({
+  id: z.string().optional(), // Add optional ID for React keys
   role: z.enum(['user', 'model']),
   text: z.string(),
   suggestions: z.array(z.string()).optional(),
