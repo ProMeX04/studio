@@ -14,7 +14,7 @@ import type { QuizState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { Loader, Plus, ChevronLeft, ChevronRight, Award } from "lucide-react"
+import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -54,7 +54,8 @@ interface LearnProps {
 	language: string
 	topic: string
 	showQuizSummary: boolean
-	setShowQuizSummary: (show: boolean) => void
+	setShowQuizSummary: (show: boolean) => void;
+	settingsProps: any;
 }
 
 function Learn({
@@ -75,6 +76,7 @@ function Learn({
 	topic,
 	showQuizSummary,
 	setShowQuizSummary,
+	settingsProps,
 }: LearnProps) {
 	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
 	const currentIndex = view === "flashcards" ? flashcardIndex : (quizState?.currentQuestionIndex ?? 0);
@@ -224,6 +226,9 @@ function Learn({
 									<Plus className="w-4 h-4" />
 								)}
 							</Button>
+							
+							<Settings {...settingsProps} />
+
 						</div>
 					</div>
 				</div>
@@ -770,6 +775,26 @@ export default function Home() {
 	if (!isMounted) {
 		return null
 	}
+	
+	const settingsProps = {
+		onSettingsChange: onSettingsSave,
+		onClearAllData: handleClearAllData,
+		onVisibilityChange: handleVisibilityChange,
+		onBackgroundChange: handleBackgroundChange,
+		onUploadedBackgroundsChange:
+			handleUploadedBackgroundsChange,
+		onViewChange: handleViewChange,
+		onGenerateNew: onGenerateFromSettings,
+		currentView: view,
+		visibility: visibility,
+		uploadedBackgrounds: uploadedBackgrounds,
+		currentBackgroundImage: backgroundImage,
+		topic: topic,
+		language: language,
+		flashcardMax: flashcardMax,
+		quizMax: quizMax,
+		flashcardIsRandom: flashcardIsRandom,
+	}
 
 	return (
 		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1.2fr,1.5fr]">
@@ -785,26 +810,6 @@ export default function Home() {
 			{/* Left Column */}
 			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
 				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
-					<Settings
-						onSettingsChange={onSettingsSave}
-						onClearAllData={handleClearAllData}
-						onVisibilityChange={handleVisibilityChange}
-						onBackgroundChange={handleBackgroundChange}
-						onUploadedBackgroundsChange={
-							handleUploadedBackgroundsChange
-						}
-						onViewChange={handleViewChange}
-						onGenerateNew={onGenerateFromSettings}
-						currentView={view}
-						visibility={visibility}
-						uploadedBackgrounds={uploadedBackgrounds}
-						currentBackgroundImage={backgroundImage}
-						topic={topic}
-						language={language}
-						flashcardMax={flashcardMax}
-						quizMax={quizMax}
-						flashcardIsRandom={flashcardIsRandom}
-					/>
 					{visibility.greeting && <Greeting />}
 				</div>
 
@@ -838,6 +843,7 @@ export default function Home() {
 							topic={topic}
 							showQuizSummary={showQuizSummary}
 							setShowQuizSummary={setShowQuizSummary}
+							settingsProps={settingsProps}
 						/>
 					</div>
 				</div>
@@ -845,5 +851,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    

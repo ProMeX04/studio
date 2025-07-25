@@ -193,8 +193,8 @@ export function Settings({
 			}}
 		>
 			<SheetTrigger asChild>
-				<Button variant="ghost" size="icon">
-					<SettingsIcon className="h-5 w-5" />
+				<Button variant="outline" size="icon" className="h-9 w-9">
+					<SettingsIcon />
 					<span className="sr-only">Cài đặt</span>
 				</Button>
 			</SheetTrigger>
