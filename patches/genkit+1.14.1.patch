@@ -1,0 +1,14 @@
+diff --git a/node_modules/genkit/package.json b/node_modules/genkit/package.json
+index 515a810..032b4b4 100644
+--- a/node_modules/genkit/package.json
++++ b/node_modules/genkit/package.json
+@@ -66,5 +66,8 @@
+   "peerDependencies": {
+     "zod": "^3.22.4"
+   },
+-  "gitHead": "78a0874e357c3a49733475730d1955d51b3297a3"
++  "gitHead": "78a0874e357c3a49733475730d1955d51b3297a3",
++  "browser": {
++    "./lib/tracing.js": false
++  }
+ }

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -45,7 +46,6 @@
     "katex": "^0.16.11",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
-    "patch-package": "^8.0.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -70,6 +70,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/wav": "^1.0.2",
     "genkit-cli": "^1.14.1",
+    "patch-package": "^8.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
