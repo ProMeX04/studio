@@ -52,7 +52,7 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: {"explanation": "The method \`pop()\` removes and returns the element at the given index. In this case, it removes the element at index 1, which is **20**."}
-Ensure the explanation is well-structured with clear paragraphs.
+Ensure the JSON is properly escaped according to RFC 8259.
 `
     : `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
@@ -68,7 +68,7 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: {"explanation": "While that's a good thought, the correct answer is actually **20**. The method \`pop(1)\` specifically targets the element at index 1."}
-Ensure the explanation is well-structured with clear paragraphs.
+Ensure the JSON is properly escaped according to RFC 8259.
 `;
 
   const generationConfig: GenerationConfig = {

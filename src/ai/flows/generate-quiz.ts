@@ -55,7 +55,7 @@ The content for "question", "options", and "explanation" fields MUST be valid st
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-Ensure explanations are well-structured with clear paragraphs.
+Ensure the JSON is properly escaped according to RFC 8259.
 `;
   
   const generationConfig: GenerationConfig = {

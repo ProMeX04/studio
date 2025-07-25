@@ -53,6 +53,7 @@ IMPORTANT: Your response MUST be a valid JSON array of objects, where each objec
 - Use bolding for keywords, like **this**.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: [{"front": "What does \`console.log()\` do?", "back": "It prints a message to the web console."}, {"front": "What is the Pythagorean theorem?", "back": "It is defined as: $$a^2 + b^2 = c^2$$"}]
+Ensure the JSON is properly escaped according to RFC 8259.
 `;
 
   const generationConfig: GenerationConfig = {
