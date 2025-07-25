@@ -75,7 +75,6 @@ interface LearnSettingsProps {
 		flashcardIsRandom: boolean
 	}) => void
 	onGenerateNew: (topic: string) => void
-	onViewChange: (view: "flashcards" | "quiz") => void
 	currentView: "flashcards" | "quiz"
 	topic: string
 	language: string
@@ -188,8 +187,11 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderLearnSettings = () => {
-		if (!isLearnScope) return null;
-		const learnProps = props as LearnSettingsProps;
+		if (!isLearnScope) return null
+		const learnProps = props as LearnSettingsProps
+		const isFlashcardView = learnProps.currentView === "flashcards"
+		const isQuizView = learnProps.currentView === "quiz"
+
 		return (
 			<div className="space-y-4">
 				<div className="grid grid-cols-4 items-center gap-4">
@@ -208,19 +210,13 @@ export function Settings(props: SettingsProps) {
 					<Label htmlFor="language" className="text-right">
 						Ngôn ngữ
 					</Label>
-					<Select
-						value={language}
-						onValueChange={setLanguage}
-					>
+					<Select value={language} onValueChange={setLanguage}>
 						<SelectTrigger className="col-span-3">
 							<SelectValue placeholder="Chọn một ngôn ngữ" />
 						</SelectTrigger>
 						<SelectContent>
 							{languages.map((lang) => (
-								<SelectItem
-									key={lang.value}
-									value={lang.value}
-								>
+								<SelectItem key={lang.value} value={lang.value}>
 									{lang.label}
 								</SelectItem>
 							))}
@@ -228,87 +224,76 @@ export function Settings(props: SettingsProps) {
 					</Select>
 				</div>
 
-				<Tabs
-					value={learnProps.currentView}
-					onValueChange={(value) =>
-						learnProps.onViewChange(value as "flashcards" | "quiz")
-					}
-					className="w-full"
-				>
-					<TabsList className="grid w-full grid-cols-2">
-						<TabsTrigger value="flashcards">
-							Flashcard
-						</TabsTrigger>
-						<TabsTrigger value="quiz">
-							Trắc nghiệm
-						</TabsTrigger>
-					</TabsList>
-					<TabsContent
-						value="flashcards"
-						className="space-y-4 pt-4"
-					>
-						<div className="flex items-center justify-between pl-10">
-							<Label
-								htmlFor="flashcardIsRandom"
-								className="text-right"
-							>
-								Ngẫu nhiên thẻ
-							</Label>
-							<Switch
-								id="flashcardIsRandom"
-								checked={flashcardIsRandom}
-								onCheckedChange={setFlashcardIsRandom}
-							/>
+				<Separator />
+
+				<div className="space-y-4">
+					<div className="text-center font-semibold text-foreground">
+						{isFlashcardView
+							? "Cài đặt Flashcard"
+							: "Cài đặt Trắc nghiệm"}
+					</div>
+
+					{isFlashcardView && (
+						<div className="space-y-4 pt-2">
+							<div className="flex items-center justify-between pl-10">
+								<Label
+									htmlFor="flashcardIsRandom"
+									className="text-right"
+								>
+									Ngẫu nhiên thẻ
+								</Label>
+								<Switch
+									id="flashcardIsRandom"
+									checked={flashcardIsRandom}
+									onCheckedChange={setFlashcardIsRandom}
+								/>
+							</div>
+							<div className="grid grid-cols-4 items-center gap-4">
+								<Label
+									htmlFor="flashcardMax"
+									className="text-right"
+								>
+									Số lượng tối đa
+								</Label>
+								<Input
+									id="flashcardMax"
+									type="number"
+									value={flashcardMax}
+									onChange={(e) =>
+										setFlashcardMax(
+											parseInt(e.target.value) || 0
+										)
+									}
+									className="col-span-3"
+									placeholder="ví dụ: 50"
+									{...numericInputProps}
+								/>
+							</div>
 						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label
-								htmlFor="flashcardMax"
-								className="text-right"
-							>
-								Số lượng tối đa
-							</Label>
-							<Input
-								id="flashcardMax"
-								type="number"
-								value={flashcardMax}
-								onChange={(e) =>
-									setFlashcardMax(
-										parseInt(e.target.value) || 0
-									)
-								}
-								className="col-span-3"
-								placeholder="ví dụ: 50"
-								{...numericInputProps}
-							/>
+					)}
+
+					{isQuizView && (
+						<div className="space-y-4 pt-2">
+							<div className="grid grid-cols-4 items-center gap-4">
+								<Label htmlFor="quizMax" className="text-right">
+									Số lượng tối đa
+								</Label>
+								<Input
+									id="quizMax"
+									type="number"
+									value={quizMax}
+									onChange={(e) =>
+										setQuizMax(parseInt(e.target.value) || 0)
+									}
+									className="col-span-3"
+									placeholder="ví dụ: 50"
+									{...numericInputProps}
+								/>
+							</div>
 						</div>
-					</TabsContent>
-					<TabsContent
-						value="quiz"
-						className="space-y-4 pt-4"
-					>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label
-								htmlFor="quizMax"
-								className="text-right"
-							>
-								Số lượng tối đa
-							</Label>
-							<Input
-								id="quizMax"
-								type="number"
-								value={quizMax}
-								onChange={(e) =>
-									setQuizMax(
-										parseInt(e.target.value) || 0
-									)
-								}
-								className="col-span-3"
-								placeholder="ví dụ: 50"
-								{...numericInputProps}
-							/>
-						</div>
-					</TabsContent>
-				</Tabs>
+					)}
+				</div>
+
 				<div className="flex justify-center pt-2">
 					<AlertDialog>
 						<AlertDialogTrigger asChild>
@@ -331,9 +316,7 @@ export function Settings(props: SettingsProps) {
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction
-									onClick={handleGenerateNew}
-								>
+								<AlertDialogAction onClick={handleGenerateNew}>
 									Vâng, tạo lại
 								</AlertDialogAction>
 							</AlertDialogFooter>
@@ -343,6 +326,7 @@ export function Settings(props: SettingsProps) {
 			</div>
 		)
 	}
+
 
 	const renderGlobalSettings = () => {
 		if (isLearnScope) return null;
@@ -565,3 +549,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
