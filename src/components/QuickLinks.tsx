@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -208,11 +209,11 @@ export function QuickLinks() {
 	}
 
 	return (
-		<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 w-full max-w-4xl mx-auto">
+		<div className="flex flex-wrap justify-center gap-3 w-full max-w-4xl mx-auto">
 			{links.map((link) => (
 				<div
 					key={link.id}
-					className="group relative bg-background/70 backdrop-blur-sm rounded-lg h-24 flex flex-col"
+					className="group relative bg-background/70 backdrop-blur-sm rounded-lg h-24 w-24 flex flex-col"
 				>
 					<a
 						href={link.url}
@@ -260,7 +261,7 @@ export function QuickLinks() {
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogTrigger asChild>
 					<div
-						className="flex flex-col items-center justify-center gap-2 rounded-lg transition-colors h-24 cursor-pointer bg-background/70 backdrop-blur-sm p-2 min-h-[96px]"
+						className="flex flex-col items-center justify-center gap-2 rounded-lg transition-colors h-24 w-24 cursor-pointer bg-background/70 backdrop-blur-sm p-2 min-h-[96px]"
 						onClick={openAddDialog}
 					>
 						<div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary">
