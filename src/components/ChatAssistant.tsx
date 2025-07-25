@@ -1,10 +1,11 @@
+
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Loader, Send, Sparkles, User, RefreshCcw } from "lucide-react"
+import { Loader, Send, Sparkles, User, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { askQuestion } from "@/ai/flows/ask-question"
 import { type ChatMessage } from "@/ai/schemas"
@@ -18,15 +19,17 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 
 interface ChatAssistantProps {
-	context: string
+	context: string;
+	initialQuestion?: string;
+	onClose: () => void;
 }
 
 interface ChatInputFormProps {
-	input: string
-	setInput: (value: string) => void
-	handleSubmit: (e: React.FormEvent, question?: string) => Promise<void>
-	isLoading: boolean
-	className?: string
+	input: string;
+	setInput: (value: string) => void;
+	handleSubmit: (e: React.FormEvent, question?: string) => Promise<void>;
+	isLoading: boolean;
+	className?: string;
 }
 
 function ChatInputForm({
@@ -51,7 +54,7 @@ function ChatInputForm({
 			<Textarea
 				value={input}
 				onChange={(e) => setInput(e.target.value)}
-				placeholder="Hỏi AI về flashcard hoặc câu hỏi trắc nghiệm này..."
+				placeholder="Hỏi AI về nội dung bạn đang xem..."
 				className="min-h-0 resize-none"
 				rows={1}
 				disabled={isLoading}
@@ -68,7 +71,7 @@ function ChatInputForm({
 	)
 }
 
-export function ChatAssistant({ context }: ChatAssistantProps) {
+export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssistantProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState("")
 	const [isLoading, setIsLoading] = useState(false)
@@ -76,12 +79,14 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 	const scrollAreaRef = useRef<HTMLDivElement>(null)
 
 	const scrollToBottom = () => {
-		if (scrollAreaRef.current) {
-			const viewport = scrollAreaRef.current.querySelector("div")
-			if (viewport) {
-				viewport.scrollTop = viewport.scrollHeight
+		setTimeout(() => {
+			if (scrollAreaRef.current) {
+				const viewport = scrollAreaRef.current.querySelector("div")
+				if (viewport) {
+					viewport.scrollTop = viewport.scrollHeight
+				}
 			}
-		}
+		}, 100);
 	}
 
 	useEffect(() => {
@@ -109,13 +114,11 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 		setIsLoading(true)
 
 		try {
-			const flowInput = {
+			const result = await askQuestion({
 				context,
 				question: questionToSend,
 				history: messages,
-			}
-
-			const result = await askQuestion(flowInput)
+			})
 
 			if (result.answer) {
 				const modelMessage: ChatMessage = {
@@ -141,12 +144,15 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 		}
 	}
 
-	const resetChat = () => {
-		setMessages([])
-		setInput("")
-		setIsLoading(false)
-		toast({ title: "Cuộc trò chuyện đã được làm mới." })
-	}
+	useEffect(() => {
+		if (initialQuestion) {
+			// Create a dummy event object
+			const dummyEvent = { preventDefault: () => {} } as React.FormEvent;
+			handleSubmit(dummyEvent, initialQuestion);
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initialQuestion]);
+
 
 	const chatInputProps = {
 		input,
@@ -155,19 +161,22 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 		isLoading,
 	}
 
-	if (messages.length === 0) {
-		return (
-			<div className="w-full max-w-6xl mx-auto">
-				<ChatInputForm {...chatInputProps} />
-			</div>
-		)
-	}
-
 	return (
-		<Card className="w-full max-w-6xl mx-auto shadow-xl bg-background/50 backdrop-blur-lg">
-			<CardContent className="pt-6">
-				<ScrollArea className="h-64 w-full pr-4" ref={scrollAreaRef}>
+		<Card className="h-full w-full flex flex-col bg-background/50 backdrop-blur-lg shadow-2xl rounded-none border-l-0 border-r-2 border-y-0 border-border">
+			<CardHeader className="flex flex-row items-center justify-between">
+				<CardTitle>Trợ lý AI</CardTitle>
+				<Button variant="ghost" size="icon" onClick={onClose}>
+					<X className="h-5 w-5" />
+				</Button>
+			</CardHeader>
+			<CardContent className="flex-1 overflow-hidden pt-0">
+				<ScrollArea className="h-full w-full pr-4" ref={scrollAreaRef}>
 					<div className="space-y-4">
+						{messages.length === 0 && !isLoading && (
+							<div className="text-center text-muted-foreground pt-10">
+								Đặt câu hỏi về chủ đề bạn đang học...
+							</div>
+						)}
 						{messages.map((message, index) => (
 							<div
 								key={index}
@@ -203,6 +212,7 @@ export function ChatAssistant({ context }: ChatAssistantProps) {
 											]}
 											rehypePlugins={[rehypeKatex]}
 											components={{
+												p: 'div',
 												code({
 													node,
 													inline,

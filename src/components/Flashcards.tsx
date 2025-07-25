@@ -51,6 +51,7 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
+	onActivateChat: (context: string, initialQuestion?: string) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -164,6 +165,7 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
+	onActivateChat
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -236,6 +238,14 @@ export function Flashcards({
 		}
 	}
 
+	const handleActivateChat = (initialQuestion?: string) => {
+		if (currentCard) {
+			const context = `Flashcard hiện tại - Mặt trước: ${currentCard.front} - Mặt sau: ${currentCard.back}`;
+			onActivateChat(context, initialQuestion);
+		}
+	};
+
+
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<CardContent className="flex-grow flex items-center justify-center">
@@ -273,7 +283,7 @@ export function Flashcards({
 						{hasContent && currentCard && (
 							<div className="flex-1 mx-2">
 								<ChatInput
-									context={`Flashcard hiện tại - Mặt trước: ${currentCard.front} - Mặt sau: ${currentCard.back}`}
+									onActivate={handleActivateChat}
 									placeholder="Hỏi AI về flashcard này..."
 									title="Chat về Flashcard"
 									className="w-full"

@@ -34,8 +34,8 @@ import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
-
-const BATCH_SIZE = 5
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { PanelTopClose } from 'lucide-react';
 
 interface LearnProps {
 	view: "flashcards" | "quiz"
@@ -52,6 +52,7 @@ interface LearnProps {
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
+	onActivateChat: (context: string, initialQuestion?: string) => void
 }
 
 function Learn({
@@ -69,64 +70,76 @@ function Learn({
 	onFlashcardIndexChange,
 	onViewChange,
 	language,
+	onActivateChat,
 }: LearnProps) {
 	return (
 		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
-			{/* Top Toolbar */}
-			<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-2 rounded-lg">
-				<Tabs
-					value={view}
-					onValueChange={(value) =>
-						onViewChange(value as "flashcards" | "quiz")
-					}
-					className="w-auto"
-				>
-					<TabsList>
-						<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-						<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-					</TabsList>
-				</Tabs>
-
-				<div className="flex items-center gap-2">
-					{view === "flashcards" ? (
-						<>
-							<span className="text-sm text-muted-foreground">
-								Thẻ {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
-							</span>
-							<Button
-								onClick={onGenerateNew}
-								disabled={isLoading || !canGenerateMore}
-								variant="outline"
-								size="icon"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin w-4 h-4" />
-								) : (
-									<Plus className="w-4 h-4" />
-								)}
-							</Button>
-						</>
-					) : (
-						<>
-							<span className="text-sm text-muted-foreground">
-								Câu hỏi {quizSet ? (quizState?.currentQuestionIndex ?? 0) + 1 : 0} / {quizSet?.questions.length ?? 0}
-							</span>
-							<Button
-								onClick={onGenerateNew}
-								disabled={isLoading || !canGenerateMore}
-								variant="outline"
-								size="icon"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin w-4 h-4" />
-								) : (
-									<Plus className="w-4 h-4" />
-								)}
-							</Button>
-						</>
-					)}
+			<Collapsible className="w-full">
+				<div className="flex justify-center">
+					<CollapsibleTrigger asChild>
+						<Button variant="ghost" size="sm" className="w-auto px-4 h-6">
+							<PanelTopClose className="h-4 w-4" />
+						</Button>
+					</CollapsibleTrigger>
 				</div>
-			</div>
+				<CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+					<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-2 rounded-lg">
+						<Tabs
+							value={view}
+							onValueChange={(value) =>
+								onViewChange(value as "flashcards" | "quiz")
+							}
+							className="w-auto"
+						>
+							<TabsList>
+								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+							</TabsList>
+						</Tabs>
+
+						<div className="flex items-center gap-2">
+							{view === "flashcards" ? (
+								<>
+									<span className="text-sm text-muted-foreground">
+										Thẻ {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
+									</span>
+									<Button
+										onClick={onGenerateNew}
+										disabled={isLoading || !canGenerateMore}
+										variant="outline"
+										size="icon"
+									>
+										{isLoading ? (
+											<Loader className="animate-spin w-4 h-4" />
+										) : (
+											<Plus className="w-4 h-4" />
+										)}
+									</Button>
+								</>
+							) : (
+								<>
+									<span className="text-sm text-muted-foreground">
+										Câu hỏi {quizSet ? (quizState?.currentQuestionIndex ?? 0) + 1 : 0} / {quizSet?.questions.length ?? 0}
+									</span>
+									<Button
+										onClick={onGenerateNew}
+										disabled={isLoading || !canGenerateMore}
+										variant="outline"
+										size="icon"
+									>
+										{isLoading ? (
+											<Loader className="animate-spin w-4 h-4" />
+										) : (
+											<Plus className="w-4 h-4" />
+										)}
+									</Button>
+								</>
+							)}
+						</div>
+					</div>
+				</CollapsibleContent>
+			</Collapsible>
+
 
 			<CardContent className="flex-grow flex flex-col" style={{ paddingTop: '2px' }}>
 				{view === "flashcards" && (
@@ -139,6 +152,7 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
+						onActivateChat={onActivateChat}
 					/>
 				)}
 				{view === "quiz" && (
@@ -150,6 +164,7 @@ function Learn({
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 						language={language}
+						onActivateChat={onActivateChat}
 					/>
 				)}
 			</CardContent>
@@ -188,11 +203,14 @@ export default function Home() {
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
 	const [isMounted, setIsMounted] = useState(false)
-	const [assistantContext, setAssistantContext] = useState("")
 	const [currentFlashcard, setCurrentFlashcard] = useState<Flashcard | null>(
 		null
 	)
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
+	const [isChatActive, setIsChatActive] = useState(false)
+	const [chatContext, setChatContext] = useState("")
+	const [initialChatQuestion, setInitialChatQuestion] = useState("")
+
 
 	// Ngăn race condition và cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -666,41 +684,38 @@ export default function Home() {
 		setCurrentFlashcard(card)
 	}, [])
 
-	useEffect(() => {
-		const getAssistantContext = (): string => {
-			let context = `Người dùng đang học về chủ đề: ${topic}.`
-			
-			if (view === "quiz" && quizSet && quizState) {
-				const currentQuestion: QuizQuestion | undefined =
-					quizSet.questions[quizState.currentQuestionIndex]
-				if (currentQuestion) {
-					context += ` Họ đang ở câu hỏi trắc nghiệm: "${
-						currentQuestion.question
-					}" với các lựa chọn: ${currentQuestion.options.join(
-						", "
-					)}. Câu trả lời đúng là ${currentQuestion.answer}.`
-					
-					const userAnswer =
-						quizState.answers[quizState.currentQuestionIndex]
-							?.selected
-					if (userAnswer) {
-						context += ` Người dùng đã chọn "${userAnswer}".`
-					}
+	const getLiveContext = (): string => {
+		let context = `Người dùng đang học về chủ đề: ${topic}.`;
+		
+		if (view === "quiz" && quizSet && quizState) {
+			const currentQuestion: QuizQuestion | undefined =
+				quizSet.questions[quizState.currentQuestionIndex]
+			if (currentQuestion) {
+				context += ` Họ đang ở câu hỏi trắc nghiệm: "${
+					currentQuestion.question
+				}" với các lựa chọn: ${currentQuestion.options.join(
+					", "
+				)}. Câu trả lời đúng là ${currentQuestion.answer}.`
+				
+				const userAnswer =
+					quizState.answers[quizState.currentQuestionIndex]
+						?.selected
+				if (userAnswer) {
+					context += ` Người dùng đã chọn "${userAnswer}".`
 				}
-			} else if (view === "flashcards" && currentFlashcard) {
-				context += ` Người dùng đang xem flashcard: Mặt trước "${currentFlashcard.front}", Mặt sau "${currentFlashcard.back}".`
 			}
-			return context
+		} else if (view === "flashcards" && currentFlashcard) {
+			context += ` Người dùng đang xem flashcard: Mặt trước "${currentFlashcard.front}", Mặt sau "${currentFlashcard.back}".`
 		}
+		return context
+	}
 
-		setAssistantContext(getAssistantContext())
-	}, [
-		view,
-		topic,
-		quizSet,
-		quizState,
-		currentFlashcard,
-	])
+	const handleActivateChat = useCallback((context: string, initialQuestion?: string) => {
+		setChatContext(context);
+		setInitialChatQuestion(initialQuestion || "");
+		setIsChatActive(true);
+	}, []);
+
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =
@@ -730,37 +745,46 @@ export default function Home() {
 			)}
 
 			{/* Left Column */}
-			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
-				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-between items-start">
-					{visibility.greeting && <Greeting />}
-					<Settings
-						onSettingsChange={onSettingsSave}
-						onClearAllData={handleClearAllData}
-						onVisibilityChange={handleVisibilityChange}
-						onBackgroundChange={handleBackgroundChange}
-						onUploadedBackgroundsChange={
-							handleUploadedBackgroundsChange
-						}
-						onViewChange={handleViewChange}
-						onGenerateNew={onGenerateFromSettings}
-						currentView={view}
-						visibility={visibility}
-						uploadedBackgrounds={uploadedBackgrounds}
-						currentBackgroundImage={backgroundImage}
-						topic={topic}
-						language={language}
-						flashcardMax={flashcardMax}
-						quizMax={quizMax}
-						flashcardIsRandom={flashcardIsRandom}
-					/>
-				</div>
+			{isChatActive ? (
+				<ChatAssistant 
+					context={chatContext}
+					initialQuestion={initialChatQuestion}
+					onClose={() => setIsChatActive(false)}
+				/>
+			) : (
+				<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
+					<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-between items-start">
+						{visibility.greeting && <Greeting />}
+						<Settings
+							onSettingsChange={onSettingsSave}
+							onClearAllData={handleClearAllData}
+							onVisibilityChange={handleVisibilityChange}
+							onBackgroundChange={handleBackgroundChange}
+							onUploadedBackgroundsChange={
+								handleUploadedBackgroundsChange
+							}
+							onViewChange={handleViewChange}
+							onGenerateNew={onGenerateFromSettings}
+							currentView={view}
+							visibility={visibility}
+							uploadedBackgrounds={uploadedBackgrounds}
+							currentBackgroundImage={backgroundImage}
+							topic={topic}
+							language={language}
+							flashcardMax={flashcardMax}
+							quizMax={quizMax}
+							flashcardIsRandom={flashcardIsRandom}
+						/>
+					</div>
 
-				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
-					{visibility.clock && <Clock />}
-					{visibility.search && <Search />}
-					{visibility.quickLinks && <QuickLinks />}
+					<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
+						{visibility.clock && <Clock />}
+						{visibility.search && <Search />}
+						{visibility.quickLinks && <QuickLinks />}
+					</div>
 				</div>
-			</div>
+			)}
+
 
 			{/* Right Column */}
 			{visibility.learn && (
@@ -781,6 +805,7 @@ export default function Home() {
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
+							onActivateChat={() => handleActivateChat(getLiveContext())}
 						/>
 					</div>
 				</div>
@@ -788,7 +813,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
-
-    

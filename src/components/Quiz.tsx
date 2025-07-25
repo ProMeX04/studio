@@ -49,6 +49,7 @@ interface QuizProps {
 	canGenerateMore: boolean
 	isLoading: boolean
 	language: string
+	onActivateChat: (context: string, initialQuestion?: string) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -126,6 +127,7 @@ export function Quiz({
 	canGenerateMore,
 	isLoading,
 	language,
+	onActivateChat,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -335,6 +337,14 @@ export function Quiz({
 			return "bg-destructive/50 border-destructive backdrop-blur-sm"
 		return "border-border bg-background/80 backdrop-blur-sm"
 	}
+	
+	const handleActivateChat = (initialQuestion?: string) => {
+		if (currentQuestion) {
+			const context = `Câu hỏi Quiz: ${currentQuestion.question} - Đáp án đúng: ${currentQuestion.answer} - Giải thích: ${currentQuestion.explanation}`;
+			onActivateChat(context, initialQuestion);
+		}
+	};
+
 
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
@@ -470,7 +480,7 @@ export function Quiz({
 						{hasContent && currentQuestion && (
 							<div className="flex-1 mx-2">
 								<ChatInput
-									context={`Câu hỏi Quiz: ${currentQuestion.question} - Đáp án đúng: ${currentQuestion.answer} - Giải thích: ${currentQuestion.explanation}`}
+									onActivate={handleActivateChat}
 									placeholder="Hỏi AI về câu hỏi này..."
 									title="Chat về Quiz"
 									className="w-full"
