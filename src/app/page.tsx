@@ -39,6 +39,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
+import { AIOperationError, safeAICall } from "@/lib/ai-utils"
 
 const BATCH_SIZE = 5
 
@@ -156,6 +157,8 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
+						onViewChange={onViewChange}
+						currentView={currentView}
 					/>
 				)}
 				{view === "quiz" && (
@@ -167,6 +170,8 @@ function Learn({
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 						language={language}
+						onViewChange={onViewChange}
+						currentView={currentView}
 					/>
 				)}
 			</CardContent>
@@ -284,46 +289,6 @@ export default function Home() {
 
 			const db = await getDb()
 
-			// Helper function với timeout và retry
-			const safeAICall = async (
-				aiFunction: () => Promise<any>,
-				retries = 3,
-				timeoutMs = 30000
-			): Promise<any> => {
-				for (let attempt = 0; attempt < retries; attempt++) {
-					if (signal.aborted) throw new Error("Aborted")
-
-					try {
-						const timeoutPromise = new Promise((_, reject) => {
-							setTimeout(
-								() => reject(new Error("AI_TIMEOUT")),
-								timeoutMs
-							)
-						})
-						const result = await Promise.race([
-							aiFunction(),
-							timeoutPromise,
-						])
-						return result
-					} catch (error: any) {
-						console.warn(
-							`🔄 AI call attempt ${
-								attempt + 1
-							} failed:`,
-							error.message
-						)
-						if (attempt === retries - 1) throw error
-						const delay = Math.min(
-							1000 * Math.pow(2, attempt),
-							5000
-						)
-						await new Promise((resolve) =>
-							setTimeout(resolve, delay)
-						)
-					}
-				}
-			}
-
 			try {
 				if (genType === "flashcards") {
 					if (forceNew) {
@@ -362,7 +327,7 @@ export default function Home() {
 								count,
 								language: currentLanguage,
 								existingCards: currentFlashcards.cards,
-							})
+							}), { signal }
 						)
 
 						if (
@@ -427,7 +392,7 @@ export default function Home() {
 								count,
 								language: currentLanguage,
 								existingQuestions: currentQuiz.questions,
-							})
+							}), { signal }
 						)
 
 						if (
@@ -458,7 +423,7 @@ export default function Home() {
 
 			} catch (error: any) {
 				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
-				if (error.name === "AbortError") {
+				if (error instanceof AIOperationError && error.code === "ABORTED") {
 					toast({
 						title: "Đã hủy",
 						description: `Quá trình tạo ${genType} đã được hủy.`,
@@ -613,11 +578,9 @@ export default function Home() {
 				})
 			}
 
-			if (topicChanged) {
-				handleGenerate(newTopic, newLanguage, true, view);
-			}
+			// Logic đã được chuyển sang onGenerateFromSettings
 		},
-		[topic, language, flashcardMax, quizMax, flashcardIsRandom, view, handleGenerate]
+		[topic, language, flashcardMax, quizMax, flashcardIsRandom]
 	)
 
 	const onGenerateFromSettings = useCallback(
@@ -789,8 +752,8 @@ export default function Home() {
 			)}
 
 			{/* Left Column */}
-			<div className="relative flex flex-col justify-between p-4 sm:p-8 md:p-12">
-				<div className="flex justify-between items-start">
+			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
+				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-between items-start">
 					{visibility.greeting && <Greeting />}
 					<Settings
 						onSettingsChange={onSettingsSave}
@@ -817,9 +780,6 @@ export default function Home() {
 				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
 					{visibility.clock && <Clock />}
 					{visibility.search && <Search />}
-				</div>
-
-				<div className="w-full">
 					{visibility.quickLinks && <QuickLinks />}
 				</div>
 			</div>
@@ -853,5 +813,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
