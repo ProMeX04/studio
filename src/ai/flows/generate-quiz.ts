@@ -13,19 +13,6 @@ const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
 });
 type GenerateQuizClientInput = z.infer<typeof GenerateQuizClientInputSchema>;
 
-/**
- * Cleans a string that might be wrapped in markdown JSON syntax.
- * @param text The raw text response from the AI.
- * @returns The cleaned JSON string.
- */
-function cleanJsonString(text: string): string {
-    const trimmed = text.trim();
-    if (trimmed.startsWith('```json')) {
-        return trimmed.substring(7, trimmed.length - 3).trim();
-    }
-    return trimmed;
-}
-
 export async function generateQuiz(input: GenerateQuizClientInput): Promise<GenerateQuizOutput> {
   if (!input.apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -43,7 +30,10 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 `
     : '';
 
-  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+  const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of quiz questions:
+${JSON.stringify(GenerateQuizOutputSchema._def.typeName)}
+
+Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
@@ -89,8 +79,7 @@ ${existingQuestionsPrompt}
       });
 
       const responseText = result.response.text();
-      const cleanedJsonString = cleanJsonString(responseText); // Keep as a fallback
-      const parsedJson = JSON.parse(cleanedJsonString);
+      const parsedJson = JSON.parse(responseText);
       const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
 
       // Additional validation for answer being in options

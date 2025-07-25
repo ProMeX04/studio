@@ -14,20 +14,6 @@ const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend
 });
 type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInputSchema>;
 
-
-/**
- * Cleans a string that might be wrapped in markdown JSON syntax.
- * @param text The raw text response from the AI.
- * @returns The cleaned JSON string.
- */
-function cleanJsonString(text: string): string {
-    const trimmed = text.trim();
-    if (trimmed.startsWith('```json')) {
-        return trimmed.substring(7, trimmed.length - 3).trim();
-    }
-    return trimmed;
-}
-
 export async function generateFlashcards(input: GenerateFlashcardsClientInput): Promise<GenerateFlashcardsOutput> {
   if (!input.apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -45,7 +31,10 @@ ${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back
 ` 
     : '';
 
-  const promptText = `You are a flashcard generator. Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Each flashcard should have a "front" and a "back".
+  const promptText = `You are a flashcard generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of flashcards:
+${JSON.stringify(GenerateFlashcardsOutputSchema._def.typeName)}
+
+Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}
 The "front" and "back" fields MUST contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.
@@ -83,8 +72,7 @@ The "front" and "back" fields MUST contain valid standard Markdown.
     });
     
     const responseText = result.response.text();
-    const cleanedJsonString = cleanJsonString(responseText); // Keep as a fallback
-    const parsedJson = JSON.parse(cleanedJsonString);
+    const parsedJson = JSON.parse(responseText);
     const validatedOutput = GenerateFlashcardsOutputSchema.parse(parsedJson);
 
     console.log(`✅ Generated ${validatedOutput.length} valid flashcards`);
