@@ -158,18 +158,15 @@ export function Quiz({
 		onStateChangeRef.current = onStateChange;
 	});
 
+	// This effect now only depends on user actions, not on props that might be recreated.
 	useEffect(() => {
 		if (quizSet) {
-			// Only call onStateChange if there is a quizSet to avoid writing null state
-			// Use a timeout to debounce rapid state changes
 			const timeoutId = setTimeout(() => {
 				onStateChangeRef.current({ currentQuestionIndex, answers })
 			}, 100)
-
 			return () => clearTimeout(timeoutId)
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentQuestionIndex, answers, quizSet])
+	}, [currentQuestionIndex, answers]); // Removed quizSet from dependencies
 
 	const currentQuestion = useMemo(
 		() => quizSet?.questions[currentQuestionIndex],

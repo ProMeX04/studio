@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Greeting } from "@/components/Greeting"
 import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
@@ -656,12 +656,6 @@ export default function Home() {
 		let currentQuiz =
 			quizData && quizData.topic === savedTopic ? quizData.data : null
 
-		// Apply quiz randomization on load
-		if (currentQuiz && savedQuizIsRandom) {
-			const shuffledQuestions = [...currentQuiz.questions].sort(() => Math.random() - 0.5);
-			currentQuiz = { ...currentQuiz, questions: shuffledQuestions };
-		}
-		
 		setFlashcardSet(currentFlashcards)
 		setQuizSet(currentQuiz)
 
@@ -674,7 +668,7 @@ export default function Home() {
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
 			setQuizState(quizStateData.data)
 		} else {
-			setQuizState(null)
+			setQuizState({ currentQuestionIndex: 0, answers: {} })
 		}
 	}, [])
 
@@ -784,7 +778,7 @@ export default function Home() {
 	)
 
 	// Smart Shuffle logic
-	useEffect(() => {
+	const shuffledFlashcardSet = useMemo(() => {
 		if (flashcardIsRandom && flashcardSet?.cards) {
 			const originalCards = [...flashcardSet.cards];
 			let shuffledCards = [...originalCards];
@@ -807,14 +801,12 @@ export default function Home() {
 				shuffledCards = originalCards.sort(() => Math.random() - 0.5);
 			}
 			
-			// Only update if the order has actually changed to prevent infinite loops
-			if (JSON.stringify(shuffledCards) !== JSON.stringify(flashcardSet.cards)) {
-				setFlashcardSet({ ...flashcardSet, cards: shuffledCards });
-			}
+			return { ...flashcardSet, cards: shuffledCards };
 		}
+		return flashcardSet;
 	}, [flashcardIsRandom, flashcardRandomNotUnderstoodOnly, flashcardState, flashcardSet]);
 	
-	useEffect(() => {
+	const shuffledQuizSet = useMemo(() => {
 		if (quizIsRandom && quizSet?.questions) {
 			const originalQuestions = [...quizSet.questions];
 			let shuffledQuestions = [...originalQuestions];
@@ -838,10 +830,9 @@ export default function Home() {
 				shuffledQuestions = originalQuestions.sort(() => Math.random() - 0.5);
 			}
 			
-			if (JSON.stringify(shuffledQuestions) !== JSON.stringify(quizSet.questions)) {
-				setQuizSet({ ...quizSet, questions: shuffledQuestions });
-			}
+			return { ...quizSet, questions: shuffledQuestions };
 		}
+		return quizSet;
 	}, [quizIsRandom, quizRandomUnansweredOnly, quizState, quizSet]);
 
 
@@ -1048,8 +1039,8 @@ export default function Home() {
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
-							flashcardSet={flashcardSet}
-							quizSet={quizSet}
+							flashcardSet={shuffledFlashcardSet}
+							quizSet={shuffledQuizSet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
