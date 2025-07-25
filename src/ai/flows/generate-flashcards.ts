@@ -1,29 +1,26 @@
 /**
- * @fileOverview Flashcard generation flow for a given topic.
+ * @fileOverview Flashcard generation flow using Google Generative AI SDK.
  *
  * - generateFlashcards - A function that generates flashcards for a given topic.
  */
 
-import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
-import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsInput, GenerateFlashcardsOutput } from '@/ai/schemas';
+import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { z } from 'zod';
+import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsOutput } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
-
 
 const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend({
     apiKey: z.string().optional(),
 });
 type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInputSchema>;
 
-
 export async function generateFlashcards(input: GenerateFlashcardsClientInput): Promise<GenerateFlashcardsOutput> {
   if (!input.apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
   
-  const ai = genkit({
-    plugins: [googleAI({ apiKey: input.apiKey })],
-  });
+  const genAI = new GoogleGenerativeAI(input.apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   const existingCardsPrompt = input.existingCards && input.existingCards.length > 0 
     ? `
@@ -44,42 +41,46 @@ IMPORTANT: Your response MUST be a valid JSON array of objects, where each objec
 - For example: [{"front": "What does \`console.log()\` do?", "back": "It prints a message to the web console."}, {"front": "What is the Pythagorean theorem?", "back": "It is defined as: $$a^2 + b^2 = c^2$$"}]
 `;
 
+  const generationConfig: GenerationConfig = {
+    responseMimeType: "application/json",
+  };
+
   try {
-    const { output } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
-        prompt: promptText,
-        config: {
-            response: {
-                format: 'json',
-                schema: GenerateFlashcardsOutputSchema,
-            },
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
+      generationConfig,
+      safetySettings: [
+        {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
         },
+        {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ]
     });
+    
+    const responseText = result.response.text();
+    const parsedJson = JSON.parse(responseText);
+    const validatedOutput = GenerateFlashcardsOutputSchema.parse(parsedJson);
 
-    if (!output) {
-      throw new Error('AI_EMPTY_RESPONSE');
-    }
-
-    if (!Array.isArray(output)) {
-      throw new Error('AI_INVALID_FORMAT');
-    }
-
-    for (const card of output) {
-      if (!card.front || !card.back || typeof card.front !== 'string' || typeof card.back !== 'string') {
-        throw new Error('AI_INVALID_FLASHCARD');
-      }
-    }
-
-    console.log(`✅ Generated ${output.length} valid flashcards`);
-    return output;
+    console.log(`✅ Generated ${validatedOutput.length} valid flashcards`);
+    return validatedOutput;
 
   } catch (error: any) {
-    console.error('❌ Flashcard generation error:', error.message);
-
-    if (error.message.startsWith('AI_')) {
-      throw error;
+    console.error('❌ Flashcard generation error:', error);
+     if (error instanceof z.ZodError) {
+      throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
     }
-
-    throw new Error('AI_GENERATION_FAILED');
+    throw new AIOperationError('Failed to generate flashcards from AI.', 'AI_GENERATION_FAILED');
   }
 }

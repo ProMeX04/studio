@@ -1,11 +1,11 @@
 /**
- * @fileOverview Quiz generation flow for a given topic.
+ * @fileOverview Quiz generation flow using Google Generative AI SDK.
  *
  * - generateQuiz - A function that generates a quiz for a given topic.
  */
-import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
-import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizInput, GenerateQuizOutput } from '@/ai/schemas';
+import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { z } from 'zod';
+import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizOutput, QuizQuestionSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
@@ -18,9 +18,8 @@ export async function generateQuiz(input: GenerateQuizClientInput): Promise<Gene
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
 
-  const ai = genkit({
-    plugins: [googleAI({ apiKey: input.apiKey })],
-  });
+  const genAI = new GoogleGenerativeAI(input.apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   const existingQuestionsPrompt = input.existingQuestions && input.existingQuestions.length > 0
     ? `
@@ -46,67 +45,70 @@ The content for "question", "options", and "explanation" fields MUST be valid st
 Ensure explanations are well-structured with clear paragraphs.
 `;
   
+  const generationConfig: GenerationConfig = {
+    responseMimeType: "application/json",
+  };
+  
   let attempts = 0;
   const maxAttempts = 3;
 
   while (attempts < maxAttempts) {
     attempts++;
     try {
-      const { output } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
-        prompt: promptText,
-        config: {
-            response: {
-                format: 'json',
-                schema: GenerateQuizOutputSchema,
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: promptText }] }],
+        generationConfig,
+        safetySettings: [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_NONE,
             },
-        },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+        ]
       });
 
-      if (!output) {
-        throw new Error('AI_EMPTY_RESPONSE');
-      }
+      const responseText = result.response.text();
+      const parsedJson = JSON.parse(responseText);
+      const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
 
-      if (!Array.isArray(output)) {
-        throw new Error('AI_INVALID_FORMAT');
-      }
-
-      let allValid = true;
-      for (const question of output) {
-        if (!question.question || !question.options || !question.answer || !question.explanation) {
-          allValid = false;
-          throw new Error('AI_INVALID_QUESTION');
-        }
-
-        if (!Array.isArray(question.options) || question.options.length !== 4) {
-          allValid = false;
-          throw new Error('AI_INVALID_OPTIONS');
-        }
-
+      // Additional validation for answer being in options
+      for (const question of validatedOutput) {
         if (!question.options.includes(question.answer)) {
-          allValid = false;
           console.warn(`Attempt ${attempts}: AI generated an answer that is not in the options list. Retrying...`);
-          throw new Error('AI_ANSWER_NOT_IN_OPTIONS');
+          throw new AIOperationError('AI generated an answer that is not in the options list.', 'AI_ANSWER_NOT_IN_OPTIONS', true); // Retryable error
         }
       }
 
-      if (allValid) {
-        console.log(`✅ Generated ${output.length} valid quiz questions`);
-        return output;
-      }
+      console.log(`✅ Generated ${validatedOutput.length} valid quiz questions`);
+      return validatedOutput;
 
     } catch (error: any) {
-      console.error(`❌ Quiz generation attempt ${attempts} failed:`, error.message);
+      console.error(`❌ Quiz generation attempt ${attempts} failed:`, error);
       
-      if (attempts >= maxAttempts || error.message !== 'AI_ANSWER_NOT_IN_OPTIONS') {
-        if (error.message.startsWith('AI_')) {
-          throw error;
+      const isRetryableError = error instanceof AIOperationError && error.code === 'AI_ANSWER_NOT_IN_OPTIONS';
+
+      if (isRetryableError && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retrying
+      } else {
+        if (error instanceof z.ZodError) {
+            throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
         }
-        throw new Error('AI_GENERATION_FAILED');
+        if (error instanceof AIOperationError) throw error;
+        throw new AIOperationError('Failed to generate quiz from AI.', 'AI_GENERATION_FAILED');
       }
-      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
-  throw new Error('AI_GENERATION_FAILED_ALL_ATTEMPTS');
+  throw new AIOperationError('AI_GENERATION_FAILED_ALL_ATTEMPTS');
 }
