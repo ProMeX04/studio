@@ -49,46 +49,67 @@ const generateQuizFlow = ai.defineFlow(
     inputSchema: GenerateQuizInputSchema,
     outputSchema: GenerateQuizOutputSchema,
   },
-  async input => {
-    try {
-      const { output } = await prompt(input);
+  async (input) => {
+    let attempts = 0;
+    const maxAttempts = 3;
 
-      // Validate response
-      if (!output) {
-        throw new Error('AI_EMPTY_RESPONSE');
-      }
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        const { output } = await prompt(input);
 
-      if (!Array.isArray(output)) {
-        throw new Error('AI_INVALID_FORMAT');
-      }
-
-      // Validate each question
-      for (const question of output) {
-        if (!question.question || !question.options || !question.answer || !question.explanation) {
-          throw new Error('AI_INVALID_QUESTION');
+        // Validate response
+        if (!output) {
+          throw new Error('AI_EMPTY_RESPONSE');
         }
 
-        if (!Array.isArray(question.options) || question.options.length !== 4) {
-          throw new Error('AI_INVALID_OPTIONS');
+        if (!Array.isArray(output)) {
+          throw new Error('AI_INVALID_FORMAT');
         }
 
-        if (!question.options.includes(question.answer)) {
-          throw new Error('AI_ANSWER_NOT_IN_OPTIONS');
+        let allValid = true;
+        // Validate each question
+        for (const question of output) {
+          if (!question.question || !question.options || !question.answer || !question.explanation) {
+            allValid = false;
+            throw new Error('AI_INVALID_QUESTION');
+          }
+
+          if (!Array.isArray(question.options) || question.options.length !== 4) {
+            allValid = false;
+            throw new Error('AI_INVALID_OPTIONS');
+          }
+
+          if (!question.options.includes(question.answer)) {
+            allValid = false;
+            // This is a critical data integrity error from the model.
+            // We will retry the whole generation.
+            console.warn(`Attempt ${attempts}: AI generated an answer that is not in the options list. Retrying...`);
+            throw new Error('AI_ANSWER_NOT_IN_OPTIONS');
+          }
         }
+
+        if (allValid) {
+          console.log(`✅ Generated ${output.length} valid quiz questions`);
+          return output;
+        }
+
+      } catch (error: any) {
+        console.error(`❌ Quiz generation attempt ${attempts} failed:`, error.message);
+        
+        // If it's the last attempt or a non-retryable error, rethrow
+        if (attempts >= maxAttempts || error.message !== 'AI_ANSWER_NOT_IN_OPTIONS') {
+          if (error.message.startsWith('AI_')) {
+            throw error;
+          }
+          throw new Error('AI_GENERATION_FAILED');
+        }
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-
-      console.log(`✅ Generated ${output.length} valid quiz questions`);
-      return output;
-
-    } catch (error: any) {
-      console.error('❌ Quiz generation error:', error.message);
-
-      // Rethrow with a clear message
-      if (error.message.startsWith('AI_')) {
-        throw error;
-      }
-
-      throw new Error('AI_GENERATION_FAILED');
     }
+
+    // If all attempts fail, throw a final error
+    throw new Error('AI_GENERATION_FAILED_ALL_ATTEMPTS');
   }
 );

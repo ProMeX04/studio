@@ -73,6 +73,7 @@ interface LearnSettingsProps {
 		flashcardMax: number
 		quizMax: number
 		flashcardIsRandom: boolean
+		quizIsRandom: boolean
 	}) => void
 	onGenerateNew: (topic: string) => void
 	currentView: "flashcards" | "quiz"
@@ -81,6 +82,7 @@ interface LearnSettingsProps {
 	flashcardMax: number
 	quizMax: number
 	flashcardIsRandom: boolean
+	quizIsRandom: boolean
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -109,6 +111,8 @@ export function Settings(props: SettingsProps) {
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
 	const [flashcardIsRandom, setFlashcardIsRandom] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardIsRandom : false)
+	const [quizIsRandom, setQuizIsRandom] = useState(isLearnScope ? (props as LearnSettingsProps).quizIsRandom : false)
+
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -121,6 +125,7 @@ export function Settings(props: SettingsProps) {
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
 			setFlashcardIsRandom(learnProps.flashcardIsRandom)
+			setQuizIsRandom(learnProps.quizIsRandom)
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -133,6 +138,7 @@ export function Settings(props: SettingsProps) {
 				flashcardMax,
 				quizMax,
 				flashcardIsRandom,
+				quizIsRandom
 			})
 		}
 	}
@@ -274,6 +280,19 @@ export function Settings(props: SettingsProps) {
 
 					{isQuizView && (
 						<div className="space-y-4 pt-2">
+								<div className="flex items-center justify-between pl-10">
+								<Label
+									htmlFor="quizIsRandom"
+									className="text-right"
+								>
+									Ngẫu nhiên câu hỏi
+								</Label>
+								<Switch
+									id="quizIsRandom"
+									checked={quizIsRandom}
+									onCheckedChange={setQuizIsRandom}
+								/>
+							</div>
 							<div className="grid grid-cols-4 items-center gap-4">
 								<Label htmlFor="quizMax" className="text-right">
 									Số lượng tối đa
@@ -551,3 +570,4 @@ export function Settings(props: SettingsProps) {
 }
 
     
+

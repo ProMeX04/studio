@@ -47,6 +47,7 @@ interface LearnProps {
 	onQuizStateChange: (newState: QuizState) => void
 	onQuizReset: () => void;
 	flashcardIsRandom: boolean
+	quizIsRandom: boolean
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
@@ -68,6 +69,7 @@ function Learn({
 	onQuizStateChange,
 	onQuizReset,
 	flashcardIsRandom,
+	quizIsRandom,
 	canGenerateMore,
 	flashcardIndex,
 	onFlashcardIndexChange,
@@ -252,6 +254,7 @@ export default function Home() {
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
 	const [flashcardIsRandom, setFlashcardIsRandom] = useState(false)
+	const [quizIsRandom, setQuizIsRandom] = useState(false)
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
 	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
@@ -519,6 +522,9 @@ export default function Home() {
 		const savedFlashcardIsRandom =
 			((await db.get("data", "flashcardIsRandom"))?.data as boolean) ||
 			false
+		const savedQuizIsRandom =
+			((await db.get("data", "quizIsRandom"))?.data as boolean) ||
+			false
 		const savedVisibility = (await db.get("data", "visibility"))
 			?.data as ComponentVisibility
 		const savedBg = (await db.get("data", "background"))?.data as string
@@ -544,6 +550,7 @@ export default function Home() {
 		setFlashcardMax(savedFlashcardMax)
 		setQuizMax(savedQuizMax)
 		setFlashcardIsRandom(savedFlashcardIsRandom)
+		setQuizIsRandom(savedQuizIsRandom)
 		setVisibility(
 			savedVisibility ?? {
 				clock: true,
@@ -555,13 +562,20 @@ export default function Home() {
 		)
 		setFlashcardIndex(savedFlashcardIndex)
 
-		const currentFlashcards =
+		let currentFlashcards =
 			flashcardData && flashcardData.topic === savedTopic
 				? flashcardData.data
-				: null
-		const currentQuiz =
+				: null;
+		
+		let currentQuiz =
 			quizData && quizData.topic === savedTopic ? quizData.data : null
 
+		// Apply quiz randomization on load
+		if (currentQuiz && savedQuizIsRandom) {
+			const shuffledQuestions = [...currentQuiz.questions].sort(() => Math.random() - 0.5);
+			currentQuiz = { ...currentQuiz, questions: shuffledQuestions };
+		}
+		
 		setFlashcardSet(currentFlashcards)
 		setQuizSet(currentQuiz)
 
@@ -596,6 +610,7 @@ export default function Home() {
 			flashcardMax: number
 			quizMax: number
 			flashcardIsRandom: boolean
+			quizIsRandom: boolean
 		}) => {
 			const {
 				topic: newTopic,
@@ -603,6 +618,7 @@ export default function Home() {
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
 				flashcardIsRandom: newFlashcardIsRandom,
+				quizIsRandom: newQuizIsRandom
 			} = settings
 			const db = await getDb()
 			
@@ -634,10 +650,17 @@ export default function Home() {
 					data: newFlashcardIsRandom,
 				})
 			}
+			if (quizIsRandom !== newQuizIsRandom) {
+				setQuizIsRandom(newQuizIsRandom)
+				await db.put("data", {
+					id: "quizIsRandom",
+					data: newQuizIsRandom,
+				})
+			}
 
 			// Logic đã được chuyển sang onGenerateFromSettings
 		},
-		[topic, language, flashcardMax, quizMax, flashcardIsRandom]
+		[topic, language, flashcardMax, quizMax, flashcardIsRandom, quizIsRandom]
 	)
 
 	const onGenerateFromSettings = useCallback(
@@ -780,13 +803,13 @@ export default function Home() {
 	const learnSettingsProps = {
 		onSettingsChange: onSettingsSave,
 		onGenerateNew: onGenerateFromSettings,
-		onViewChange: handleViewChange,
 		currentView: view,
 		topic: topic,
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		flashcardIsRandom: flashcardIsRandom,
+		quizIsRandom: quizIsRandom
 	}
 
 	const globalSettingsProps = {
@@ -839,6 +862,7 @@ export default function Home() {
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
 							flashcardIsRandom={flashcardIsRandom}
+							quizIsRandom={quizIsRandom}
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}

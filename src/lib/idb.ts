@@ -18,6 +18,7 @@ export type DataKey =
   | 'flashcardMax'
   | 'quizMax'
   | 'flashcardIsRandom'
+  | 'quizIsRandom'
   | 'flashcardIndex';
 
 export type LabeledData<T> = {
