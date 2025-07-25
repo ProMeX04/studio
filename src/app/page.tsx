@@ -22,14 +22,9 @@ import {
 	LabeledData,
 	AppData,
 	DataKey,
-	initBroadcastChannel,
-	broadcastDataChange,
-	onDataChange,
-	closeBroadcastChannel,
 	closeDb,
 	clearAllData,
 } from "@/lib/idb"
-import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
@@ -371,12 +366,8 @@ export default function Home() {
 
 	// Initialize once
 	useEffect(() => {
-		initBroadcastChannel();
-		console.log("Tab is running independently, no data sync.");
-
 		return () => {
 			isMountedRef.current = false;
-			closeBroadcastChannel();
 			closeDb();
 			clearAllToastTimeouts();
 

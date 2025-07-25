@@ -1,46 +1,36 @@
-
-'use server';
-
 /**
  * @fileOverview Flow to explain a specific quiz answer option.
  *
  * - explainQuizOption - A function that generates an explanation for a given quiz option.
  */
 
-import { configureGenkit } from '@/ai/genkit';
+import { genkit, z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutputSchema, type ExplainQuizOptionInput, type ExplainQuizOptionOutput } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
-import { z } from 'genkit';
 
-const ExplainQuizOptionServerInputSchema = ExplainQuizOptionInputSchema.extend({
+const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
     apiKey: z.string().optional(),
 });
-type ExplainQuizOptionServerInput = z.infer<typeof ExplainQuizOptionServerInputSchema>;
+type ExplainQuizOptionClientInput = z.infer<typeof ExplainQuizOptionClientInputSchema>;
 
 
-export async function explainQuizOption(input: ExplainQuizOptionServerInput): Promise<ExplainQuizOptionOutput> {
-  return explainQuizOptionFlow(input);
-}
+export async function explainQuizOption(input: ExplainQuizOptionClientInput): Promise<ExplainQuizOptionOutput> {
+  if (!input.apiKey) {
+      throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
+  }
 
-const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
+  const ai = genkit({
+    plugins: [googleAI({ apiKey: input.apiKey })],
+  });
 
-const explainQuizOptionFlow = z.defineFlow(
-  {
-    name: 'explainQuizOptionFlow',
-    inputSchema: ExplainQuizOptionServerInputSchema,
-    outputSchema: ExplainQuizOptionOutputSchema,
-  },
-  async (input) => {
-    if (!input.apiKey) {
-        throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
-    }
-    const ai = configureGenkit(input.apiKey);
+  const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
 
-    const correctAnswerPrompt = ai.definePrompt({
-        name: 'correctAnswerPrompt',
-        input: {schema: ExplainQuizOptionInputSchema},
-        output: {schema: explanationOnlySchema},
-        prompt: `You are a helpful quiz tutor. The user has chosen the CORRECT answer and wants a more detailed explanation.
+  const correctAnswerPrompt = ai.definePrompt({
+      name: 'correctAnswerPrompt',
+      input: {schema: ExplainQuizOptionInputSchema},
+      output: {schema: explanationOnlySchema},
+      prompt: `You are a helpful quiz tutor. The user has chosen the CORRECT answer and wants a more detailed explanation.
 
 Topic: {{{topic}}}
 Question: "{{{question}}}"
@@ -55,13 +45,13 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - For example: {"explanation": "The method \`pop()\` removes and returns the element at the given index. In this case, it removes the element at index 1, which is **20**."}
 Ensure the explanation is well-structured with clear paragraphs.
 `,
-      });
+    });
 
-    const incorrectAnswerPrompt = ai.definePrompt({
-        name: 'incorrectAnswerPrompt',
-        input: {schema: ExplainQuizOptionInputSchema},
-        output: {schema: explanationOnlySchema},
-        prompt: `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
+  const incorrectAnswerPrompt = ai.definePrompt({
+      name: 'incorrectAnswerPrompt',
+      input: {schema: ExplainQuizOptionInputSchema},
+      output: {schema: explanationOnlySchema},
+      prompt: `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
 Topic: {{{topic}}}
 Question: "{{{question}}}"
@@ -77,23 +67,22 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - For example: {"explanation": "While that's a good thought, the correct answer is actually **20**. The method \`pop(1)\` specifically targets the element at index 1."}
 Ensure the explanation is well-structured with clear paragraphs.
 `,
-    });
+  });
 
-    let explanationOutput;
-    if (input.selectedOption === input.correctAnswer) {
-        const {output} = await correctAnswerPrompt(input);
-        explanationOutput = output;
-    } else {
-        const {output} = await incorrectAnswerPrompt(input);
-        explanationOutput = output;
-    }
-
-    if (!explanationOutput) {
-        throw new Error('Could not generate an explanation.');
-    }
-    
-    return {
-        explanation: explanationOutput.explanation,
-    };
+  let explanationOutput;
+  if (input.selectedOption === input.correctAnswer) {
+      const {output} = await correctAnswerPrompt(input);
+      explanationOutput = output;
+  } else {
+      const {output} = await incorrectAnswerPrompt(input);
+      explanationOutput = output;
   }
-);
+
+  if (!explanationOutput) {
+      throw new Error('Could not generate an explanation.');
+  }
+  
+  return {
+      explanation: explanationOutput.explanation,
+  };
+}

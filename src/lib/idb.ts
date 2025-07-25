@@ -75,17 +75,6 @@ export const closeDb = async () => {
   }
 };
 
-// Legacy functions - now no-ops
-export const initBroadcastChannel = () => null;
-export const broadcastDataChange = (key: DataKey | string, data: any): void => {
-  console.log(`🚫 Data sync disabled for ${key}`);
-};
-export const onDataChange = (callback: (key: DataKey | string, data: any) => void) => {
-  // No-op
-};
-export const closeBroadcastChannel = () => {
-  // No-op
-};
 
 export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
   try {
