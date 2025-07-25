@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
@@ -69,7 +70,6 @@ export function ChatModal({
 
 	const processStream = async (stream: ReadableStream<string>, assistantMessageId: string) => {
 		const reader = stream.getReader()
-		const decoder = new TextDecoder()
 		let accumulatedText = ""
 		
 		while (true) {
@@ -77,7 +77,7 @@ export function ChatModal({
 				const { done, value } = await reader.read()
 				if (done) break
 				
-				accumulatedText += decoder.decode(value, { stream: true })
+				accumulatedText += value
 				setMessages(prev =>
 					prev.map(msg =>
 						msg.id === assistantMessageId
