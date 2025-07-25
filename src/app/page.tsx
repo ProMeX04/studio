@@ -786,10 +786,8 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
-					{/* View Selector is now inside Learn component */}
-					
-					<div className="flex-grow overflow-y-auto flex flex-col">
+				<div className="relative flex flex-col justify-center items-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
+					<div className="flex-grow overflow-y-auto flex flex-col w-[95%] h-[95%] mx-auto">
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
@@ -813,3 +811,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
