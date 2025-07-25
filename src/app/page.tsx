@@ -37,6 +37,8 @@ import { AIOperationError, safeAICall } from "@/lib/ai-utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { PanelTopClose } from 'lucide-react';
 
+const BATCH_SIZE = 5;
+
 interface LearnProps {
 	view: "flashcards" | "quiz"
 	isLoading: boolean
@@ -746,11 +748,15 @@ export default function Home() {
 
 			{/* Left Column */}
 			{isChatActive ? (
-				<ChatAssistant 
-					context={chatContext}
-					initialQuestion={initialChatQuestion}
-					onClose={() => setIsChatActive(false)}
-				/>
+				<div className="relative flex h-full flex-col justify-center items-center p-4 sm:p-8 md:p-12">
+					<div className="w-full max-w-2xl h-full">
+						<ChatAssistant 
+							context={chatContext}
+							initialQuestion={initialChatQuestion}
+							onClose={() => setIsChatActive(false)}
+						/>
+					</div>
+				</div>
 			) : (
 				<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
 					<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-between items-start">
@@ -813,3 +819,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
