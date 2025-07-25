@@ -80,9 +80,15 @@ function ChatInputForm({
 export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssistantProps) {
 	
 	const getInitialMessages = (): ChatMessage[] => {
+		// DEBUG: Show the full context as the first message instead of the initial question.
 		if (initialQuestion) {
+			const debugMessage: ChatMessage = {
+				id: Date.now().toString(),
+				role: 'user',
+				text: `**[DEBUG MODE] Ngữ cảnh được gửi đến AI:**\n\n---\n\n${context}\n\n---\n\n**Câu hỏi của người dùng:**\n\n${initialQuestion}`
+			};
 			return [
-				{ id: Date.now().toString(), role: "user", text: initialQuestion },
+				debugMessage,
 				{ id: (Date.now() + 1).toString(), role: 'model', text: '' },
 			];
 		}
@@ -201,26 +207,31 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		setMessages(prev => {
 			const newMessages = [...prev];
 			const lastMessage = newMessages[newMessages.length - 1];
+			// Remove suggestions from the last model message if they exist
 			if (lastMessage?.role === 'model') {
 				delete lastMessage.suggestions;
 			}
 			return [...newMessages, userMessage, assistantMessage];
 		});
 
+		// For subsequent questions, the history will contain the debug message,
+		// but the askQuestionStreamFlow is designed to only use context on the first turn.
+		// This is acceptable for debugging.
 		await streamResponse(questionToSend, currentHistory, assistantMessageId);
 
 	}, [input, isLoading, messages, streamResponse]);
 	
 	// Effect to handle the initial question stream
 	useEffect(() => {
+		// This effect triggers when the component is created with an initial question.
 		if (initialQuestion && messages.length === 2 && messages[0].role === 'user' && messages[1].role === 'model') {
-			const questionToSend = messages[0].text;
 			const assistantMessageId = messages[1].id!;
-			// Call streamResponse with empty history for the initial question
-			streamResponse(questionToSend, [], assistantMessageId);
+			// The history sent here is empty, which is correct for the first turn.
+			// The context prop is passed separately to streamResponse.
+			streamResponse(initialQuestion, [], assistantMessageId);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialQuestion]); // Only run when component mounts with an initial question
+	}, []); // Only run once when the component mounts.
 
 
 	return (
@@ -246,7 +257,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 								{message.role === 'user' ? (
 									<div className="flex justify-end">
 										<div className="rounded-lg p-3 bg-primary/80 text-primary-foreground prose dark:prose-invert prose-p:my-0 prose-headings:my-1">
-											{message.text}
+											<ReactMarkdown>{message.text}</ReactMarkdown>
 										</div>
 									</div>
 								) : (
@@ -360,7 +371,3 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
-
-    
-
-    
