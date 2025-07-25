@@ -33,7 +33,8 @@ const Syntax: any = SyntaxHighlighter
 
 interface Flashcard {
 	front: string
-	back: string
+	back: string;
+	originalIndex: number; // Keep track of the original position
 }
 
 export interface FlashcardSet {
@@ -155,11 +156,13 @@ export function Flashcards({
 		setCurrentCardIndex(initialIndex)
 	}, [initialIndex])
 
+	// This effect now correctly syncs the parent's state whenever the internal index changes.
 	useEffect(() => {
 		onIndexChange(currentCardIndex)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentCardIndex])
+	}, [currentCardIndex]);
 
+	// This effect handles the case where the card set changes (e.g., loaded, filtered, shuffled)
 	useEffect(() => {
         if (flashcardSet && currentCardIndex >= flashcardSet.cards.length && flashcardSet.cards.length > 0) {
             setCurrentCardIndex(flashcardSet.cards.length - 1);
@@ -168,21 +171,23 @@ export function Flashcards({
         }
     }, [flashcardSet, currentCardIndex]);
 
+
 	const totalCards = flashcardSet?.cards.length ?? 0
 	const currentCard = flashcardSet?.cards[currentCardIndex];
-	const hasContent = totalCards > 0;
-
-	// Determine if the current card is understood. The index passed to this component is the "true" index from the original array
-	const isUnderstood = understoodIndices.includes(currentCardIndex);
+	const hasContent = totalCards > 0 && !!currentCard;
+	
+	// Determine if the current card is understood using its originalIndex.
+	const isUnderstood = React.useMemo(() => {
+		if (!currentCard) return false;
+		return understoodIndices.includes(currentCard.originalIndex);
+	}, [currentCard, understoodIndices]);
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
-				{hasContent && currentCard ? (
+				{hasContent ? (
 					<FlashcardItem
-						key={`${flashcardSet?.id ?? ""}-${
-							currentCard.front
-						}-${currentCardIndex}`}
+						key={`${flashcardSet?.id ?? ""}-${currentCard.originalIndex}`}
 						card={currentCard}
 						isUnderstood={isUnderstood}
 					/>

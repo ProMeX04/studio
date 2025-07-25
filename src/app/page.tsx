@@ -153,19 +153,31 @@ function Learn({
 	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary;
 
 	const handleToggleUnderstood = () => {
-		if (!flashcardState) return;
+		if (!flashcardState || !flashcardSet) return;
+		const currentCard = flashcardSet.cards[flashcardIndex];
+		if(!currentCard) return;
+
+		const originalIndex = (currentCard as any).originalIndex;
+		
 		const newUnderstoodIndices = [...flashcardState.understoodIndices];
-		const indexPosition = newUnderstoodIndices.indexOf(flashcardIndex);
+		const indexPosition = newUnderstoodIndices.indexOf(originalIndex);
 
 		if (indexPosition > -1) {
 			newUnderstoodIndices.splice(indexPosition, 1); // Unmark
 		} else {
-			newUnderstoodIndices.push(flashcardIndex); // Mark
+			newUnderstoodIndices.push(originalIndex); // Mark
 		}
 		onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
 	};
 
-	const isCurrentCardUnderstood = flashcardState?.understoodIndices.includes(flashcardIndex) ?? false;
+	const isCurrentCardUnderstood = useMemo(() => {
+		if (!flashcardState || !flashcardSet) return false;
+		const currentCard = flashcardSet.cards[flashcardIndex];
+		if (!currentCard) return false;
+		const originalIndex = (currentCard as any).originalIndex;
+		return flashcardState.understoodIndices.includes(originalIndex);
+	}, [flashcardState, flashcardSet, flashcardIndex]);
+
 
 	return (
 		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 flex flex-col">
@@ -777,34 +789,67 @@ export default function Home() {
 		[handleGenerate, language, view]
 	)
 
-	// Smart Shuffle logic
-	const shuffledFlashcardSet = useMemo(() => {
-		if (flashcardIsRandom && flashcardSet?.cards) {
-			const originalCards = [...flashcardSet.cards];
-			let shuffledCards = [...originalCards];
+	// Smart Shuffle logic for Flashcards
+	const processedFlashcardSet = useMemo(() => {
+		if (!flashcardSet?.cards) return null;
 	
+		// Step 1: Create a mutable, indexed copy of the original cards
+		let indexedCards = flashcardSet.cards.map((card, index) => ({
+			...card,
+			originalIndex: index
+		}));
+	
+		if (flashcardIsRandom) {
 			if (flashcardRandomNotUnderstoodOnly && flashcardState) {
 				const understood = [];
 				const notUnderstood = [];
 				
-				for (let i = 0; i < originalCards.length; i++) {
-					if (flashcardState.understoodIndices.includes(i)) {
-						understood.push(originalCards[i]);
+				for (const card of indexedCards) {
+					if (flashcardState.understoodIndices.includes(card.originalIndex)) {
+						understood.push(card);
 					} else {
-						notUnderstood.push(originalCards[i]);
+						notUnderstood.push(card);
 					}
 				}
 				
 				const shuffledNotUnderstood = notUnderstood.sort(() => Math.random() - 0.5);
-				shuffledCards = [...shuffledNotUnderstood, ...understood];
+				indexedCards = [...shuffledNotUnderstood, ...understood];
 			} else {
-				shuffledCards = originalCards.sort(() => Math.random() - 0.5);
+				indexedCards.sort(() => Math.random() - 0.5);
 			}
-			
-			return { ...flashcardSet, cards: shuffledCards };
 		}
-		return flashcardSet;
+	
+		return { ...flashcardSet, cards: indexedCards };
+	
 	}, [flashcardIsRandom, flashcardRandomNotUnderstoodOnly, flashcardState, flashcardSet]);
+
+	// Effect to adjust index after shuffle/filter
+	useEffect(() => {
+		if (!processedFlashcardSet || !flashcardSet) return;
+	
+		// Find the card from the original set that corresponds to the current index
+		const currentOriginalCard = flashcardSet.cards[flashcardIndex];
+		if (!currentOriginalCard) {
+			if(processedFlashcardSet.cards.length > 0) {
+				handleFlashcardIndexChange(0);
+			}
+			return;
+		};
+	
+		// Find the new position of that card in the processed (shuffled/sorted) set
+		const newIndex = processedFlashcardSet.cards.findIndex(
+			card => card.front === currentOriginalCard.front && card.back === currentOriginalCard.back
+		);
+	
+		if (newIndex !== -1 && newIndex !== flashcardIndex) {
+			// Silently update the index to match the new position without saving to DB yet.
+			// The user-facing onIndexChange will handle the DB save.
+			setFlashcardIndex(newIndex);
+		}
+	
+	// Intentionally only run when the processed set changes structure.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [processedFlashcardSet]);
 	
 	const shuffledQuizSet = useMemo(() => {
 		if (quizIsRandom && quizSet?.questions) {
@@ -1039,7 +1084,7 @@ export default function Home() {
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
-							flashcardSet={shuffledFlashcardSet}
+							flashcardSet={processedFlashcardSet}
 							quizSet={shuffledQuizSet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
@@ -1070,3 +1115,4 @@ export default function Home() {
     
 
     
+
