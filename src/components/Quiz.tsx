@@ -36,6 +36,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import { QuizSummary } from "./QuizSummary"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -44,6 +45,7 @@ interface QuizProps {
 	quizSet: QuizSet | null
 	initialState: QuizState | null
 	onStateChange: (newState: QuizState) => void
+	onReset: () => void;
 	language: string
 	topic: string;
 }
@@ -107,6 +109,7 @@ export function Quiz({
 	quizSet,
 	initialState,
 	onStateChange,
+	onReset,
 	language,
 	topic,
 }: QuizProps) {
@@ -128,6 +131,11 @@ export function Quiz({
 		explanations: {},
 	}
 	const { selected: selectedAnswer, isAnswered } = currentAnswerState
+
+	const isCompleted = useMemo(() => {
+		if (!quizSet || quizSet.questions.length === 0) return false;
+		return Object.keys(answers).length === quizSet.questions.length;
+	}, [answers, quizSet]);
 
 	// Update state only when initialState changes, not when quizSet changes.
 	// This prevents jumping to the first question when new questions are loaded in the background.
@@ -260,6 +268,21 @@ export function Quiz({
 			return "bg-destructive/50 border-destructive backdrop-blur-sm"
 		return "border-border bg-background/80 backdrop-blur-sm"
 	}
+
+	if (isCompleted && quizSet) {
+        const correctAnswers = Object.values(answers).filter(
+            (answer, index) => quizSet.questions[index]?.answer === answer.selected
+        ).length;
+        const totalQuestions = quizSet.questions.length;
+
+        return (
+            <QuizSummary
+                correctAnswers={correctAnswers}
+                totalQuestions={totalQuestions}
+                onReset={onReset}
+            />
+        );
+    }
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">

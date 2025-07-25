@@ -44,6 +44,7 @@ interface LearnProps {
 	quizState: QuizState | null
 	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
+	onQuizReset: () => void;
 	flashcardIsRandom: boolean
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
@@ -61,6 +62,7 @@ function Learn({
 	quizState,
 	onGenerateNew,
 	onQuizStateChange,
+	onQuizReset,
 	flashcardIsRandom,
 	canGenerateMore,
 	flashcardIndex,
@@ -111,6 +113,7 @@ function Learn({
 						quizSet={quizSet}
 						initialState={quizState}
 						onStateChange={onQuizStateChange}
+						onReset={onQuizReset}
 						language={language}
 						topic={topic}
 					/>
@@ -666,6 +669,12 @@ export default function Home() {
 		await db.put("data", { id: "quizState", data: newState })
 	}, [])
 
+	const handleQuizReset = useCallback(async () => {
+		setQuizState(null);
+		const db = await getDb();
+		await db.delete("data", "quizState");
+	}, []);
+
 	const onGenerateNew = useCallback(() => {
 		// Gọi generate cho view hiện tại, không force new
 		handleGenerate(topic, language, false, view)
@@ -753,6 +762,7 @@ export default function Home() {
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
+							onQuizReset={handleQuizReset}
 							flashcardIsRandom={flashcardIsRandom}
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
@@ -767,6 +777,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    
-    
