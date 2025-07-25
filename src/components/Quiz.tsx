@@ -153,18 +153,23 @@ export function Quiz({
 		}
 	}, [quizSet])
 
+	const onStateChangeRef = useRef(onStateChange);
+	useEffect(() => {
+		onStateChangeRef.current = onStateChange;
+	});
+
 	useEffect(() => {
 		if (quizSet) {
 			// Only call onStateChange if there is a quizSet to avoid writing null state
 			// Use a timeout to debounce rapid state changes
 			const timeoutId = setTimeout(() => {
-				onStateChange({ currentQuestionIndex, answers })
+				onStateChangeRef.current({ currentQuestionIndex, answers })
 			}, 100)
 
 			return () => clearTimeout(timeoutId)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentQuestionIndex, answers])
+	}, [currentQuestionIndex, answers, quizSet])
 
 	const currentQuestion = useMemo(
 		() => quizSet?.questions[currentQuestionIndex],
