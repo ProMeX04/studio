@@ -26,13 +26,6 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ChatInput } from "./ChatInput"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,8 +51,6 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
-	onViewChange: (view: "flashcards" | "quiz") => void
-	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -178,8 +169,6 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
-	onViewChange,
-	currentView,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -313,3 +302,5 @@ export function Flashcards({
 		</Card>
 	)
 }
+
+    

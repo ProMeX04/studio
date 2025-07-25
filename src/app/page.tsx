@@ -32,13 +32,7 @@ import {
 import { ChatAssistant } from "@/components/ChatAssistant"
 import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
 
 const BATCH_SIZE = 5
@@ -57,7 +51,6 @@ interface LearnProps {
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
-	currentView: "flashcards" | "quiz"
 	language: string
 }
 
@@ -75,44 +68,33 @@ function Learn({
 	flashcardIndex,
 	onFlashcardIndexChange,
 	onViewChange,
-	currentView,
 	language,
 }: LearnProps) {
-	const hasLearnContent =
-		(view === "flashcards" &&
-			flashcardSet &&
-			flashcardSet.cards.length > 0) ||
-		(view === "quiz" && quizSet && quizSet.questions.length > 0)
-
 	return (
 		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
-			{/* Top Toolbar with View Selector, Count and Add Button */}
-			<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-3 rounded-lg">
-				<div className="flex-1"></div>
-				<Select
-					value={currentView}
+			{/* Top Toolbar */}
+			<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-2 rounded-lg">
+				<Tabs
+					value={view}
 					onValueChange={(value) =>
 						onViewChange(value as "flashcards" | "quiz")
 					}
+					className="w-auto"
 				>
-					<SelectTrigger className="w-[180px]">
-						<SelectValue placeholder="Chọn chế độ" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="flashcards">
-							Flashcard
-						</SelectItem>
-						<SelectItem value="quiz">Trắc nghiệm</SelectItem>
-					</SelectContent>
-				</Select>
-				<div className="flex-1 flex justify-end items-center gap-2">
+					<TabsList>
+						<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+						<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+					</TabsList>
+				</Tabs>
+
+				<div className="flex items-center gap-2">
 					{view === "flashcards" ? (
 						<>
 							<span className="text-sm text-muted-foreground">
-								Flashcard {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
+								Thẻ {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
 							</span>
 							<Button
-								onClick={() => onGenerateNew()}
+								onClick={onGenerateNew}
 								disabled={isLoading || !canGenerateMore}
 								variant="outline"
 								size="icon"
@@ -130,7 +112,7 @@ function Learn({
 								Câu hỏi {quizSet ? (quizState?.currentQuestionIndex ?? 0) + 1 : 0} / {quizSet?.questions.length ?? 0}
 							</span>
 							<Button
-								onClick={() => onGenerateNew()}
+								onClick={onGenerateNew}
 								disabled={isLoading || !canGenerateMore}
 								variant="outline"
 								size="icon"
@@ -145,7 +127,7 @@ function Learn({
 					)}
 				</div>
 			</div>
-			
+
 			<CardContent className="flex-grow flex flex-col" style={{ paddingTop: '2px' }}>
 				{view === "flashcards" && (
 					<Flashcards
@@ -157,8 +139,6 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
-						onViewChange={onViewChange}
-						currentView={currentView}
 					/>
 				)}
 				{view === "quiz" && (
@@ -170,8 +150,6 @@ function Learn({
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 						language={language}
-						onViewChange={onViewChange}
-						currentView={currentView}
 					/>
 				)}
 			</CardContent>
@@ -802,7 +780,6 @@ export default function Home() {
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
-							currentView={view}
 							language={language}
 						/>
 					</div>
@@ -811,5 +788,7 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
 
     

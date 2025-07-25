@@ -37,13 +37,6 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ChatInput } from "./ChatInput"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -56,8 +49,6 @@ interface QuizProps {
 	canGenerateMore: boolean
 	isLoading: boolean
 	language: string
-	onViewChange: (view: "flashcards" | "quiz") => void
-	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -140,8 +131,6 @@ export function Quiz({
 	canGenerateMore,
 	isLoading,
 	language,
-	onViewChange,
-	currentView,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -512,3 +501,5 @@ export function Quiz({
 		</Card>
 	)
 }
+
+    
