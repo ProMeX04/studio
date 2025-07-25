@@ -5,11 +5,11 @@ import { useState, useRef, useCallback, useEffect }from "react"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Loader, Send, Sparkles, User, X } from "lucide-react"
+import { Loader, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { askQuestionStream } from "@/ai/flows/ask-question-stream"
 import type { ChatMessage } from "@/ai/schemas"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardFooter } from "./ui/card"
 import { ScrollArea } from "./ui/scroll-area"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -227,113 +227,110 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 							</div>
 						)}
 						{messages.map((message, index) => (
-							<div
-								key={message.id || index}
-								className={cn(
-									"flex items-start",
-									message.role === "user"
-										? "justify-end"
-										: "justify-start"
-								)}
-							>
-								<div className="space-y-2">
-									<div
-										className={cn(
-											"rounded-lg p-3 max-w-[75%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
-											message.role === "user"
-												? "bg-primary/80 text-primary-foreground float-right"
-												: "bg-muted text-muted-foreground"
-										)}
-									>
-                                        {message.text ? (
-                                            <ReactMarkdown
-                                                remarkPlugins={[
-                                                    remarkGfm,
-                                                    remarkMath,
-                                                ]}
-                                                rehypePlugins={[rehypeKatex]}
-                                                components={{
-                                                    p: ({ node, ...props }) => {
-                                                        return <p {...props} className="break-words" />;
-                                                    },
-                                                    pre({ node, ...props }) {
-                                                        // This will now correctly wrap the SyntaxHighlighter output
-                                                        return <pre {...props} className="w-full bg-black/80 text-white p-2 rounded-md my-2 overflow-x-auto" />;
-                                                    },
-                                                    code({
-                                                        node,
-                                                        inline,
-                                                        className,
-                                                        children,
-                                                        ...props
-                                                    }) {
-                                                        const match = /language-(\w+)/.exec(className || "");
-                                                        if (!inline && match) {
-                                                            return (
-                                                                <Syntax
-                                                                    style={vscDarkPlus}
-                                                                    language={match[1]}
-                                                                    PreTag="div" // Let `pre` handle the container
-                                                                    {...props}
-                                                                >
-                                                                    {String(children).replace(/\n$/, '')}
-                                                                </Syntax>
-                                                            );
-                                                        }
-                                                        if (inline) {
-                                                            return (
-                                                                <code
-                                                                    className={cn(className, "inline-code")}
-                                                                    {...props}
-                                                                >
-                                                                    {children}
-                                                                </code>
-                                                            );
-                                                        }
-                                                        // Fallback for code blocks without a language
-                                                        return (
-                                                            <code className={cn(className, "block whitespace-pre-wrap p-2 bg-muted rounded-md")} {...props}>
-                                                                {children}
-                                                            </code>
-                                                        )
-                                                    },
-                                                }}
-                                            >
-                                                {message.text}
-                                            </ReactMarkdown>
-                                        ) : (
-                                           <Loader className="animate-spin text-muted-foreground" />
-                                        )}
+							<div key={message.id || index} className="w-full">
+								{message.role === 'user' ? (
+									<div className="flex justify-end">
+										<div className="rounded-lg p-3 bg-primary/80 text-primary-foreground prose dark:prose-invert prose-p:my-0 prose-headings:my-1">
+											{message.text}
+										</div>
 									</div>
-									{message.role === "model" &&
-										!isLoading &&
-										message.suggestions &&
-										message.suggestions.length > 0 && (
-											<div className="flex flex-wrap gap-2 pt-2">
-												{message.suggestions.map(
-													(suggestion, i) => (
-														<Button
-															key={i}
-															variant="outline"
-															size="sm"
-															onClick={(e) =>
-																handleSubmit(
-																	e,
-																	suggestion
-																)
+								) : (
+									<div className="space-y-2">
+										<div
+											className={cn(
+												"prose dark:prose-invert prose-p:my-0 prose-headings:my-1 w-full"
+											)}
+										>
+											{message.text ? (
+												<ReactMarkdown
+													remarkPlugins={[
+														remarkGfm,
+														remarkMath,
+													]}
+													rehypePlugins={[rehypeKatex]}
+													components={{
+														p: ({ node, ...props }) => {
+															return <p {...props} className="break-words" />;
+														},
+														pre({ node, ...props }) {
+															return <pre {...props} className="w-full bg-black/80 text-white p-2 rounded-md my-2 overflow-x-auto" />;
+														},
+														code({
+															node,
+															inline,
+															className,
+															children,
+															...props
+														}) {
+															const match = /language-(\w+)/.exec(className || "");
+															if (!inline && match) {
+																return (
+																	<pre className="overflow-x-auto bg-black/80 p-2 rounded-md my-2 w-full">
+																		<Syntax
+																			style={vscDarkPlus}
+																			language={match[1]}
+																			PreTag="div"
+																			{...props}
+																		>
+																			{String(children).replace(/\n$/, '')}
+																		</Syntax>
+																	</pre>
+																);
 															}
-															className="bg-background/50 backdrop-blur"
-														>
-															{suggestion}
-														</Button>
-													)
-												)}
-											</div>
-										)}
-								</div>
+															if (inline) {
+																return (
+																	<code
+																		className={cn(className, "inline-code")}
+																		{...props}
+																	>
+																		{children}
+																	</code>
+																);
+															}
+															// Fallback for code blocks without a language
+															return (
+																<code className={cn(className, "block whitespace-pre-wrap p-2 bg-muted rounded-md")} {...props}>
+																	{children}
+																</code>
+															)
+														},
+													}}
+												>
+													{message.text}
+												</ReactMarkdown>
+											) : (
+											   <Loader className="animate-spin text-muted-foreground" />
+											)}
+										</div>
+										{message.role === "model" &&
+											!isLoading &&
+											message.suggestions &&
+											message.suggestions.length > 0 && (
+												<div className="flex flex-wrap gap-2 pt-2">
+													{message.suggestions.map(
+														(suggestion, i) => (
+															<Button
+																key={i}
+																variant="outline"
+																size="sm"
+																onClick={(e) =>
+																	handleSubmit(
+																		e,
+																		suggestion
+																	)
+																}
+																className="bg-background/50 backdrop-blur"
+															>
+																{suggestion}
+															</Button>
+														)
+													)}
+												</div>
+											)}
+									</div>
+								)}
 							</div>
 						))}
-						
 					</div>
 				</ScrollArea>
 			</CardContent>
