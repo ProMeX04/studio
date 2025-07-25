@@ -43,10 +43,12 @@ const Syntax: any = SyntaxHighlighter
 
 interface QuizProps {
 	quizSet: QuizSet | null
-	initialState: QuizState | null
-	onStateChange: (newState: QuizState) => void
+	quizState: QuizState | null
+	onQuizStateChange: (newState: QuizState) => void
 	language: string
 	topic: string;
+	currentQuestionIndex: number;
+	onCurrentQuestionIndexChange: (index: number) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -106,67 +108,38 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 
 export function Quiz({
 	quizSet,
-	initialState,
-	onStateChange,
+	quizState,
+	onQuizStateChange,
 	language,
 	topic,
+	currentQuestionIndex,
+	onCurrentQuestionIndexChange
 }: QuizProps) {
-	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
-		initialState?.currentQuestionIndex || 0
-	)
-	const [answers, setAnswers] = useState<AnswerState>(
-		initialState?.answers || {}
-	)
+	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
 	const [visibleExplanations, setVisibleExplanations] = useState<
 		Set<string>
 	>(new Set()) // Track which explanations are visible
 	const { toast } = useToast()
 
-	const currentAnswerState = answers[currentQuestionIndex] || {
+	const currentAnswerState = quizState?.answers[currentQuestionIndex] || {
 		selected: null,
 		isAnswered: false,
 		explanations: {},
 	}
 	const { selected: selectedAnswer, isAnswered } = currentAnswerState
 
-
-	// Update state only when initialState changes, not when quizSet changes.
-	// This prevents jumping to the first question when new questions are loaded in the background.
-	useEffect(() => {
-		if (initialState) {
-			setCurrentQuestionIndex(initialState.currentQuestionIndex)
-			setAnswers(initialState.answers)
-		} else {
-			// If initial state is cleared (e.g., on reset), clear local state too
-			setCurrentQuestionIndex(0);
-			setAnswers({});
-		}
-	}, [initialState])
-
-	// Reset component state if the quizSet is removed.
 	useEffect(() => {
 		if (!quizSet) {
-			setCurrentQuestionIndex(0)
-			setAnswers({})
 			setVisibleExplanations(new Set())
 		}
 	}, [quizSet])
-
-	const onStateChangeRef = useRef(onStateChange);
+	
+	// Reset explanation visibility when question changes
 	useEffect(() => {
-		onStateChangeRef.current = onStateChange;
-	});
+		setVisibleExplanations(new Set());
+	}, [currentQuestionIndex]);
 
-	// This effect now only depends on user actions, not on props that might be recreated.
-	useEffect(() => {
-		if (quizSet) {
-			const timeoutId = setTimeout(() => {
-				onStateChangeRef.current({ currentQuestionIndex, answers })
-			}, 100)
-			return () => clearTimeout(timeoutId)
-		}
-	}, [currentQuestionIndex, answers]); // Removed quizSet from dependencies
 
 	const currentQuestion = useMemo(
 		() => quizSet?.questions[currentQuestionIndex],
@@ -176,20 +149,25 @@ export function Quiz({
 		quizSet && quizSet.questions && quizSet.questions.length > 0
 
 	const handleAnswerSelect = (answer: string) => {
-		if (isAnswered) return
-		setAnswers({
-			...answers,
-			[currentQuestionIndex]: {
-				...currentAnswerState,
-				selected: answer,
-				isAnswered: true,
-			},
-		})
+		if (isAnswered || !quizState) return
+		
+		const newState: QuizState = {
+			...quizState,
+			answers: {
+				...quizState.answers,
+				[currentQuestionIndex]: {
+					...currentAnswerState,
+					selected: answer,
+					isAnswered: true,
+				},
+			}
+		};
+		onQuizStateChange(newState);
 	}
 
 	const handleOptionExplanation = useCallback(
 		async (option: string) => {
-			if (!quizSet || !currentQuestion) return;
+			if (!quizSet || !currentQuestion || !quizState) return;
 	
 			const explanationKey = `${currentQuestionIndex}-${option}`;
 	
@@ -219,16 +197,20 @@ export function Quiz({
 				});
 	
 				if (result?.explanation) {
-					setAnswers((prev) => ({
-						...prev,
-						[currentQuestionIndex]: {
-							...prev[currentQuestionIndex],
-							explanations: {
-								...(prev[currentQuestionIndex]?.explanations || {}),
-								[option]: result,
+					const newState: QuizState = {
+						...quizState,
+						answers: {
+							...quizState.answers,
+							[currentQuestionIndex]: {
+								...currentAnswerState,
+								explanations: {
+									...(currentAnswerState.explanations || {}),
+									[option]: result,
+								},
 							},
-						},
-					}));
+						}
+					};
+					onQuizStateChange(newState);
 					setVisibleExplanations((prev) => new Set(prev).add(explanationKey));
 				} else {
 					throw new Error("Empty explanation received");
@@ -246,12 +228,14 @@ export function Quiz({
 		},
 		[
 			quizSet,
+			quizState,
 			currentQuestion,
-			currentAnswerState.explanations,
+			currentAnswerState,
 			currentQuestionIndex,
 			visibleExplanations,
 			language,
 			toast,
+			onQuizStateChange
 		]
 	);
 

@@ -61,6 +61,8 @@ interface LearnProps {
 	onFlashcardStateChange: (newState: FlashcardState) => void;
 	onFlashcardReset: () => void;
 	settingsProps: any;
+	currentQuestionIndex: number;
+	onCurrentQuestionIndexChange: (index: number) => void;
 }
 
 function Learn({
@@ -86,9 +88,11 @@ function Learn({
 	onFlashcardStateChange,
 	onFlashcardReset,
 	settingsProps,
+	currentQuestionIndex,
+	onCurrentQuestionIndexChange
 }: LearnProps) {
 	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
-	const currentIndex = view === "flashcards" ? flashcardIndex : (quizState?.currentQuestionIndex ?? 0);
+	const currentIndex = view === "flashcards" ? flashcardIndex : currentQuestionIndex;
 	const totalItems = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
 	const hasContent = totalItems > 0;
 
@@ -96,8 +100,8 @@ function Learn({
 		if (view === 'flashcards') {
 			if (flashcardIndex < totalItems - 1) onFlashcardIndexChange(flashcardIndex + 1);
 		} else if (quizSet && quizState) {
-			if (quizState.currentQuestionIndex < totalItems - 1) {
-				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex + 1 });
+			if (currentQuestionIndex < totalItems - 1) {
+				onCurrentQuestionIndexChange(currentQuestionIndex + 1);
 			}
 		}
 	};
@@ -106,8 +110,8 @@ function Learn({
 		if (view === 'flashcards') {
 			if (flashcardIndex > 0) onFlashcardIndexChange(flashcardIndex - 1);
 		} else if (quizSet && quizState) {
-			if (quizState.currentQuestionIndex > 0) {
-				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex - 1 });
+			if (currentQuestionIndex > 0) {
+				onCurrentQuestionIndexChange(currentQuestionIndex - 1);
 			}
 		}
 	};
@@ -209,10 +213,12 @@ function Learn({
 				) : (
 					<Quiz
 						quizSet={quizSet}
-						initialState={quizState}
-						onStateChange={onQuizStateChange}
+						quizState={quizState}
+						onQuizStateChange={onQuizStateChange}
 						language={language}
 						topic={topic}
+						currentQuestionIndex={currentQuestionIndex}
+						onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
 					/>
 				)}
 			</CardContent>
@@ -352,6 +358,7 @@ export default function Home() {
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false);
+	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -488,6 +495,7 @@ export default function Home() {
 					if (forceNew) {
 						setQuizSet(null)
 						setQuizState(null)
+						setCurrentQuestionIndex(0);
 						setShowQuizSummary(false);
 						await db.delete("data", "quiz")
 						await db.delete("data", "quizState")
@@ -504,6 +512,7 @@ export default function Home() {
 
 					if (isMountedRef.current && forceNew) {
 						setQuizSet({ ...currentQuiz })
+						setQuizState({ currentQuestionIndex: 0, answers: {} });
 					}
 
 					let quizNeeded = quizMax - currentQuiz.questions.length
@@ -661,7 +670,7 @@ export default function Home() {
 		}
 		setFlashcardIndex(initialFlashcardIndex);
 	
-		let currentQuizState = { currentQuestionIndex: 0, answers: {} };
+		let currentQuizState: QuizState = { currentQuestionIndex: 0, answers: {} };
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
 			currentQuizState = quizStateData.data;
 		}
@@ -675,6 +684,7 @@ export default function Home() {
 			}
 		}
 		setQuizState(currentQuizState);
+		setCurrentQuestionIndex(currentQuizState.currentQuestionIndex);
 	
 	}, []);
 
@@ -808,6 +818,17 @@ export default function Home() {
 		[view]
 	)
 
+	const handleCurrentQuestionIndexChange = useCallback((index: number) => {
+        setCurrentQuestionIndex(index);
+        if (quizState) {
+            const newState = { ...quizState, currentQuestionIndex: index };
+            setQuizState(newState);
+            // Debounce or directly write to DB
+            const db = getDb();
+            db.then(d => d.put("data", { id: "quizState", data: newState }));
+        }
+    }, [quizState]);
+
 	const handleQuizStateChange = useCallback(async (newState: QuizState) => {
 		setQuizState(newState)
 		const db = await getDb()
@@ -820,6 +841,7 @@ export default function Home() {
 			answers: {},
 		};
 		setQuizState(newQuizState);
+		setCurrentQuestionIndex(0);
 		setShowQuizSummary(false);
 	
 		const db = await getDb();
@@ -959,6 +981,8 @@ export default function Home() {
 							onFlashcardStateChange={handleFlashcardStateChange}
 							onFlashcardReset={handleFlashcardReset}
 							settingsProps={learnSettingsProps}
+							currentQuestionIndex={currentQuestionIndex}
+							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
 						/>
 					</div>
 				</div>
