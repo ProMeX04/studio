@@ -71,26 +71,3 @@ export const ExplainQuizOptionOutputSchema = z.object({
     explanation: z.string().describe('The detailed explanation for the selected option.'),
 });
 export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
-
-
-// Chat Assistant
-export const ChatMessageSchema = z.object({
-  id: z.string().optional(), // Add optional ID for React keys
-  role: z.enum(['user', 'model']),
-  text: z.string(),
-  suggestions: z.array(z.string()).optional(),
-});
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
-
-export const AskQuestionInputSchema = z.object({
-  context: z.string().describe("The context of the conversation (e.g., topic, current quiz question)."),
-  question: z.string().describe("The user's question."),
-  history: z.array(ChatMessageSchema).describe("The history of the conversation so far."),
-});
-export type AskQuestionInput = z.infer<typeof AskQuestionInputSchema>;
-
-export const AskQuestionOutputSchema = z.object({
-    answer: z.string().describe("The AI tutor's response text."),
-    suggestions: z.array(z.string()).optional().describe('A list of two suggested follow-up questions for the user.'),
-});
-export type AskQuestionOutput = z.infer<typeof AskQuestionOutputSchema>;

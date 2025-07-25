@@ -50,7 +50,6 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
-	onActivateChat: (context: string, initialQuestion?: string) => void;
 	topic: string;
 }
 
@@ -152,7 +151,6 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
-	onActivateChat,
 	topic,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
@@ -220,13 +218,8 @@ export function Flashcards({
 	}
 
 	const handleActivateChat = (initialQuestion?: string) => {
-		if (currentCard) {
-			const context = `Người dùng đang học về chủ đề: ${topic}. Họ đang xem flashcard: Mặt trước "${currentCard.front}", Mặt sau "${currentCard.back}".`
-			onActivateChat(context, initialQuestion);
-		} else {
-			const context = `Người dùng đang học về chủ đề: ${topic}, trong mục flashcards.`;
-			onActivateChat(context, initialQuestion);
-		}
+		// Placeholder for new feature
+		console.log("Activating new feature with question:", initialQuestion)
 	};
 
 

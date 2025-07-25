@@ -29,7 +29,6 @@ import {
 	closeDb,
 	clearAllData,
 } from "@/lib/idb"
-import { ChatAssistant } from "@/components/ChatAssistant"
 import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,7 +52,6 @@ interface LearnProps {
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
-	onActivateChat: (context: string, initialQuestion?: string) => void
 	topic: string
 }
 
@@ -71,7 +69,6 @@ function Learn({
 	onFlashcardIndexChange,
 	onViewChange,
 	language,
-	onActivateChat,
 	topic,
 }: LearnProps) {
 	return (
@@ -153,7 +150,6 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
-						onActivateChat={onActivateChat}
 						topic={topic}
 					/>
 				)}
@@ -166,7 +162,6 @@ function Learn({
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 						language={language}
-						onActivateChat={onActivateChat}
 						topic={topic}
 					/>
 				)}
@@ -208,10 +203,6 @@ export default function Home() {
 	const [isMounted, setIsMounted] = useState(false)
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
-	const [isChatActive, setIsChatActive] = useState(false)
-	const [chatContext, setChatContext] = useState("")
-	const [initialChatQuestion, setInitialChatQuestion] = useState("")
-
 
 	// Ngăn race condition và cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -680,13 +671,6 @@ export default function Home() {
 		},
 		[] // No dependencies, we only want to save the raw index
 	)
-	
-	const handleActivateChat = useCallback((context: string, initialQuestion?: string) => {
-		setChatContext(context);
-		setInitialChatQuestion(initialQuestion || "");
-		setIsChatActive(true);
-	}, []);
-
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =
@@ -716,50 +700,37 @@ export default function Home() {
 			)}
 
 			{/* Left Column */}
-			{isChatActive ? (
-				<div className="relative flex h-full flex-col justify-center items-center p-4 sm:p-8 md:p-12">
-					<div className="w-full max-w-2xl h-full flex justify-center items-center">
-						<ChatAssistant 
-							key={chatContext + initialChatQuestion}
-							context={chatContext}
-							initialQuestion={initialChatQuestion}
-							onClose={() => setIsChatActive(false)}
-						/>
-					</div>
+			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
+				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
+					<Settings
+						onSettingsChange={onSettingsSave}
+						onClearAllData={handleClearAllData}
+						onVisibilityChange={handleVisibilityChange}
+						onBackgroundChange={handleBackgroundChange}
+						onUploadedBackgroundsChange={
+							handleUploadedBackgroundsChange
+						}
+						onViewChange={handleViewChange}
+						onGenerateNew={onGenerateFromSettings}
+						currentView={view}
+						visibility={visibility}
+						uploadedBackgrounds={uploadedBackgrounds}
+						currentBackgroundImage={backgroundImage}
+						topic={topic}
+						language={language}
+						flashcardMax={flashcardMax}
+						quizMax={quizMax}
+						flashcardIsRandom={flashcardIsRandom}
+					/>
+					{visibility.greeting && <Greeting />}
 				</div>
-			) : (
-				<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
-					<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
-						<Settings
-							onSettingsChange={onSettingsSave}
-							onClearAllData={handleClearAllData}
-							onVisibilityChange={handleVisibilityChange}
-							onBackgroundChange={handleBackgroundChange}
-							onUploadedBackgroundsChange={
-								handleUploadedBackgroundsChange
-							}
-							onViewChange={handleViewChange}
-							onGenerateNew={onGenerateFromSettings}
-							currentView={view}
-							visibility={visibility}
-							uploadedBackgrounds={uploadedBackgrounds}
-							currentBackgroundImage={backgroundImage}
-							topic={topic}
-							language={language}
-							flashcardMax={flashcardMax}
-							quizMax={quizMax}
-							flashcardIsRandom={flashcardIsRandom}
-						/>
-						{visibility.greeting && <Greeting />}
-					</div>
 
-					<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
-						{visibility.clock && <Clock />}
-						{visibility.search && <Search />}
-						{visibility.quickLinks && <QuickLinks />}
-					</div>
+				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
+					{visibility.clock && <Clock />}
+					{visibility.search && <Search />}
+					{visibility.quickLinks && <QuickLinks />}
 				</div>
-			)}
+			</div>
 
 
 			{/* Right Column */}
@@ -780,7 +751,6 @@ export default function Home() {
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
-							onActivateChat={handleActivateChat}
 							topic={topic}
 						/>
 					</div>
