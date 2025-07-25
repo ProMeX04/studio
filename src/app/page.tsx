@@ -736,7 +736,7 @@ export default function Home() {
 	}
 
 	return (
-		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1fr,1.5fr]">
+		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1.2fr,1.5fr]">
 			{backgroundImage && (
 				<div
 					className="absolute inset-0 bg-cover bg-center"
@@ -819,3 +819,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
