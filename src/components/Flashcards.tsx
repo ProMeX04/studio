@@ -85,62 +85,46 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p(props: any) {
-					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
-					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
-					const hasDiv = Array.isArray(props.children) && props.children.some(
-						(child: any) =>
-							child &&
-							typeof child === "object" &&
-							(child.type === "div" || child.props?.node?.tagName === "div")
-					);
-			  
-					if (hasDiv) {
-					  return <div>{props.children}</div>;
-					}
-					return <p {...props}>{props.children}</p>;
-				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-
-					if (inline) {
+					if (!inline) {
 						return (
-							<code
-								className="inline-code-custom"
-								style={{
-									display: "inline !important",
-									padding: "2px 6px",
-									backgroundColor:
-										"rgba(110, 118, 129, 0.4)",
-									borderRadius: "4px",
-									fontSize: "0.875em",
-									fontFamily:
-										'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-									whiteSpace: "nowrap !important",
-									wordBreak: "keep-all !important",
-									lineHeight: "1.4",
-									verticalAlign: "baseline",
-									color: "inherit",
-								}}
-								{...props}
-							>
-								{children}
-							</code>
+							<div>
+								<Syntax
+									style={codeStyle as any}
+									language={match ? match[1] : "text"}
+									PreTag="div"
+									wrapLongLines={true}
+									{...props}
+								>
+									{String(children).replace(/\n$/, "")}
+								</Syntax>
+							</div>
 						)
 					}
-					// Handle non-inline code
+					// Handle inline code
 					return (
-						<div>
-							<Syntax
-								style={codeStyle as any}
-								language={match ? match[1] : "text"}
-								PreTag="div"
-								wrapLongLines={true}
-								{...props}
-							>
-								{String(children).replace(/\n$/, "")}
-							</Syntax>
-						</div>
+						<code
+							className="inline-code-custom"
+							style={{
+								display: "inline !important",
+								padding: "2px 6px",
+								backgroundColor:
+									"rgba(110, 118, 129, 0.4)",
+								borderRadius: "4px",
+								fontSize: "0.875em",
+								fontFamily:
+									'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+								whiteSpace: "nowrap !important",
+								wordBreak: "keep-all !important",
+								lineHeight: "1.4",
+								verticalAlign: "baseline",
+								color: "inherit",
+							}}
+							{...props}
+						>
+							{children}
+						</code>
 					)
 				},
 			}}
