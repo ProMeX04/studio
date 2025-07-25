@@ -751,6 +751,7 @@ export default function Home() {
 				<div className="relative flex h-full flex-col justify-center items-center p-4 sm:p-8 md:p-12">
 					<div className="w-full max-w-2xl h-full flex justify-center items-center">
 						<ChatAssistant 
+							key={chatContext + initialChatQuestion}
 							context={chatContext}
 							initialQuestion={initialChatQuestion}
 							onClose={() => setIsChatActive(false)}
@@ -811,7 +812,7 @@ export default function Home() {
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
-							onActivateChat={() => handleActivateChat(getLiveContext())}
+							onActivateChat={handleActivateChat}
 						/>
 					</div>
 				</div>
@@ -819,5 +820,7 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
 
     
