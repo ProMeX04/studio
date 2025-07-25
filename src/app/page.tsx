@@ -33,8 +33,6 @@ import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { PanelTopClose } from 'lucide-react';
 
 const BATCH_SIZE = 5;
 
@@ -159,21 +157,21 @@ function Learn({
 							>
 								<ChevronRight className="h-4 w-4" />
 							</Button>
-						</div>
 
-						<Button
-							onClick={onGenerateNew}
-							disabled={isLoading || !canGenerateMore}
-							variant="outline"
-							size="icon"
-							className="h-9 w-9"
-						>
-							{isLoading ? (
-								<Loader className="animate-spin w-4 h-4" />
-							) : (
-								<Plus className="w-4 h-4" />
-							)}
-						</Button>
+							<Button
+								onClick={onGenerateNew}
+								disabled={isLoading || !canGenerateMore}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								{isLoading ? (
+									<Loader className="animate-spin w-4 h-4" />
+								) : (
+									<Plus className="w-4 h-4" />
+								)}
+							</Button>
+						</div>
 					</div>
 				</div>
 			</CardFooter>
@@ -770,4 +768,3 @@ export default function Home() {
 		</main>
 	)
 }
-
