@@ -244,7 +244,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 								<div className="space-y-2">
 									<div
 										className={cn(
-											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
+											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1 prose-chat",
 											message.role === "user"
 												? "bg-primary/80 text-primary-foreground float-right"
 												: "bg-muted text-muted-foreground"
@@ -259,8 +259,6 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                 rehypePlugins={[rehypeKatex]}
                                                 components={{
                                                     p: ({ node, ...props }) => {
-                                                        // This prevents <p> tags from being rendered, which can cause hydration errors
-                                                        // when they contain block-level elements.
                                                         return <div {...props} />;
                                                     },
                                                     code({

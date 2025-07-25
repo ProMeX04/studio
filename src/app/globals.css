@@ -104,4 +104,8 @@ body {
 		word-break: keep-all !important;
 		display: inline !important;
 	}
+
+	.prose-chat pre {
+		max-width: 90vw;
+	}
 }
