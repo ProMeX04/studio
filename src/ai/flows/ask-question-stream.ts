@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -11,25 +12,6 @@ export async function askQuestionStream(input: AskQuestionInput): Promise<Readab
   return askQuestionStreamFlow(input);
 }
 
-const streamPrompt = ai.definePrompt({
-  name: 'askQuestionStreamPrompt',
-  input: {schema: AskQuestionInputSchema},
-  prompt: `You are a helpful AI tutor. The user has a question about the learning material they are currently viewing.
-
-Here is the context of what the user is seeing:
-{{{context}}}
-
-Here is the conversation history so far:
-{{#each history}}
-- {{this.role}}: {{this.text}}
-{{/each}}
-
-Here is the user's new question:
-"{{{question}}}"
-
-Please provide a concise and helpful answer to the user's question based on the provided context and history. Write in Markdown format. Use standard backticks (\`) for inline code.`,
-});
-
 const askQuestionStreamFlow = ai.defineFlow(
   {
     name: 'askQuestionStreamFlow',
@@ -37,7 +19,7 @@ const askQuestionStreamFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const {stream} = await ai.generate({
+      const {stream, response} = ai.generateStream({
         model: 'googleai/gemini-2.5-flash-lite',
         prompt: `You are a helpful AI tutor. The user has a question about the learning material they are currently viewing.
 
@@ -50,8 +32,7 @@ ${input.history.map(m => `- ${m.role}: ${m.text}`).join('\n')}
 Here is the user's new question:
 "${input.question}"
 
-Please provide a concise and helpful answer to the user's question based on the provided context and history. Write in Markdown format. Use standard backticks (\`) for inline code.`,
-        stream: true,
+Please provide a concise and helpful answer to the user's question based on the provided context and history. Write in Markdown format. Use standard backticks (\`) for inline code.`
       });
 
       // Convert the Genkit stream to a ReadableStream
@@ -64,6 +45,7 @@ Please provide a concise and helpful answer to the user's question based on the 
                 controller.enqueue(text);
               }
             }
+            await response; // Wait for the full response to be processed
             controller.close();
           } catch (error) {
             console.error('❌ Stream error:', error);
