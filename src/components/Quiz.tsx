@@ -21,7 +21,6 @@ import {
 	Loader,
 	Plus,
 } from "lucide-react"
-import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
 import { explainQuizOptionStream } from "@/ai/flows/explain-quiz-option-stream"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
@@ -38,6 +37,13 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ChatInput } from "./ChatInput"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -50,6 +56,8 @@ interface QuizProps {
 	canGenerateMore: boolean
 	isLoading: boolean
 	language: string
+	onViewChange: (view: "flashcards" | "quiz") => void
+	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -75,41 +83,42 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: ({ children, ...props }) => {
-					// Check if content contains code blocks by looking for triple backticks
-					const content = String(children)
-					const hasCodeBlock = content.includes('```') || 
-						(typeof children === 'object' && children !== null)
-
-					// If contains code block, render as div to avoid div-in-p
-					if (hasCodeBlock) {
-						return <div className="markdown-paragraph" {...props}>{children}</div>
+				p(props: any) {
+					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
+					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
+					const hasDiv = Array.isArray(props.children) && props.children.some(
+						(child: any) =>
+							child &&
+							typeof child === "object" &&
+							(child.type === "div" || child.props?.node?.tagName === "div")
+					);
+			  
+					if (hasDiv) {
+					  return <div>{props.children}</div>;
 					}
-					
-					return <p {...props}>{children}</p>
+					return <p {...props}>{props.children}</p>;
 				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					
-					// More robust inline detection
-					const isInline = inline || !match || !className?.includes('language-')
-					
-					if (isInline) {
+
+					if (inline) {
 						return (
 							<code
 								className="inline-code-custom"
 								style={{
-									display: 'inline !important',
-									padding: '2px 6px',
-									backgroundColor: 'rgba(110, 118, 129, 0.4)',
-									borderRadius: '4px',
-									fontSize: '0.875em',
-									fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-									whiteSpace: 'nowrap !important',
-									wordBreak: 'keep-all !important',
-									lineHeight: '1.4',
-									verticalAlign: 'baseline',
-									color: 'inherit'
+									display: "inline !important",
+									padding: "2px 6px",
+									backgroundColor:
+										"rgba(110, 118, 129, 0.4)",
+									borderRadius: "4px",
+									fontSize: "0.875em",
+									fontFamily:
+										'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+									whiteSpace: "nowrap !important",
+									wordBreak: "keep-all !important",
+									lineHeight: "1.4",
+									verticalAlign: "baseline",
+									color: "inherit",
 								}}
 								{...props}
 							>
@@ -117,7 +126,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
-					// Handle non-inline code - render directly without extra div wrapper
+					// Handle non-inline code
 					return (
 						<Syntax
 							style={codeStyle as any}
@@ -145,6 +154,8 @@ export function Quiz({
 	canGenerateMore,
 	isLoading,
 	language,
+	onViewChange,
+	currentView,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -153,7 +164,9 @@ export function Quiz({
 		initialState?.answers || {}
 	)
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
-	const [visibleExplanations, setVisibleExplanations] = useState<Set<string>>(new Set()) // Track which explanations are visible
+	const [visibleExplanations, setVisibleExplanations] = useState<
+		Set<string>
+	>(new Set()) // Track which explanations are visible
 	const { toast } = useToast()
 
 	const currentAnswerState = answers[currentQuestionIndex] || {
@@ -187,7 +200,7 @@ export function Quiz({
 			const timeoutId = setTimeout(() => {
 				onStateChange({ currentQuestionIndex, answers })
 			}, 100)
-			
+
 			return () => clearTimeout(timeoutId)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,10 +242,10 @@ export function Quiz({
 			if (!quizSet || !currentQuestion) return
 
 			const explanationKey = `${currentQuestionIndex}-${option}`
-			
+
 			// If explanation is currently visible, hide it
 			if (visibleExplanations.has(explanationKey)) {
-				setVisibleExplanations(prev => {
+				setVisibleExplanations((prev) => {
 					const newSet = new Set(prev)
 					newSet.delete(explanationKey)
 					return newSet
@@ -242,13 +255,15 @@ export function Quiz({
 
 			// If explanation already exists, just show it
 			if (currentAnswerState.explanations?.[option]) {
-				setVisibleExplanations(prev => new Set(prev).add(explanationKey))
+				setVisibleExplanations((prev) =>
+					new Set(prev).add(explanationKey)
+				)
 				return
 			}
 
 			// Generate new explanation
 			setIsExplaining(option)
-			
+
 			// Initialize empty explanation for streaming
 			const initialExplanation = { explanation: "" }
 			const newExplanations = {
@@ -264,7 +279,7 @@ export function Quiz({
 			}))
 
 			// Show the explanation immediately
-			setVisibleExplanations(prev => new Set(prev).add(explanationKey))
+			setVisibleExplanations((prev) => new Set(prev).add(explanationKey))
 
 			try {
 				const stream = await explainQuizOptionStream({
@@ -284,11 +299,12 @@ export function Quiz({
 
 					// Accumulate text to reduce update frequency
 					accumulatedText += value
-					
+
 					// Update state with throttling to prevent excessive re-renders
 					setAnswers((prev) => {
-						const currentExplanations = prev[currentQuestionIndex]?.explanations || {}
-						
+						const currentExplanations =
+							prev[currentQuestionIndex]?.explanations || {}
+
 						return {
 							...prev,
 							[currentQuestionIndex]: {
@@ -296,17 +312,16 @@ export function Quiz({
 								explanations: {
 									...currentExplanations,
 									[option]: {
-										explanation: accumulatedText
-									}
+										explanation: accumulatedText,
+									},
 								},
 							},
 						}
 					})
-					
-					// Add small delay to prevent overwhelming the UI
-					await new Promise(resolve => setTimeout(resolve, 50))
-				}
 
+					// Add small delay to prevent overwhelming the UI
+					await new Promise((resolve) => setTimeout(resolve, 50))
+				}
 			} catch (error) {
 				console.error("Failed to get explanation", error)
 				toast({
@@ -316,7 +331,7 @@ export function Quiz({
 					variant: "destructive",
 				})
 				// Hide explanation on error
-				setVisibleExplanations(prev => {
+				setVisibleExplanations((prev) => {
 					const newSet = new Set(prev)
 					newSet.delete(explanationKey)
 					return newSet
@@ -331,6 +346,7 @@ export function Quiz({
 			currentAnswerState,
 			currentQuestionIndex,
 			visibleExplanations,
+			language,
 			toast,
 		]
 	)
@@ -408,27 +424,30 @@ export function Quiz({
 
 									{currentAnswerState.explanations?.[
 										option
-									] && visibleExplanations.has(`${currentQuestionIndex}-${option}`) && (
-										<Alert
-											variant="default"
-											className="bg-secondary/20 backdrop-blur"
-										>
-											<HelpCircle className="h-4 w-4" />
-											<AlertTitle>
-												Giải thích chi tiết
-											</AlertTitle>
-											<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base break-words">
-												<MarkdownRenderer>
-													{
-														currentAnswerState
-															.explanations[
-															option
-														].explanation
-													}
-												</MarkdownRenderer>
-											</AlertDescription>
-										</Alert>
-									)}
+									] &&
+										visibleExplanations.has(
+											`${currentQuestionIndex}-${option}`
+										) && (
+											<Alert
+												variant="default"
+												className="bg-secondary/20 backdrop-blur"
+											>
+												<HelpCircle className="h-4 w-4" />
+												<AlertTitle>
+													Giải thích chi tiết
+												</AlertTitle>
+												<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base break-words">
+													<MarkdownRenderer>
+														{
+															currentAnswerState
+																.explanations[
+																option
+															].explanation
+														}
+													</MarkdownRenderer>
+												</AlertDescription>
+											</Alert>
+										)}
 								</div>
 							))}
 						</RadioGroup>
@@ -477,7 +496,7 @@ export function Quiz({
 						>
 							<ChevronLeft />
 						</Button>
-						
+
 						{hasContent && currentQuestion && (
 							<div className="flex-1 mx-2">
 								<ChatInput

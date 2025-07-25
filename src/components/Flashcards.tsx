@@ -12,7 +12,13 @@ import React, {
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
-import { ChevronLeft, ChevronRight, Plus, Loader } from "lucide-react"
+import {
+	ChevronLeft,
+	ChevronRight,
+	Plus,
+	Loader,
+	Droplets,
+} from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -20,6 +26,13 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ChatInput } from "./ChatInput"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +58,8 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
+	onViewChange: (view: "flashcards" | "quiz") => void
+	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -70,41 +85,42 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: ({ children, ...props }) => {
-					// Check if content contains code blocks by looking for triple backticks
-					const content = String(children)
-					const hasCodeBlock = content.includes('```') || 
-						(typeof children === 'object' && children !== null)
-
-					// If contains code block, render as div to avoid div-in-p
-					if (hasCodeBlock) {
-						return <div className="markdown-paragraph" {...props}>{children}</div>
+				p(props: any) {
+					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
+					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
+					const hasDiv = Array.isArray(props.children) && props.children.some(
+						(child: any) =>
+							child &&
+							typeof child === "object" &&
+							(child.type === "div" || child.props?.node?.tagName === "div")
+					);
+			  
+					if (hasDiv) {
+					  return <div>{props.children}</div>;
 					}
-					
-					return <p {...props}>{children}</p>
+					return <p {...props}>{props.children}</p>;
 				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					
-					// More robust inline detection
-					const isInline = inline || !match || !className?.includes('language-')
-					
-					if (isInline) {
+
+					if (inline) {
 						return (
 							<code
 								className="inline-code-custom"
 								style={{
-									display: 'inline !important',
-									padding: '2px 6px',
-									backgroundColor: 'rgba(110, 118, 129, 0.4)',
-									borderRadius: '4px',
-									fontSize: '0.875em',
-									fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-									whiteSpace: 'nowrap !important',
-									wordBreak: 'keep-all !important',
-									lineHeight: '1.4',
-									verticalAlign: 'baseline',
-									color: 'inherit'
+									display: "inline !important",
+									padding: "2px 6px",
+									backgroundColor:
+										"rgba(110, 118, 129, 0.4)",
+									borderRadius: "4px",
+									fontSize: "0.875em",
+									fontFamily:
+										'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+									whiteSpace: "nowrap !important",
+									wordBreak: "keep-all !important",
+									lineHeight: "1.4",
+									verticalAlign: "baseline",
+									color: "inherit",
 								}}
 								{...props}
 							>
@@ -112,7 +128,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 							</code>
 						)
 					}
-					// Handle non-inline code - render directly without extra div wrapper
+					// Handle non-inline code
 					return (
 						<Syntax
 							style={codeStyle as any}
@@ -176,6 +192,8 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
+	onViewChange,
+	currentView,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -215,11 +233,14 @@ export function Flashcards({
 	}, [flashcardSet?.cards, isRandom, shuffle, displayedCards.length])
 
 	useEffect(() => {
-		if (currentCardIndex >= displayedCards.length && displayedCards.length > 0) {
+		if (
+			currentCardIndex >= displayedCards.length &&
+			displayedCards.length > 0
+		) {
 			setCurrentCardIndex(displayedCards.length - 1)
 		} else if (displayedCards.length === 0) {
-      setCurrentCardIndex(0);
-    }
+			setCurrentCardIndex(0)
+		}
 	}, [displayedCards.length, currentCardIndex])
 
 	useEffect(() => {
@@ -278,7 +299,7 @@ export function Flashcards({
 						>
 							<ChevronLeft />
 						</Button>
-						
+
 						{hasContent && currentCard && (
 							<div className="flex-1 mx-2">
 								<ChatInput
