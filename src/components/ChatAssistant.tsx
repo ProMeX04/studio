@@ -202,23 +202,24 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 
 	}, [input, isLoading, messages, streamResponse]);
 	
+	// Logic to handle initial question directly, without useEffect
+	if (initialQuestion && !initialQuestionHandledRef.current) {
+		initialQuestionHandledRef.current = true;
+		setIsLoading(true);
 
-	useEffect(() => {
-		if (initialQuestion && !initialQuestionHandledRef.current) {
-			initialQuestionHandledRef.current = true;
-			setIsLoading(true);
+		const userMessage: ChatMessage = { id: Date.now().toString(), role: "user", text: initialQuestion };
+		const assistantMessageId = (Date.now() + 1).toString();
+		const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
+		
+		// Set initial messages directly
+		setMessages([userMessage, assistantMessage]);
 
-			const userMessage: ChatMessage = { id: Date.now().toString(), role: 'user', text: initialQuestion };
-			const assistantMessageId = (Date.now() + 1).toString();
-			const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
-			
-			// Set initial messages directly
-			setMessages([userMessage, assistantMessage]);
-
-			// Call the stream function with empty history
+		// Call the stream function with empty history
+		// Use a timeout to ensure the state update has been processed before streaming
+		setTimeout(() => {
 			streamResponse(initialQuestion, [], assistantMessageId);
-		}
-	}, [initialQuestion, streamResponse]);
+		}, 0);
+	}
 
 
 	return (
@@ -358,3 +359,5 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
+
+    
