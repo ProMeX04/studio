@@ -3,7 +3,7 @@
  * @fileOverview Shared Zod schemas and TypeScript types for AI flows.
  */
 
-import {z} from 'genkit';
+import {z} from 'zod';
 
 // Flashcards
 export const FlashcardSchema = z.object({
