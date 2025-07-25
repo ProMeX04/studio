@@ -21,7 +21,7 @@ import {
 	Loader,
 	Plus,
 } from "lucide-react"
-import { explainQuizOptionStream } from "@/ai/flows/explain-quiz-option-stream"
+import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import type {
@@ -199,117 +199,71 @@ export function Quiz({
 
 	const handleOptionExplanation = useCallback(
 		async (option: string) => {
-			if (!quizSet || !currentQuestion) return
-
-			const explanationKey = `${currentQuestionIndex}-${option}`
-
-			// If explanation is currently visible, hide it
+			if (!quizSet || !currentQuestion) return;
+	
+			const explanationKey = `${currentQuestionIndex}-${option}`;
+	
 			if (visibleExplanations.has(explanationKey)) {
 				setVisibleExplanations((prev) => {
-					const newSet = new Set(prev)
-					newSet.delete(explanationKey)
-					return newSet
-				})
-				return
+					const newSet = new Set(prev);
+					newSet.delete(explanationKey);
+					return newSet;
+				});
+				return;
 			}
-
-			// If explanation already exists, just show it
+	
 			if (currentAnswerState.explanations?.[option]) {
-				setVisibleExplanations((prev) =>
-					new Set(prev).add(explanationKey)
-				)
-				return
+				setVisibleExplanations((prev) => new Set(prev).add(explanationKey));
+				return;
 			}
-
-			// Generate new explanation
-			setIsExplaining(option)
-
-			// Initialize empty explanation for streaming
-			const initialExplanation = { explanation: "" }
-			const newExplanations = {
-				...(currentAnswerState.explanations || {}),
-				[option]: initialExplanation,
-			}
-			setAnswers((prev) => ({
-				...prev,
-				[currentQuestionIndex]: {
-					...prev[currentQuestionIndex],
-					explanations: newExplanations,
-				},
-			}))
-
-			// Show the explanation immediately
-			setVisibleExplanations((prev) => new Set(prev).add(explanationKey))
-
+	
+			setIsExplaining(option);
+	
 			try {
-				const stream = await explainQuizOptionStream({
+				const result = await explainQuizOption({
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
 					correctAnswer: currentQuestion.answer,
 					language: language,
-				})
-
-				const reader = stream.getReader()
-				let accumulatedText = ""
-
-				while (true) {
-					const { done, value } = await reader.read()
-					if (done) break
-
-					// Accumulate text to reduce update frequency
-					accumulatedText += value
-
-					// Update state with throttling to prevent excessive re-renders
-					setAnswers((prev) => {
-						const currentExplanations =
-							prev[currentQuestionIndex]?.explanations || {}
-
-						return {
-							...prev,
-							[currentQuestionIndex]: {
-								...prev[currentQuestionIndex],
-								explanations: {
-									...currentExplanations,
-									[option]: {
-										explanation: accumulatedText,
-									},
-								},
+				});
+	
+				if (result?.explanation) {
+					setAnswers((prev) => ({
+						...prev,
+						[currentQuestionIndex]: {
+							...prev[currentQuestionIndex],
+							explanations: {
+								...(prev[currentQuestionIndex]?.explanations || {}),
+								[option]: result,
 							},
-						}
-					})
-
-					// Add small delay to prevent overwhelming the UI
-					await new Promise((resolve) => setTimeout(resolve, 50))
+						},
+					}));
+					setVisibleExplanations((prev) => new Set(prev).add(explanationKey));
+				} else {
+					throw new Error("Empty explanation received");
 				}
 			} catch (error) {
-				console.error("Failed to get explanation", error)
+				console.error("Failed to get explanation", error);
 				toast({
 					title: "Lỗi",
-					description:
-						"Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
+					description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
 					variant: "destructive",
-				})
-				// Hide explanation on error
-				setVisibleExplanations((prev) => {
-					const newSet = new Set(prev)
-					newSet.delete(explanationKey)
-					return newSet
-				})
+				});
 			} finally {
-				setIsExplaining(null)
+				setIsExplaining(null);
 			}
 		},
 		[
 			quizSet,
 			currentQuestion,
-			currentAnswerState,
+			currentAnswerState.explanations,
 			currentQuestionIndex,
 			visibleExplanations,
 			language,
 			toast,
 		]
-	)
+	);
 
 	const getOptionClass = (option: string) => {
 		if (!isAnswered)
