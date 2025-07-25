@@ -149,6 +149,7 @@ export function Quiz({
 		if (!quizSet) {
 			setCurrentQuestionIndex(0)
 			setAnswers({})
+			setVisibleExplanations(new Set())
 		}
 	}, [quizSet])
 
