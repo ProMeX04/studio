@@ -118,7 +118,7 @@ function Learn({
 			</CardContent>
 
 			{/* Unified Toolbar */}
-			<div className="flex-col pt-2 gap-2 items-center justify-center">
+			<div className="flex justify-center pb-2">
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-sm">
 					<div className="flex items-center justify-between w-full gap-2">
 						<Tabs
@@ -768,4 +768,5 @@ export default function Home() {
 	)
 }
 
+    
     
