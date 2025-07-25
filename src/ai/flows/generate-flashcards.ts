@@ -14,6 +14,20 @@ const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend
 });
 type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInputSchema>;
 
+
+/**
+ * Cleans a string that might be wrapped in markdown JSON syntax.
+ * @param text The raw text response from the AI.
+ * @returns The cleaned JSON string.
+ */
+function cleanJsonString(text: string): string {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('```json')) {
+        return trimmed.substring(7, trimmed.length - 3).trim();
+    }
+    return trimmed;
+}
+
 export async function generateFlashcards(input: GenerateFlashcardsClientInput): Promise<GenerateFlashcardsOutput> {
   if (!input.apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -70,7 +84,8 @@ IMPORTANT: Your response MUST be a valid JSON array of objects, where each objec
     });
     
     const responseText = result.response.text();
-    const parsedJson = JSON.parse(responseText);
+    const cleanedJsonString = cleanJsonString(responseText);
+    const parsedJson = JSON.parse(cleanedJsonString);
     const validatedOutput = GenerateFlashcardsOutputSchema.parse(parsedJson);
 
     console.log(`✅ Generated ${validatedOutput.length} valid flashcards`);

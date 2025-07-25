@@ -14,6 +14,20 @@ const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
 });
 type ExplainQuizOptionClientInput = z.infer<typeof ExplainQuizOptionClientInputSchema>;
 
+
+/**
+ * Cleans a string that might be wrapped in markdown JSON syntax.
+ * @param text The raw text response from the AI.
+ * @returns The cleaned JSON string.
+ */
+function cleanJsonString(text: string): string {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('```json')) {
+        return trimmed.substring(7, trimmed.length - 3).trim();
+    }
+    return trimmed;
+}
+
 export async function explainQuizOption(input: ExplainQuizOptionClientInput): Promise<ExplainQuizOptionOutput> {
   if (!input.apiKey) {
       throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -86,7 +100,8 @@ Ensure the explanation is well-structured with clear paragraphs.
     });
     
     const responseText = result.response.text();
-    const parsedJson = JSON.parse(responseText);
+    const cleanedJsonString = cleanJsonString(responseText);
+    const parsedJson = JSON.parse(cleanedJsonString);
     const validatedOutput = explanationOnlySchema.parse(parsedJson);
 
     return {
