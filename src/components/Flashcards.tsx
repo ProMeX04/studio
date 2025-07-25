@@ -25,7 +25,6 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { ChatInput } from "./ChatInput"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -201,7 +200,7 @@ export function Flashcards({
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<div className="flex-grow flex items-center justify-center">
+			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
 				{hasContent && currentCard ? (
 					<FlashcardItem
 						key={`${flashcardSet?.id ?? ""}-${

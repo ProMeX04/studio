@@ -263,7 +263,7 @@ export function Quiz({
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<div className="flex-grow flex flex-col justify-center items-center">
+			<div className="flex-grow flex flex-col justify-center items-center overflow-y-auto pb-4">
 				{hasContent && currentQuestion ? (
 					<div className="w-full max-w-5xl mx-auto space-y-6">
 						<div className="text-3xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
