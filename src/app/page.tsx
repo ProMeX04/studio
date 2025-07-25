@@ -72,7 +72,7 @@ function Learn({
 	topic,
 }: LearnProps) {
 	return (
-		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
+		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 relative flex flex-col">
 			<Collapsible className="w-full">
 				<div className="flex justify-center">
 					<CollapsibleTrigger asChild>
@@ -735,8 +735,8 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 max-h-screen">
-					<div className="flex-grow overflow-y-auto flex flex-col w-full h-full">
+				<div className="relative flex flex-col justify-start items-center p-4 sm:p-6 md:p-8 max-h-screen h-screen">
+					<div className="flex flex-col w-full h-full">
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
@@ -759,3 +759,4 @@ export default function Home() {
 		</main>
 	)
 }
+
