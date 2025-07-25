@@ -33,7 +33,7 @@ ${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back
     : '';
 
   const promptText = `You are a flashcard generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of flashcards:
-${JSON.stringify(GenerateFlashcardsOutputSchema.json())}
+${JSON.stringify(GenerateFlashcardsOutputSchema.describe())}
 
 Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}

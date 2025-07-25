@@ -26,7 +26,7 @@ export async function explainQuizOption(input: ExplainQuizOptionClientInput): Pr
   const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
   
   const promptText = `You are a helpful quiz tutor. Your response MUST be a JSON object that adheres to the following Zod schema:
-${JSON.stringify(explanationOnlySchema.json())}
+${JSON.stringify(explanationOnlySchema.describe())}
 
 ${input.selectedOption === input.correctAnswer 
     ? `The user has chosen the CORRECT answer and wants a more detailed explanation.

@@ -32,7 +32,7 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
     : '';
 
   const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of quiz questions:
-${JSON.stringify(GenerateQuizOutputSchema.json())}
+${JSON.stringify(GenerateQuizOutputSchema.describe())}
 
 Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
