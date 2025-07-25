@@ -759,8 +759,7 @@ export default function Home() {
 				</div>
 			) : (
 				<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
-					<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-between items-start">
-						{visibility.greeting && <Greeting />}
+					<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
 						<Settings
 							onSettingsChange={onSettingsSave}
 							onClearAllData={handleClearAllData}
@@ -781,6 +780,7 @@ export default function Home() {
 							quizMax={quizMax}
 							flashcardIsRandom={flashcardIsRandom}
 						/>
+						{visibility.greeting && <Greeting />}
 					</div>
 
 					<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
