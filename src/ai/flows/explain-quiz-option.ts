@@ -25,18 +25,15 @@ export async function explainQuizOption(input: ExplainQuizOptionClientInput): Pr
   });
 
   const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
+  
+  const promptText = input.selectedOption === input.correctAnswer 
+    ? `You are a helpful quiz tutor. The user has chosen the CORRECT answer and wants a more detailed explanation.
 
-  const correctAnswerPrompt = ai.definePrompt({
-      name: 'correctAnswerPrompt',
-      input: {schema: ExplainQuizOptionInputSchema},
-      output: {schema: explanationOnlySchema},
-      prompt: `You are a helpful quiz tutor. The user has chosen the CORRECT answer and wants a more detailed explanation.
+Topic: ${input.topic}
+Question: "${input.question}"
+Correct Answer: "${input.correctAnswer}"
 
-Topic: {{{topic}}}
-Question: "{{{question}}}"
-Correct Answer: "{{{correctAnswer}}}"
-
-Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}", in the language: {{{language}}}. You can provide additional context or interesting facts related to the topic.
+Please provide a more in-depth explanation of why "${input.selectedOption}" is the correct answer for the question "${input.question}", in the language: ${input.language}. You can provide additional context or interesting facts related to the topic.
 
 IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
@@ -44,21 +41,15 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: {"explanation": "The method \`pop()\` removes and returns the element at the given index. In this case, it removes the element at index 1, which is **20**."}
 Ensure the explanation is well-structured with clear paragraphs.
-`,
-    });
+`
+    : `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
-  const incorrectAnswerPrompt = ai.definePrompt({
-      name: 'incorrectAnswerPrompt',
-      input: {schema: ExplainQuizOptionInputSchema},
-      output: {schema: explanationOnlySchema},
-      prompt: `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
+Topic: ${input.topic}
+Question: "${input.question}"
+Correct Answer: "${input.correctAnswer}"
+The Incorrect Option to Explain: "${input.selectedOption}"
 
-Topic: {{{topic}}}
-Question: "{{{question}}}"
-Correct Answer: "{{{correctAnswer}}}"
-The Incorrect Option to Explain: "{{{selectedOption}}}"
-
-Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}", in the language: {{{language}}}.
+Please explain specifically why "${input.selectedOption}" is not the correct answer for the question "${input.question}", in the language: ${input.language}.
 
 IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
@@ -66,23 +57,26 @@ IMPORTANT: Your response MUST be a valid JSON object with a single key "explanat
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: {"explanation": "While that's a good thought, the correct answer is actually **20**. The method \`pop(1)\` specifically targets the element at index 1."}
 Ensure the explanation is well-structured with clear paragraphs.
-`,
+`;
+
+
+  const { output } = await ai.generate({
+    model: 'googleai/gemini-1.5-flash-latest',
+    prompt: promptText,
+    config: {
+        response: {
+            format: 'json',
+            schema: explanationOnlySchema,
+        },
+    },
   });
 
-  let explanationOutput;
-  if (input.selectedOption === input.correctAnswer) {
-      const {output} = await correctAnswerPrompt(input);
-      explanationOutput = output;
-  } else {
-      const {output} = await incorrectAnswerPrompt(input);
-      explanationOutput = output;
-  }
 
-  if (!explanationOutput) {
+  if (!output) {
       throw new Error('Could not generate an explanation.');
   }
   
   return {
-      explanation: explanationOutput.explanation,
+      explanation: output.explanation,
   };
 }

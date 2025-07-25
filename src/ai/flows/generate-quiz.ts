@@ -22,34 +22,29 @@ export async function generateQuiz(input: GenerateQuizClientInput): Promise<Gene
     plugins: [googleAI({ apiKey: input.apiKey })],
   });
 
-  const prompt = ai.definePrompt({
-    name: 'generateQuizPrompt',
-    input: { schema: GenerateQuizInputSchema },
-    output: { schema: GenerateQuizOutputSchema },
-    prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+  const existingQuestionsPrompt = input.existingQuestions && input.existingQuestions.length > 0
+    ? `
+You have already generated the following questions. Do not repeat them or create questions with very similar content.
+
+Existing Questions:
+${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
+`
+    : '';
+
+  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
 
 Example valid options array: ["Paris", "London", "Rome", "Berlin"]
-
-{{#if existingQuestions}}
-You have already generated the following questions. Do not repeat them or create questions with very similar content.
-
-Existing Questions:
-{{#each existingQuestions}}
-- "{{{this.question}}}"
-{{/each}}
-{{/if}}
-
+${existingQuestionsPrompt}
 IMPORTANT: Your response MUST be a valid JSON array of objects. Each object must have "question", "options", "answer", and "explanation" keys.
 The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 Ensure explanations are well-structured with clear paragraphs.
-`,
-  });
+`;
   
   let attempts = 0;
   const maxAttempts = 3;
@@ -57,7 +52,16 @@ Ensure explanations are well-structured with clear paragraphs.
   while (attempts < maxAttempts) {
     attempts++;
     try {
-      const { output } = await prompt(input);
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        prompt: promptText,
+        config: {
+            response: {
+                format: 'json',
+                schema: GenerateQuizOutputSchema,
+            },
+        },
+      });
 
       if (!output) {
         throw new Error('AI_EMPTY_RESPONSE');
