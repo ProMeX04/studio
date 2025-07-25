@@ -257,22 +257,8 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                         return <p {...props} className="break-words" />;
                                                     },
                                                     pre({ node, ...props }) {
-                                                        const children = props.children as any[];
-                                                        const codeNode = children?.[0];
-                                                        const language = codeNode?.props?.className?.replace('language-', '') || 'text';
-                                                        const code = codeNode?.props?.children?.[0] || '';
-                                                        
-                                                        return (
-                                                            <pre {...props} className="w-full overflow-x-auto bg-black/80 text-white p-2 rounded-md my-2">
-                                                                <Syntax
-                                                                    style={vscDarkPlus}
-                                                                    language={language}
-                                                                    PreTag="div"
-                                                                >
-                                                                    {String(code).replace(/\n$/, '')}
-                                                                </Syntax>
-                                                            </pre>
-                                                        );
+                                                        // This will now correctly wrap the SyntaxHighlighter output
+                                                        return <pre {...props} className="w-full bg-black/80 text-white p-2 rounded-md my-2 overflow-x-auto" />;
                                                     },
                                                     code({
                                                         node,
@@ -281,21 +267,35 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                         children,
                                                         ...props
                                                     }) {
+                                                        const match = /language-(\w+)/.exec(className || "");
+                                                        if (!inline && match) {
+                                                            return (
+                                                                <Syntax
+                                                                    style={vscDarkPlus}
+                                                                    language={match[1]}
+                                                                    PreTag="div" // Let `pre` handle the container
+                                                                    {...props}
+                                                                >
+                                                                    {String(children).replace(/\n$/, '')}
+                                                                </Syntax>
+                                                            );
+                                                        }
                                                         if (inline) {
                                                             return (
                                                                 <code
-                                                                    className={cn(
-                                                                        className,
-                                                                        "inline-code"
-                                                                    )}
+                                                                    className={cn(className, "inline-code")}
                                                                     {...props}
                                                                 >
                                                                     {children}
                                                                 </code>
-                                                            )
+                                                            );
                                                         }
-                                                        // Block code is handled by 'pre' component
-                                                        return null;
+                                                        // Fallback for code blocks without a language
+                                                        return (
+                                                            <code className={cn(className, "block whitespace-pre-wrap p-2 bg-muted rounded-md")} {...props}>
+                                                                {children}
+                                                            </code>
+                                                        )
                                                     },
                                                 }}
                                             >
