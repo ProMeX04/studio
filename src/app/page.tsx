@@ -353,32 +353,28 @@ export default function Home() {
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false);
 
-	// Ngăn race condition và cleanup async operations
+	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
 	const isQuizGeneratingRef = useRef(false)
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const isMountedRef = useRef(true)
 
-	// Khởi tạo đồng bộ multi-tab - chỉ chạy 1 lần
+	// Initialize once
 	useEffect(() => {
-		const channel = initBroadcastChannel()
-
-		// Không cần lắng nghe từ tab khác nữa - mỗi tab hoạt động độc lập
-		console.log("📡 Tab hoạt động độc lập, không sync data")
+		initBroadcastChannel();
+		console.log("Tab is running independently, no data sync.");
 
 		return () => {
-			// Cleanup khi component unmount
-			isMountedRef.current = false
-			closeBroadcastChannel()
-			closeDb() // Đóng IndexedDB connection
-			clearAllToastTimeouts() // Clear toast timeouts
+			isMountedRef.current = false;
+			closeBroadcastChannel();
+			closeDb();
+			clearAllToastTimeouts();
 
-			// Hủy tất cả async operations đang chạy
 			if (abortControllerRef.current) {
-				abortControllerRef.current.abort()
+				abortControllerRef.current.abort();
 			}
 		}
-	}, []) // Không có dependencies → chỉ chạy 1 lần
+	}, []);
 
 	useEffect(() => {
 		setIsMounted(true)
@@ -403,7 +399,6 @@ export default function Home() {
 			const isGeneratingRef = genType === 'flashcards' ? isFlashcardGeneratingRef : isQuizGeneratingRef;
 			const setIsLoading = genType === 'flashcards' ? setIsFlashcardLoading : setIsQuizLoading;
 
-			// Ngăn nhiều lần gọi đồng thời cho cùng một loại
 			if (isGeneratingRef.current) {
 				toast({
 					title: "Đang tạo...",
@@ -415,12 +410,9 @@ export default function Home() {
 			isGeneratingRef.current = true
 			setIsLoading(true)
 
-			// Hủy operation cũ nếu có
 			if (abortControllerRef.current) {
 				abortControllerRef.current.abort()
 			}
-
-			// Tạo AbortController mới
 			abortControllerRef.current = new AbortController()
 			const signal = abortControllerRef.current.signal
 
@@ -479,20 +471,15 @@ export default function Home() {
 						) {
 							currentFlashcards.cards.push(...newCards)
 							flashcardsNeeded -= newCards.length
-
-							// Hiển thị ngay lập tức
 							setFlashcardSet({ ...currentFlashcards }) 
-
 							await db.put("data", {
 								id: "flashcards",
 								topic: currentTopic,
 								data: currentFlashcards,
 							} as any)
 						} else {
-							// Nếu không có thẻ mới, dừng lại
 							flashcardsNeeded = 0;
 						}
-						// Rate limiting: chờ giữa các batch
 						if(flashcardsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
 					}
 				}
@@ -545,20 +532,15 @@ export default function Home() {
 						) {
 							currentQuiz.questions.push(...newQuestions)
 							quizNeeded -= newQuestions.length
-							
-							// Hiển thị ngay lập tức
 							setQuizSet({ ...currentQuiz })
-
 							await db.put("data", {
 								id: "quiz",
 								topic: currentTopic,
 								data: currentQuiz,
 							} as any)
 						} else {
-							// Nếu không có câu hỏi mới, dừng lại
 							quizNeeded = 0;
 						}
-						// Rate limiting: chờ giữa các batch
 						if(quizNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
 					}
 				}
@@ -590,41 +572,57 @@ export default function Home() {
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb()
 
-		const savedView =
-			((await db.get("data", "view"))?.data as "flashcards" | "quiz") ||
-			"flashcards"
-		const savedTopic =
-			((await db.get("data", "topic"))?.data as string) || "Lịch sử La Mã"
-		const savedLanguage =
-			((await db.get("data", "language"))?.data as string) || "Vietnamese"
-		const savedFlashcardMax =
-			((await db.get("data", "flashcardMax"))?.data as number) || 50
-		const savedQuizMax =
-			((await db.get("data", "quizMax"))?.data as number) || 50
+		const [
+			savedViewRes,
+			savedTopicRes,
+			savedLanguageRes,
+			savedFlashcardMaxRes,
+			savedQuizMaxRes,
+			savedVisibilityRes,
+			savedBgRes,
+			savedUploadedBgsRes,
+			flashcardDataRes,
+			flashcardStateRes,
+			quizDataRes,
+			quizStateRes,
+		] = await Promise.all([
+			db.get("data", "view"),
+			db.get("data", "topic"),
+			db.get("data", "language"),
+			db.get("data", "flashcardMax"),
+			db.get("data", "quizMax"),
+			db.get("data", "visibility"),
+			db.get("data", "background"),
+			db.get("data", "uploadedBackgrounds"),
+			db.get("data", "flashcards"),
+			db.get("data", "flashcardState"),
+			db.get("data", "quiz"),
+			db.get("data", "quizState"),
+		]);
+	
+		const savedView = (savedViewRes?.data as "flashcards" | "quiz") || "flashcards";
+		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
+		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
+		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
+		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
 		
-		const savedVisibility = (await db.get("data", "visibility"))
-			?.data as ComponentVisibility
-		const savedBg = (await db.get("data", "background"))?.data as string
-		const savedUploadedBgs =
-			((await db.get("data", "uploadedBackgrounds"))?.data as string[]) ||
-			[]
+		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
+		const savedBg = savedBgRes?.data as string;
+		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
 		
-		const flashcardData = (await db.get(
-			"data",
-			"flashcards"
-		)) as LabeledData<FlashcardSet>
-		const flashcardStateData = (await db.get("data", "flashcardState")) as AppData
-		const quizData = (await db.get("data", "quiz")) as LabeledData<QuizSet>
-		const quizStateData = (await db.get("data", "quizState")) as AppData
+		const flashcardData = flashcardDataRes as LabeledData<FlashcardSet>;
+		const flashcardStateData = flashcardStateRes as AppData;
+		const quizData = quizDataRes as LabeledData<QuizSet>;
+		const quizStateData = quizStateRes as AppData;
 
-		if (savedBg) setBackgroundImage(savedBg)
-		setUploadedBackgrounds(savedUploadedBgs)
-
-		setView(savedView)
-		setTopic(savedTopic)
-		setLanguage(savedLanguage)
-		setFlashcardMax(savedFlashcardMax)
-		setQuizMax(savedQuizMax)
+		if (savedBg) setBackgroundImage(savedBg);
+		setUploadedBackgrounds(savedUploadedBgs);
+	
+		setView(savedView);
+		setTopic(savedTopic);
+		setLanguage(savedLanguage);
+		setFlashcardMax(savedFlashcardMax);
+		setQuizMax(savedQuizMax);
 		
 		setVisibility(
 			savedVisibility ?? {
@@ -634,24 +632,24 @@ export default function Home() {
 				quickLinks: true,
 				learn: true,
 			}
-		)
-
+		);
+	
 		let currentFlashcards =
 			flashcardData && flashcardData.topic === savedTopic
 				? flashcardData.data
 				: null;
 		
 		let currentQuiz =
-			quizData && quizData.topic === savedTopic ? quizData.data : null
-
-		setFlashcardSet(currentFlashcards)
-		setQuizSet(currentQuiz)
+			quizData && quizData.topic === savedTopic ? quizData.data : null;
+	
+		setFlashcardSet(currentFlashcards);
+		setQuizSet(currentQuiz);
 		
 		const currentFlashcardState = (flashcardData && flashcardData.topic === savedTopic && flashcardStateData)
 			? flashcardStateData.data as FlashcardState
 			: { understoodIndices: [] };
 		setFlashcardState(currentFlashcardState);
-
+	
 		let initialFlashcardIndex = 0;
 		if (currentFlashcards && currentFlashcards.cards.length > 0) {
 			const firstUnseenIndex = currentFlashcards.cards.findIndex(
@@ -662,8 +660,7 @@ export default function Home() {
 			}
 		}
 		setFlashcardIndex(initialFlashcardIndex);
-
-
+	
 		let currentQuizState = { currentQuestionIndex: 0, answers: {} };
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
 			currentQuizState = quizStateData.data;
@@ -678,13 +675,12 @@ export default function Home() {
 			}
 		}
 		setQuizState(currentQuizState);
-
-	}, [])
+	
+	}, []);
 
 	const handleClearAllData = useCallback(async () => {
 		const db = await getDb()
 		await clearAllData(db)
-		// Tải lại toàn bộ dữ liệu ban đầu
 		await loadInitialData()
 		toast({
 			title: "Đã xóa dữ liệu",
@@ -753,7 +749,6 @@ export default function Home() {
 
 	const handleBackgroundChange = useCallback(
 		async (newBg: string | null) => {
-			// Nếu không thay đổi, bỏ qua
 			if (backgroundImage === (newBg ?? "")) return
 
 			const db = await getDb()
@@ -770,7 +765,6 @@ export default function Home() {
 
 	const handleUploadedBackgroundsChange = useCallback(
 		async (newUploadedBgs: string[]) => {
-			// So sánh mảng đơn giản bằng toString()
 			if (uploadedBackgrounds.toString() === newUploadedBgs.toString())
 				return
 
@@ -786,7 +780,6 @@ export default function Home() {
 
 	const handleVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
-			// Nếu không thay đổi, bỏ qua
 			if (
 				visibility.clock === newVisibility.clock &&
 				visibility.greeting === newVisibility.greeting &&
@@ -799,11 +792,6 @@ export default function Home() {
 			setVisibility(newVisibility)
 			const db = await getDb()
 			await db.put("data", { id: "visibility", data: newVisibility })
-
-			// Đồng bộ với tab khác
-			broadcastDataChange("visibility" as DataKey, {
-				data: newVisibility,
-			})
 		},
 		[visibility]
 	)
@@ -827,7 +815,6 @@ export default function Home() {
 	}, [])
 
 	const handleQuizReset = useCallback(async () => {
-		// 1. Reset quiz progress, but keep the questions.
 		const newQuizState: QuizState = {
 			currentQuestionIndex: 0,
 			answers: {},
@@ -835,7 +822,6 @@ export default function Home() {
 		setQuizState(newQuizState);
 		setShowQuizSummary(false);
 	
-		// 2. Clear only the quizState from DB
 		const db = await getDb();
 		await db.put("data", { id: "quizState", data: newQuizState });
 	
@@ -871,7 +857,6 @@ export default function Home() {
 	}, [toast]);
 
 	const onGenerateNew = useCallback(() => {
-		// Gọi generate cho view hiện tại, không force new
 		handleGenerate(topic, language, false, view)
 	}, [handleGenerate, topic, language, view])
 

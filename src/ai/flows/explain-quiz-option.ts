@@ -26,7 +26,7 @@ Topic: {{{topic}}}
 Question: "{{{question}}}"
 Correct Answer: "{{{correctAnswer}}}"
 
-Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}". You can provide additional context or interesting facts related to the topic.
+Please provide a more in-depth explanation of why "{{{selectedOption}}}" is the correct answer for the question "{{{question}}}", in the language: {{{language}}}. You can provide additional context or interesting facts related to the topic.
 
 IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
@@ -48,7 +48,7 @@ Question: "{{{question}}}"
 Correct Answer: "{{{correctAnswer}}}"
 The Incorrect Option to Explain: "{{{selectedOption}}}"
 
-Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}".
+Please explain specifically why "{{{selectedOption}}}" is not the correct answer for the question "{{{question}}}", in the language: {{{language}}}.
 
 IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
