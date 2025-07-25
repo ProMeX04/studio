@@ -21,16 +21,23 @@ const askQuestionStreamFlow = ai.defineFlow(
     try {
       const {stream, response} = ai.generateStream({
         model: 'googleai/gemini-2.5-flash-lite',
-        prompt: `You are a helpful AI tutor. The user has a question about the learning material they are currently viewing. Your entire response will be streamed as text.
+        prompt: `You are a helpful AI tutor. Your entire response will be streamed as text.
 
+{{#if history}}
+The user has a follow-up question.
+{{else}}
+The user has a question about the learning material they are currently viewing.
 Here is the context of what the user is seeing:
-${input.context}
+{{{context}}}
+{{/if}}
 
 Here is the conversation history so far:
-${input.history.map(m => `- ${m.role}: ${m.text}`).join('\n')}
+{{#each history}}
+- {{this.role}}: {{this.text}}
+{{/each}}
 
 Here is the user's new question:
-"${input.question}"
+"{{{question}}}"
 
 Please provide a concise and helpful answer to the user's question based on the provided context and history. After the answer, you can optionally provide two relevant follow-up questions the user might have. These suggestions should help the user explore the topic further.
 The entire response should be a single markdown-formatted text stream.
