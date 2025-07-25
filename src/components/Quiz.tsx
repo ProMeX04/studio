@@ -90,14 +90,13 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					if (match) {
+					if (!inline && match) {
 						return (
-							<div className="w-full">
+							<div className="w-full overflow-x-auto">
 								<Syntax
 									style={codeStyle as any}
 									language={match ? match[1] : "text"}
 									PreTag="div"
-									wrapLongLines={true}
 									{...props}
 								>
 									{String(children).replace(/\n$/, "")}

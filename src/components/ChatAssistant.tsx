@@ -304,24 +304,25 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                                     },
                                                             }
                                                             return (
-                                                                <SyntaxHighlighter
-                                                                    style={
-                                                                        codeStyle
-                                                                    }
-                                                                    language={
-                                                                        match[1]
-                                                                    }
-                                                                    PreTag="div"
-                                                                    wrapLongLines={true}
-                                                                    {...props}
-                                                                >
-                                                                    {String(
-                                                                        children
-                                                                    ).replace(
-                                                                        /\n$/,
-                                                                        ""
-                                                                    )}
-                                                                </SyntaxHighlighter>
+                                                                <div className="w-full overflow-x-auto">
+                                                                    <SyntaxHighlighter
+                                                                        style={
+                                                                            codeStyle
+                                                                        }
+                                                                        language={
+                                                                            match[1]
+                                                                        }
+                                                                        PreTag="div"
+                                                                        {...props}
+                                                                    >
+                                                                        {String(
+                                                                            children
+                                                                        ).replace(
+                                                                            /\n$/,
+                                                                            ""
+                                                                        )}
+                                                                    </SyntaxHighlighter>
+                                                                </div>
                                                             )
                                                         }
                                                         return (
@@ -392,5 +393,3 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
-
-    
