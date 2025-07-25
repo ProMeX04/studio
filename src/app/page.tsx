@@ -205,8 +205,7 @@ function Learn({
 				) : view === "flashcards" ? (
 					<Flashcards
 						flashcardSet={flashcardSet}
-						initialIndex={flashcardIndex}
-						onIndexChange={onFlashcardIndexChange}
+						flashcardIndex={flashcardIndex}
 						topic={topic}
 						isCurrentUnderstood={isCurrentCardUnderstood}
 					/>

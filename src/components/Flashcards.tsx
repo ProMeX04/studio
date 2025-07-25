@@ -44,8 +44,7 @@ export interface FlashcardSet {
 
 interface FlashcardsProps {
 	flashcardSet: FlashcardSet | null
-	initialIndex: number
-	onIndexChange: (index: number) => void
+	flashcardIndex: number
 	topic: string;
 	isCurrentUnderstood: boolean;
 }
@@ -144,18 +143,13 @@ function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: 
 
 export function Flashcards({
 	flashcardSet,
-	initialIndex, 
-	onIndexChange,
+	flashcardIndex,
 	topic,
 	isCurrentUnderstood,
 }: FlashcardsProps) {
 	
-	useEffect(() => {
-		onIndexChange(initialIndex);
-	}, [initialIndex, onIndexChange]);
-
 	const totalCards = flashcardSet?.cards.length ?? 0
-	const currentCard = flashcardSet?.cards[initialIndex];
+	const currentCard = flashcardSet?.cards[flashcardIndex];
 	const hasContent = totalCards > 0 && !!currentCard;
 	
 	return (
@@ -163,7 +157,7 @@ export function Flashcards({
 			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
 				{hasContent ? (
 					<FlashcardItem
-						key={`${flashcardSet?.id ?? ""}-${initialIndex}`}
+						key={`${flashcardSet?.id ?? ""}-${flashcardIndex}`}
 						card={currentCard}
 						isUnderstood={isCurrentUnderstood}
 					/>
