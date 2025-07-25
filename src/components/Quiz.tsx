@@ -79,18 +79,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 						(child: any) =>
 							child?.type === 'code' &&
 							child?.props?.node?.tagName === 'code' &&
-							!child?.props?.inline
+							/language-(\w+)/.exec(child?.props?.className || "")
 					);
 
 					if (hasCodeBlock) {
 						return <div>{props.children}</div>;
 					}
-
-					return <p {...props}>{props.children}</p>;
+					return <p {...props} className="markdown-paragraph">{props.children}</p>;
 				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					if (!inline) {
+					if (match) {
 						return (
 							<div className="w-full">
 								<Syntax
@@ -107,25 +106,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 					}
 					// Handle inline code
 					return (
-						<code
-							className="inline-code-custom"
-							style={{
-								display: "inline !important",
-								padding: "2px 6px",
-								backgroundColor:
-									"rgba(110, 118, 129, 0.4)",
-								borderRadius: "4px",
-								fontSize: "0.875em",
-								fontFamily:
-									'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-								whiteSpace: "nowrap !important",
-								wordBreak: "keep-all !important",
-								lineHeight: "1.4",
-								verticalAlign: "baseline",
-								color: "inherit",
-							}}
-							{...props}
-						>
+						<code className={cn(className, 'inline-code')} {...props}>
 							{children}
 						</code>
 					)

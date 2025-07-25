@@ -98,15 +98,6 @@ body {
 	}
 	
 	/* Force inline code to stay inline */
-	code:not(pre code) {
-		white-space: nowrap !important;
-		word-break: keep-all !important;
-		display: inline !important;
-		overflow-wrap: normal !important;
-		word-wrap: normal !important;
-	}
-	
-	/* Specific overrides for markdown content */
 	.markdown-paragraph code,
 	p code {
 		white-space: nowrap !important;
