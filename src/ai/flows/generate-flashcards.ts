@@ -47,13 +47,11 @@ ${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back
 
   const promptText = `You are a flashcard generator. Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}
-IMPORTANT: Your response MUST be a valid JSON array of objects, where each object has a "front" and a "back" key. The "front" and "back" fields MUST contain valid standard Markdown.
-- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
-- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
-- Use bolding for keywords, like **this**.
+The "front" and "back" fields MUST contain valid standard Markdown.
+- Use standard backticks (\`) for inline code blocks.
+- Use triple backticks with a language identifier for multi-line code blocks.
+- Use bolding for keywords.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-- For example: [{"front": "What does \`console.log()\` do?", "back": "It prints a message to the web console."}, {"front": "What is the Pythagorean theorem?", "back": "It is defined as: $$a^2 + b^2 = c^2$$"}]
-Ensure the JSON is properly escaped according to RFC 8259.
 `;
 
   const generationConfig: GenerationConfig = {
@@ -85,7 +83,7 @@ Ensure the JSON is properly escaped according to RFC 8259.
     });
     
     const responseText = result.response.text();
-    const cleanedJsonString = cleanJsonString(responseText);
+    const cleanedJsonString = cleanJsonString(responseText); // Keep as a fallback
     const parsedJson = JSON.parse(cleanedJsonString);
     const validatedOutput = GenerateFlashcardsOutputSchema.parse(parsedJson);
 
@@ -94,6 +92,9 @@ Ensure the JSON is properly escaped according to RFC 8259.
 
   } catch (error: any) {
     console.error('❌ Flashcard generation error:', error);
+     if (error.message.includes('JSON')) {
+        throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+    }
      if (error instanceof z.ZodError) {
       throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
     }

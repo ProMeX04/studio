@@ -48,14 +48,11 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
 
-Example valid options array: ["Paris", "London", "Rome", "Berlin"]
-${existingQuestionsPrompt}
-IMPORTANT: Your response MUST be a valid JSON array of objects. Each object must have "question", "options", "answer", and "explanation" keys.
 The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
-- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
-- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
+- Use standard backticks (\`) for inline code blocks.
+- Use triple backticks with a language identifier for multi-line code blocks.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-Ensure the JSON is properly escaped according to RFC 8259.
+${existingQuestionsPrompt}
 `;
   
   const generationConfig: GenerationConfig = {
@@ -92,7 +89,7 @@ Ensure the JSON is properly escaped according to RFC 8259.
       });
 
       const responseText = result.response.text();
-      const cleanedJsonString = cleanJsonString(responseText);
+      const cleanedJsonString = cleanJsonString(responseText); // Keep as a fallback
       const parsedJson = JSON.parse(cleanedJsonString);
       const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
 
@@ -115,6 +112,9 @@ Ensure the JSON is properly escaped according to RFC 8259.
       if (isRetryableError && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retrying
       } else {
+        if (error.message.includes('JSON')) {
+            throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+        }
         if (error instanceof z.ZodError) {
             throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
         }

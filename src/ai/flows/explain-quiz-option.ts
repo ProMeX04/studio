@@ -47,13 +47,11 @@ Correct Answer: "${input.correctAnswer}"
 
 Please provide a more in-depth explanation of why "${input.selectedOption}" is the correct answer for the question "${input.question}", in the language: ${input.language}. You can provide additional context or interesting facts related to the topic.
 
-IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
-- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
-- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
-- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-- For example: {"explanation": "The method \`pop()\` removes and returns the element at the given index. In this case, it removes the element at index 1, which is **20**."}
-Ensure the JSON is properly escaped according to RFC 8259.
-`
+Use standard Markdown for formatting:
+- Use backticks (\`) for inline code.
+- Use triple backticks (\`\`\`) for code blocks.
+- Use bolding for keywords.
+- Use standard LaTeX syntax for math ($...$ or $$...$$).`
     : `You are a helpful quiz tutor. The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
 Topic: ${input.topic}
@@ -63,13 +61,11 @@ The Incorrect Option to Explain: "${input.selectedOption}"
 
 Please explain specifically why "${input.selectedOption}" is not the correct answer for the question "${input.question}", in the language: ${input.language}.
 
-IMPORTANT: Your response MUST be a valid JSON object with a single key "explanation". The "explanation" field must contain valid standard Markdown.
-- Use standard backticks (\`) for inline code blocks (e.g., \`my_variable\`).
-- Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`python... \`\`\`).
-- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-- For example: {"explanation": "While that's a good thought, the correct answer is actually **20**. The method \`pop(1)\` specifically targets the element at index 1."}
-Ensure the JSON is properly escaped according to RFC 8259.
-`;
+Use standard Markdown for formatting:
+- Use backticks (\`) for inline code.
+- Use triple backticks (\`\`\`) for code blocks.
+- Use bolding for keywords.
+- Use standard LaTeX syntax for math ($...$ or $$...$$).`;
 
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
@@ -100,7 +96,7 @@ Ensure the JSON is properly escaped according to RFC 8259.
     });
     
     const responseText = result.response.text();
-    const cleanedJsonString = cleanJsonString(responseText);
+    const cleanedJsonString = cleanJsonString(responseText); // Keep as a fallback
     const parsedJson = JSON.parse(cleanedJsonString);
     const validatedOutput = explanationOnlySchema.parse(parsedJson);
 
@@ -110,6 +106,9 @@ Ensure the JSON is properly escaped according to RFC 8259.
 
   } catch (error: any) {
     console.error('❌ AI Explanation Error:', error);
+    if (error.message.includes('JSON')) {
+        throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+    }
     if (error instanceof z.ZodError) {
       throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
     }
