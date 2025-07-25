@@ -101,11 +101,30 @@ function Learn({
 		}
 	};
 
-	const correctAnswers = quizSet && quizState ? Object.values(quizState.answers).filter(
-		(answer, index) => quizSet.questions[index]?.answer === answer.selected
-	).length : 0;
+	const { correctAnswers, incorrectAnswers, unansweredQuestions } = React.useMemo(() => {
+		if (!quizSet || !quizState) {
+			return { correctAnswers: 0, incorrectAnswers: 0, unansweredQuestions: quizSet?.questions.length ?? 0 };
+		}
+	
+		let correct = 0;
+		const answeredIndices = Object.keys(quizState.answers).map(Number);
+	
+		for (const index of answeredIndices) {
+			const question = quizSet.questions[index];
+			const answer = quizState.answers[index];
+			if (question && answer && answer.selected === question.answer) {
+				correct++;
+			}
+		}
+		
+		const answeredCount = answeredIndices.length;
+		const incorrect = answeredCount - correct;
+		const unanswered = quizSet.questions.length - answeredCount;
+	
+		return { correctAnswers: correct, incorrectAnswers: incorrect, unansweredQuestions: unanswered };
+	}, [quizSet, quizState]);
 
-	const allQuestionsAnswered = quizSet && quizState ? Object.keys(quizState.answers).length === quizSet.questions.length : false;
+	const allQuestionsAnswered = quizSet && (unansweredQuestions === 0);
 	const shouldShowSummary = (showQuizSummary || allQuestionsAnswered) && view === 'quiz';
 	
 	return (
@@ -114,6 +133,8 @@ function Learn({
 				{shouldShowSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
+						incorrectAnswers={incorrectAnswers}
+						unansweredQuestions={unansweredQuestions}
 						totalQuestions={quizSet.questions.length}
 						onReset={onQuizReset}
 						onBack={() => setShowQuizSummary(false)}
