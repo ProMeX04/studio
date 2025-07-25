@@ -74,11 +74,25 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
+				p: (props: any) => {
+					const hasCodeBlock = React.Children.toArray(props.children).some(
+						(child: any) =>
+							child?.type === 'code' &&
+							child?.props?.node?.tagName === 'code' &&
+							!child?.props?.inline
+					);
+
+					if (hasCodeBlock) {
+						return <div>{props.children}</div>;
+					}
+
+					return <p {...props}>{props.children}</p>;
+				},
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
 					if (!inline) {
 						return (
-							<div>
+							<div className="w-full">
 								<Syntax
 									style={codeStyle as any}
 									language={match ? match[1] : "text"}
