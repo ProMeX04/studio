@@ -786,8 +786,8 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col justify-center items-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
-					<div className="flex-grow overflow-y-auto flex flex-col w-[95%] h-[95%] mx-auto">
+				<div className="relative flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 max-h-screen">
+					<div className="flex-grow overflow-y-auto flex flex-col w-full h-full">
 						<Learn
 							view={view}
 							isLoading={currentViewIsLoading}
