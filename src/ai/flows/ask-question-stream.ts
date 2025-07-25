@@ -13,7 +13,7 @@ export async function askQuestionStream(input: AskQuestionInput): Promise<Readab
 
 const streamPrompt = ai.definePrompt({
   name: 'askQuestionStreamPrompt',
-  input: {schema: AskQuestionlintInputSchema},
+  input: {schema: AskQuestionInputSchema},
   prompt: `You are a helpful AI tutor. The user has a question about the learning material they are currently viewing.
 
 Here is the context of what the user is seeing:
