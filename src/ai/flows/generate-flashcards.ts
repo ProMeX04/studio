@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Flashcard generation flow using Google Generative AI SDK.
  *
@@ -41,6 +42,8 @@ The "front" and "back" fields MUST contain valid standard Markdown.
 - Use triple backticks with a language identifier for multi-line code blocks.
 - Use bolding for keywords.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+
+The JSON output must be correctly escaped to be RFC 8259 compliant.
 `;
 
   const generationConfig: GenerationConfig = {
@@ -71,9 +74,8 @@ The "front" and "back" fields MUST contain valid standard Markdown.
       ]
     });
     
-    const responseText = result.response.text();
     // When using responseMimeType: "application/json", the SDK already parses the JSON.
-    const validatedOutput = GenerateFlashcardsOutputSchema.parse(JSON.parse(responseText));
+    const validatedOutput = GenerateFlashcardsOutputSchema.parse(result.response.text());
 
     console.log(`✅ Generated ${validatedOutput.length} valid flashcards`);
     return validatedOutput;

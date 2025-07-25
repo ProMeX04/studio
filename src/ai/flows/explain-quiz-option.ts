@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Flow to explain a specific quiz answer option using Google Generative AI SDK.
  *
@@ -34,13 +35,7 @@ Topic: ${input.topic}
 Question: "${input.question}"
 Correct Answer: "${input.correctAnswer}"
 
-Please provide a more in-depth explanation of why "${input.selectedOption}" is the correct answer for the question "${input.question}", in the language: ${input.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.
-
-Use standard Markdown for formatting:
-- Use backticks (\`) for inline code.
-- Use triple backticks (\`\`\`) for code blocks.
-- Use bolding for keywords.
-- Use standard LaTeX syntax for math ($...$ or $$...$$).`
+Please provide a more in-depth explanation of why "${input.selectedOption}" is the correct answer for the question "${input.question}", in the language: ${input.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.`
     : `The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
 Topic: ${input.topic}
@@ -48,14 +43,16 @@ Question: "${input.question}"
 Correct Answer: "${input.correctAnswer}"
 The Incorrect Option to Explain: "${input.selectedOption}"
 
-Please explain specifically why "${input.selectedOption}" is not the correct answer for the question "${input.question}", in the language: ${input.language}. Populate the "explanation" field in the JSON output with this information.
+Please explain specifically why "${input.selectedOption}" is not the correct answer for the question "${input.question}", in the language: ${input.language}. Populate the "explanation" field in the JSON output with this information.`
+}
 
-Use standard Markdown for formatting:
+The "explanation" field must be valid standard Markdown:
 - Use backticks (\`) for inline code.
 - Use triple backticks (\`\`\`) for code blocks.
 - Use bolding for keywords.
-- Use standard LaTeX syntax for math ($...$ or $$...$$).`
-}`;
+- Use standard LaTeX syntax for math ($...$ or $$...$$).
+
+The JSON output must be correctly escaped to be RFC 8259 compliant.`;
 
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
@@ -85,9 +82,8 @@ Use standard Markdown for formatting:
       ]
     });
     
-    const responseText = result.response.text();
     // When using responseMimeType: "application/json", the SDK already parses the JSON.
-    const validatedOutput = explanationOnlySchema.parse(JSON.parse(responseText));
+    const validatedOutput = explanationOnlySchema.parse(result.response.text());
 
     return {
         explanation: validatedOutput.explanation,
