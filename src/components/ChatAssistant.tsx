@@ -108,8 +108,6 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 	const processStream = useCallback(async (stream: ReadableStream<string>, assistantMessageId: string) => {
 		const reader = stream.getReader();
 		let accumulatedResponse = "";
-		let suggestions: string[] = [];
-		let responseJson = "";
 	
 		try {
 			while (true) {
@@ -125,9 +123,6 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 					: msg
 				));
 			}
-	
-			// Logic xử lý suggestions sau khi stream kết thúc nếu cần
-			// Hiện tại, luồng AI chỉ trả về văn bản
 	
 		} catch (error) {
 			console.error("Error processing stream:", error);
@@ -211,18 +206,15 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 
 	return (
 		<Card className="h-full w-full flex flex-col bg-background/50 backdrop-blur-lg shadow-2xl rounded-2xl border max-h-[90vh]">
-			<CardHeader className="flex flex-row items-center justify-between">
-				<CardTitle>Trợ lý AI</CardTitle>
-				<Button variant="ghost" size="icon" onClick={() => {
-					if (abortControllerRef.current) {
-						abortControllerRef.current.abort();
-					}
-					onClose();
-				}}>
-					<X className="h-5 w-5" />
-				</Button>
-			</CardHeader>
-			<CardContent className="flex-1 overflow-hidden pt-0">
+			<CardContent className="flex-1 overflow-hidden pt-4 relative">
+        <Button variant="ghost" size="icon" className="absolute top-2 right-2 z-10" onClick={() => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            onClose();
+        }}>
+            <X className="h-5 w-5" />
+        </Button>
 				<ScrollArea className="h-full w-full pr-4" ref={scrollAreaRef}>
 					<div className="space-y-4">
 						{messages.length === 0 && !isLoading && (
