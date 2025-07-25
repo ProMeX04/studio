@@ -60,7 +60,7 @@ function ChatInputForm({
 				value={input}
 				onChange={(e) => setInput(e.target.value)}
 				placeholder="Hỏi AI về nội dung bạn đang xem..."
-				className="min-h-0 resize-none"
+				className="min-h-0 resize-none md:text-sm"
 				rows={1}
 				disabled={isLoading}
 				onKeyDown={handleKeyDown}
@@ -241,7 +241,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 										<Sparkles className="h-5 w-5" />
 									</div>
 								)}
-								<div className="flex-1 space-y-2">
+								<div className="space-y-2">
 									<div
 										className={cn(
 											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
