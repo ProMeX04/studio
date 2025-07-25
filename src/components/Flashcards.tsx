@@ -263,9 +263,9 @@ export function Flashcards({
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="fixed bottom-2.5 left-1/2 transform -translate-x-1/2 z-50 flex-col !pt-8 gap-2 items-center w-full max-w-3xl" style={{left: 'calc(50% + 25%)'}}>
+			<CardFooter className="flex-col !pt-8 gap-2 items-center justify-center">
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
-					<div className="flex items-center justify-center w-full gap-4">
+					<div className="flex items-center justify-center w-full gap-4 max-w-3xl">
 						<Button
 							onClick={handlePrevCard}
 							disabled={currentCardIndex === 0 || !hasContent}
@@ -302,5 +302,3 @@ export function Flashcards({
 		</Card>
 	)
 }
-
-    
