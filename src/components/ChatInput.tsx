@@ -48,13 +48,6 @@ export function ChatInput({
 				placeholder={placeholder}
 				className="bg-background/80 backdrop-blur-sm"
 			/>
-			<Button
-				size="icon"
-				onClick={handleButtonClick}
-				className="flex-shrink-0"
-			>
-				<MessageSquare />
-			</Button>
 		</div>
 	)
 }
