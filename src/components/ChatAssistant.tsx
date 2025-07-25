@@ -84,6 +84,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 	const { toast } = useToast()
 	const scrollAreaRef = useRef<HTMLDivElement>(null)
 	const abortControllerRef = useRef<AbortController | null>(null)
+	const initialQuestionHandledRef = useRef(false);
 
 	const scrollToBottom = useCallback(() => {
 		setTimeout(() => {
@@ -137,43 +138,15 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 			));
 		}
 	}, []);
-
-
-	const handleSubmit = useCallback(async (e: React.FormEvent, question?: string) => {
-		e.preventDefault();
-		const questionToSend = question || input;
-		if (!questionToSend.trim() || isLoading) return;
 	
-		setIsLoading(true);
-		setInput("");
-	
-		// Add user message
-		const userMessage: ChatMessage = { id: Date.now().toString(), role: "user", text: questionToSend };
-		
-		// Add empty assistant message
-		const assistantMessageId = (Date.now() + 1).toString();
-		const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
-
-		const currentHistory = messages;
-		
-		setMessages(prev => {
-			const newMessages = [...prev];
-			const lastMessage = newMessages[newMessages.length - 1];
-			// Xóa suggestions của tin nhắn AI gần nhất nếu có
-			if (lastMessage?.role === 'model') {
-				delete lastMessage.suggestions;
-			}
-			return [...newMessages, userMessage, assistantMessage];
-		});
-
+	const streamResponse = useCallback(async (question: string, history: ChatMessage[], assistantMessageId: string) => {
 		abortControllerRef.current = new AbortController();
 	
 		try {
-			// askQuestionStream giờ trả về ReadableStream<string>
 			const stream = await askQuestionStream({
 				context,
-				question: questionToSend,
-				history: currentHistory, // Sử dụng history trước khi thêm tin nhắn mới
+				question,
+				history,
 			});
 	
 			await processStream(stream, assistantMessageId);
@@ -199,20 +172,53 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 			setIsLoading(false);
 			abortControllerRef.current = null;
 		}
-	}, [input, isLoading, context, messages, toast, processStream]);
+	}, [context, processStream, toast]);
+
+
+	const handleSubmit = useCallback(async (e: React.FormEvent) => {
+		e.preventDefault();
+		const questionToSend = input;
+		if (!questionToSend.trim() || isLoading) return;
+	
+		setIsLoading(true);
+		setInput("");
+	
+		const userMessage: ChatMessage = { id: Date.now().toString(), role: "user", text: questionToSend };
+		const assistantMessageId = (Date.now() + 1).toString();
+		const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
+
+		const currentHistory = messages;
+		
+		setMessages(prev => {
+			const newMessages = [...prev];
+			const lastMessage = newMessages[newMessages.length - 1];
+			if (lastMessage?.role === 'model') {
+				delete lastMessage.suggestions;
+			}
+			return [...newMessages, userMessage, assistantMessage];
+		});
+
+		await streamResponse(questionToSend, currentHistory, assistantMessageId);
+
+	}, [input, isLoading, messages, streamResponse]);
 	
 
 	useEffect(() => {
-		if (initialQuestion) {
-			// Dummy event for handleSubmit
-			const dummyEvent = { preventDefault: () => {} } as React.FormEvent;
+		if (initialQuestion && !initialQuestionHandledRef.current) {
+			initialQuestionHandledRef.current = true;
+			setIsLoading(true);
+
+			const userMessage: ChatMessage = { id: Date.now().toString(), role: 'user', text: initialQuestion };
+			const assistantMessageId = (Date.now() + 1).toString();
+			const assistantMessage: ChatMessage = { id: assistantMessageId, role: 'model', text: '' };
 			
-			// Call handleSubmit with the initial question
-			// This will send the question to the AI
-			handleSubmit(dummyEvent, initialQuestion);
+			// Set initial messages directly
+			setMessages([userMessage, assistantMessage]);
+
+			// Call the stream function with empty history
+			streamResponse(initialQuestion, [], assistantMessageId);
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialQuestion]); // Chỉ chạy một lần khi initialQuestion được set
+	}, [initialQuestion, streamResponse]);
 
 
 	return (
@@ -320,12 +326,12 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 																key={i}
 																variant="outline"
 																size="sm"
-																onClick={(e) =>
-																	handleSubmit(
-																		e,
-																		suggestion
-																	)
-																}
+																onClick={(e) => {
+                                  e.preventDefault();
+                                  setInput(suggestion);
+                                  // We can create a new submit handler if needed or reuse
+                                  // For now, let's just set the input and let user submit
+                                }}
 																className="bg-background/50 backdrop-blur"
 															>
 																{suggestion}
@@ -352,5 +358,3 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
-
-    
