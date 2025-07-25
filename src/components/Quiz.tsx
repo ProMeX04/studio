@@ -124,6 +124,7 @@ export function Quiz({
 		Set<string>
 	>(new Set()) // Track which explanations are visible
 	const { toast } = useToast()
+	const [isCompleted, setIsCompleted] = useState(false);
 
 	const currentAnswerState = answers[currentQuestionIndex] || {
 		selected: null,
@@ -132,10 +133,17 @@ export function Quiz({
 	}
 	const { selected: selectedAnswer, isAnswered } = currentAnswerState
 
-	const isCompleted = useMemo(() => {
-		if (!quizSet || quizSet.questions.length === 0) return false;
-		return Object.keys(answers).length === quizSet.questions.length;
-	}, [answers, quizSet]);
+	// Check for quiz completion
+    useEffect(() => {
+        if (quizSet && quizSet.questions.length > 0) {
+            const allAnswered = Object.keys(answers).length === quizSet.questions.length;
+            const allQuestionsLoaded = quizSet.questions.length > 0;
+            setIsCompleted(allAnswered && allQuestionsLoaded);
+        } else {
+            setIsCompleted(false);
+        }
+    }, [answers, quizSet]);
+
 
 	// Update state only when initialState changes, not when quizSet changes.
 	// This prevents jumping to the first question when new questions are loaded in the background.
@@ -143,6 +151,10 @@ export function Quiz({
 		if (initialState) {
 			setCurrentQuestionIndex(initialState.currentQuestionIndex)
 			setAnswers(initialState.answers)
+		} else {
+			// If initial state is cleared (e.g., on reset), clear local state too
+			setCurrentQuestionIndex(0);
+			setAnswers({});
 		}
 	}, [initialState])
 
@@ -151,6 +163,7 @@ export function Quiz({
 		if (!quizSet) {
 			setCurrentQuestionIndex(0)
 			setAnswers({})
+			setIsCompleted(false)
 		}
 	}, [quizSet])
 
@@ -404,3 +417,5 @@ export function Quiz({
 		</div>
 	)
 }
+
+    

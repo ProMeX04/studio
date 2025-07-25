@@ -670,10 +670,21 @@ export default function Home() {
 	}, [])
 
 	const handleQuizReset = useCallback(async () => {
+		// 1. Clear state locally
+		setQuizSet(null);
 		setQuizState(null);
+	
+		// 2. Clear from DB
 		const db = await getDb();
+		await db.delete("data", "quiz");
 		await db.delete("data", "quizState");
-	}, []);
+	
+		// 3. Immediately trigger a new generation
+		// Use a small timeout to ensure state has been cleared before regenerating
+		setTimeout(() => {
+			handleGenerate(topic, language, true, 'quiz');
+		}, 50);
+	}, [topic, language, handleGenerate]);
 
 	const onGenerateNew = useCallback(() => {
 		// Gọi generate cho view hiện tại, không force new
@@ -777,3 +788,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
