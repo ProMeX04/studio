@@ -36,7 +36,6 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { ChatInput } from "./ChatInput"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -45,9 +44,6 @@ interface QuizProps {
 	quizSet: QuizSet | null
 	initialState: QuizState | null
 	onStateChange: (newState: QuizState) => void
-	onGenerateMore: () => void
-	canGenerateMore: boolean
-	isLoading: boolean
 	language: string
 	topic: string;
 }
@@ -111,9 +107,6 @@ export function Quiz({
 	quizSet,
 	initialState,
 	onStateChange,
-	onGenerateMore,
-	canGenerateMore,
-	isLoading,
 	language,
 	topic,
 }: QuizProps) {
@@ -172,18 +165,6 @@ export function Quiz({
 	)
 	const hasContent =
 		quizSet && quizSet.questions && quizSet.questions.length > 0
-
-	const handleNextQuestion = () => {
-		if (quizSet && currentQuestionIndex < quizSet.questions.length - 1) {
-			setCurrentQuestionIndex(currentQuestionIndex + 1)
-		}
-	}
-
-	const handlePrevQuestion = () => {
-		if (currentQuestionIndex > 0) {
-			setCurrentQuestionIndex(currentQuestionIndex - 1)
-		}
-	}
 
 	const handleAnswerSelect = (answer: string) => {
 		if (isAnswered) return
@@ -281,8 +262,8 @@ export function Quiz({
 	}
 
 	return (
-		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<CardContent className="flex-grow flex flex-col justify-center items-center">
+		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
+			<div className="flex-grow flex flex-col justify-center items-center">
 				{hasContent && currentQuestion ? (
 					<div className="w-full max-w-5xl mx-auto space-y-6">
 						<div className="text-3xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
@@ -389,43 +370,14 @@ export function Quiz({
 					</div>
 				) : (
 					<div className="text-center h-64 flex flex-col items-center justify-center">
-						{!isLoading && (
-							<div className="text-center flex flex-col items-center justify-center">
+						<div className="text-center flex flex-col items-center justify-center">
 								<p className="text-muted-foreground mb-4">
 									Chưa có câu hỏi trắc nghiệm nào.
 								</p>
 							</div>
-						)}
 					</div>
 				)}
-			</CardContent>
-			<CardFooter className="flex-col !pt-0 gap-2 items-center justify-center">
-				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
-					<div className="flex items-center justify-center w-full gap-4 max-w-3xl">
-						<Button
-							onClick={handlePrevQuestion}
-							disabled={currentQuestionIndex === 0 || !hasContent}
-							variant="outline"
-							size="icon"
-						>
-							<ChevronLeft />
-						</Button>
-
-						<Button
-							onClick={handleNextQuestion}
-							disabled={
-								!hasContent ||
-								currentQuestionIndex ===
-									(quizSet?.questions.length ?? 0) - 1
-							}
-							variant="outline"
-							size="icon"
-						>
-							<ChevronRight />
-						</Button>
-					</div>
-				</div>
-			</CardFooter>
-		</Card>
+			</div>
+		</div>
 	)
 }

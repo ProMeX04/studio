@@ -45,9 +45,6 @@ export interface FlashcardSet {
 interface FlashcardsProps {
 	flashcardSet: FlashcardSet | null
 	isRandom: boolean
-	onGenerateMore: () => void
-	canGenerateMore: boolean
-	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
 	topic: string;
@@ -146,9 +143,6 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 export function Flashcards({
 	flashcardSet,
 	isRandom,
-	onGenerateMore,
-	canGenerateMore,
-	isLoading,
 	initialIndex,
 	onIndexChange,
 	topic,
@@ -205,21 +199,9 @@ export function Flashcards({
 	const currentCard = displayedCards[currentCardIndex]
 	const hasContent = flashcardSet && flashcardSet.cards.length > 0
 
-	const handleNextCard = () => {
-		if (currentCardIndex < totalCards - 1) {
-			setCurrentCardIndex(currentCardIndex + 1)
-		}
-	}
-
-	const handlePrevCard = () => {
-		if (currentCardIndex > 0) {
-			setCurrentCardIndex(currentCardIndex - 1)
-		}
-	}
-
 	return (
-		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<CardContent className="flex-grow flex items-center justify-center">
+		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
+			<div className="flex-grow flex items-center justify-center">
 				{hasContent && currentCard ? (
 					<FlashcardItem
 						key={`${flashcardSet?.id ?? ""}-${
@@ -229,41 +211,14 @@ export function Flashcards({
 					/>
 				) : (
 					<div className="text-center h-48 flex flex-col items-center justify-center">
-						{!isLoading && (
-							<div className="text-center flex flex-col items-center justify-center">
-								<p className="text-muted-foreground mb-4">
-									Chưa có flashcard nào.
-								</p>
-							</div>
-						)}
+						<div className="text-center flex flex-col items-center justify-center">
+							<p className="text-muted-foreground mb-4">
+								Chưa có flashcard nào.
+							</p>
+						</div>
 					</div>
 				)}
-			</CardContent>
-			<CardFooter className="flex-col !pt-8 gap-2 items-center justify-center">
-				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
-					<div className="flex items-center justify-center w-full gap-4 max-w-3xl">
-						<Button
-							onClick={handlePrevCard}
-							disabled={currentCardIndex === 0 || !hasContent}
-							variant="outline"
-							size="icon"
-						>
-							<ChevronLeft />
-						</Button>
-
-						<Button
-							onClick={handleNextCard}
-							disabled={
-								!hasContent || currentCardIndex >= totalCards - 1
-							}
-							variant="outline"
-							size="icon"
-						>
-							<ChevronRight />
-						</Button>
-					</div>
-				</div>
-			</CardFooter>
-		</Card>
+			</div>
+		</div>
 	)
 }

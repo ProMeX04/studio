@@ -14,8 +14,8 @@ import type { QuizState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { Loader, Plus } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Loader, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
 	getDb,
@@ -71,83 +71,39 @@ function Learn({
 	language,
 	topic,
 }: LearnProps) {
+	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
+	const currentIndex = view === "flashcards" ? flashcardIndex : (quizState?.currentQuestionIndex ?? 0);
+	const totalItems = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
+	const hasContent = totalItems > 0;
+
+	const handleNext = () => {
+		if (view === 'flashcards') {
+			if (flashcardIndex < totalItems - 1) onFlashcardIndexChange(flashcardIndex + 1);
+		} else if (quizSet && quizState) {
+			if (quizState.currentQuestionIndex < totalItems - 1) {
+				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex + 1 });
+			}
+		}
+	};
+	
+	const handlePrev = () => {
+		if (view === 'flashcards') {
+			if (flashcardIndex > 0) onFlashcardIndexChange(flashcardIndex - 1);
+		} else if (quizSet && quizState) {
+			if (quizState.currentQuestionIndex > 0) {
+				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex - 1 });
+			}
+		}
+	};
+	
+
 	return (
 		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 relative flex flex-col">
-			<Collapsible className="w-full">
-				<div className="flex justify-center">
-					<CollapsibleTrigger asChild>
-						<Button variant="ghost" size="sm" className="w-auto px-4 h-6">
-							<PanelTopClose className="h-4 w-4" />
-						</Button>
-					</CollapsibleTrigger>
-				</div>
-				<CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-					<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-2 rounded-lg">
-						<Tabs
-							value={view}
-							onValueChange={(value) =>
-								onViewChange(value as "flashcards" | "quiz")
-							}
-							className="w-auto"
-						>
-							<TabsList>
-								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-							</TabsList>
-						</Tabs>
-
-						<div className="flex items-center gap-2">
-							{view === "flashcards" ? (
-								<>
-									<span className="text-sm text-muted-foreground">
-										Thẻ {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
-									</span>
-									<Button
-										onClick={onGenerateNew}
-										disabled={isLoading || !canGenerateMore}
-										variant="outline"
-										size="icon"
-									>
-										{isLoading ? (
-											<Loader className="animate-spin w-4 h-4" />
-										) : (
-											<Plus className="w-4 h-4" />
-										)}
-									</Button>
-								</>
-							) : (
-								<>
-									<span className="text-sm text-muted-foreground">
-										Câu hỏi {quizSet ? (quizState?.currentQuestionIndex ?? 0) + 1 : 0} / {quizSet?.questions.length ?? 0}
-									</span>
-									<Button
-										onClick={onGenerateNew}
-										disabled={isLoading || !canGenerateMore}
-										variant="outline"
-										size="icon"
-									>
-										{isLoading ? (
-											<Loader className="animate-spin w-4 h-4" />
-										) : (
-											<Plus className="w-4 h-4" />
-										)}
-									</Button>
-								</>
-							)}
-						</div>
-					</div>
-				</CollapsibleContent>
-			</Collapsible>
-
-
-			<CardContent className="flex-grow flex flex-col" style={{ paddingTop: '2px' }}>
+			<CardContent className="flex-grow flex flex-col p-0">
 				{view === "flashcards" && (
 					<Flashcards
 						flashcardSet={flashcardSet}
 						isRandom={flashcardIsRandom}
-						onGenerateMore={onGenerateNew}
-						canGenerateMore={canGenerateMore}
-						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
 						topic={topic}
@@ -158,14 +114,69 @@ function Learn({
 						quizSet={quizSet}
 						initialState={quizState}
 						onStateChange={onQuizStateChange}
-						onGenerateMore={onGenerateNew}
-						canGenerateMore={canGenerateMore}
-						isLoading={isLoading}
 						language={language}
 						topic={topic}
 					/>
 				)}
 			</CardContent>
+
+			{/* Unified Toolbar */}
+			<CardFooter className="flex-col !pt-2 gap-2 items-center justify-center">
+				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-sm">
+					<div className="flex items-center justify-between w-full gap-2">
+						<Tabs
+							value={view}
+							onValueChange={(value) => onViewChange(value as "flashcards" | "quiz")}
+							className="w-auto"
+						>
+							<TabsList>
+								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+							</TabsList>
+						</Tabs>
+
+						<div className="flex items-center gap-2">
+							<Button
+								onClick={handlePrev}
+								disabled={currentIndex === 0 || !hasContent}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<ChevronLeft className="h-4 w-4" />
+							</Button>
+
+							<span className="text-sm text-muted-foreground w-24 text-center">
+								{view === "flashcards" ? "Thẻ" : "Câu hỏi"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+							</span>
+
+							<Button
+								onClick={handleNext}
+								disabled={!hasContent || currentIndex >= totalItems - 1}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<ChevronRight className="h-4 w-4" />
+							</Button>
+						</div>
+
+						<Button
+							onClick={onGenerateNew}
+							disabled={isLoading || !canGenerateMore}
+							variant="outline"
+							size="icon"
+							className="h-9 w-9"
+						>
+							{isLoading ? (
+								<Loader className="animate-spin w-4 h-4" />
+							) : (
+								<Plus className="w-4 h-4" />
+							)}
+						</Button>
+					</div>
+				</div>
+			</CardFooter>
 		</Card>
 	)
 }
