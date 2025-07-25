@@ -145,38 +145,25 @@ function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: 
 
 export function Flashcards({
 	flashcardSet,
-	initialIndex,
+	initialIndex, // This is the index in the PROCESSED array
 	onIndexChange,
 	topic,
 	understoodIndices,
 }: FlashcardsProps) {
-	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
-
+	// The component now fully trusts the initialIndex from the parent.
+	// It doesn't need its own internal index state.
+	
 	useEffect(() => {
-		setCurrentCardIndex(initialIndex)
-	}, [initialIndex])
-
-	// This effect now correctly syncs the parent's state whenever the internal index changes.
-	useEffect(() => {
-		onIndexChange(currentCardIndex)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentCardIndex]);
-
-	// This effect handles the case where the card set changes (e.g., loaded, filtered, shuffled)
-	useEffect(() => {
-        if (flashcardSet && currentCardIndex >= flashcardSet.cards.length && flashcardSet.cards.length > 0) {
-            setCurrentCardIndex(flashcardSet.cards.length - 1);
-        } else if (!flashcardSet || flashcardSet.cards.length === 0) {
-            setCurrentCardIndex(0);
-        }
-    }, [flashcardSet, currentCardIndex]);
-
+		// This effect is to inform the parent about any index change that might happen inside this component
+		// in the future (e.g., if we add direct jumps).
+		// For now, it just syncs the initial index.
+		onIndexChange(initialIndex);
+	}, [initialIndex, onIndexChange]);
 
 	const totalCards = flashcardSet?.cards.length ?? 0
-	const currentCard = flashcardSet?.cards[currentCardIndex];
+	const currentCard = flashcardSet?.cards[initialIndex];
 	const hasContent = totalCards > 0 && !!currentCard;
 	
-	// Determine if the current card is understood using its originalIndex.
 	const isUnderstood = React.useMemo(() => {
 		if (!currentCard) return false;
 		return understoodIndices.includes(currentCard.originalIndex);
@@ -206,3 +193,4 @@ export function Flashcards({
 }
 
     
+

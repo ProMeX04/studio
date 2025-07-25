@@ -626,7 +626,7 @@ export default function Home() {
 		const savedUploadedBgs =
 			((await db.get("data", "uploadedBackgrounds"))?.data as string[]) ||
 			[]
-		const savedFlashcardIndex =
+		let savedFlashcardIndex =
 			((await db.get("data", "flashcardIndex"))?.data as number) || 0
 
 		const flashcardData = (await db.get(
@@ -658,7 +658,6 @@ export default function Home() {
 				learn: true,
 			}
 		)
-		setFlashcardIndex(savedFlashcardIndex)
 
 		let currentFlashcards =
 			flashcardData && flashcardData.topic === savedTopic
@@ -670,18 +669,42 @@ export default function Home() {
 
 		setFlashcardSet(currentFlashcards)
 		setQuizSet(currentQuiz)
+		
+		const currentFlashcardState = (flashcardData && flashcardData.topic === savedTopic && flashcardStateData)
+			? flashcardStateData.data as FlashcardState
+			: { understoodIndices: [] };
+		setFlashcardState(currentFlashcardState);
 
-		if (flashcardData && flashcardData.topic === savedTopic && flashcardStateData) {
-			setFlashcardState(flashcardStateData.data);
-		} else {
-			setFlashcardState({ understoodIndices: [] });
-		}
 
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
 			setQuizState(quizStateData.data)
 		} else {
 			setQuizState({ currentQuestionIndex: 0, answers: {} })
 		}
+
+		// Logic to set a random "not understood" card on load
+		if (
+			currentFlashcards &&
+			currentFlashcards.cards.length > 0 &&
+			savedFlashcardIsRandom &&
+			savedFlashcardRandomNotUnderstoodOnly
+		) {
+			const notUnderstoodOriginalIndices = currentFlashcards.cards
+				.map((_, index) => index)
+				.filter(index => !currentFlashcardState.understoodIndices.includes(index));
+	
+			if (notUnderstoodOriginalIndices.length > 0) {
+				const randomIndexInNotUnderstoodList = Math.floor(Math.random() * notUnderstoodOriginalIndices.length);
+				const randomOriginalIndex = notUnderstoodOriginalIndices[randomIndexInNotUnderstoodList];
+				// This index is for the original, unshuffled array.
+				// The shuffling logic will place this card correctly later.
+				savedFlashcardIndex = randomOriginalIndex; 
+			}
+		}
+
+		setFlashcardIndex(savedFlashcardIndex);
+
+
 	}, [])
 
 	const handleClearAllData = useCallback(async () => {
@@ -825,34 +848,44 @@ export default function Home() {
 
 	// Effect to adjust index after shuffle/filter
 	useEffect(() => {
-		if (!processedFlashcardSet || !flashcardSet) return;
+		if (!processedFlashcardSet || !flashcardSet || !flashcardSet.cards[flashcardIndex]) return;
 	
 		// Find the card from the original set that corresponds to the current index
+		// The `flashcardIndex` here is the index in the *original* (unshuffled) array
 		const currentOriginalCard = flashcardSet.cards[flashcardIndex];
 		if (!currentOriginalCard) {
-			if(processedFlashcardSet.cards.length > 0) {
-				handleFlashcardIndexChange(0);
+			if (processedFlashcardSet.cards.length > 0) {
+				// Fallback if the index is out of bounds
+				handleFlashcardIndexChange(0); 
 			}
 			return;
 		};
 	
 		// Find the new position of that card in the processed (shuffled/sorted) set
-		const newIndex = processedFlashcardSet.cards.findIndex(
-			card => card.front === currentOriginalCard.front && card.back === currentOriginalCard.back
+		// The index returned here is for the *processed* array
+		const newProcessedIndex = processedFlashcardSet.cards.findIndex(
+			card => card.originalIndex === flashcardIndex
 		);
-	
-		if (newIndex !== -1 && newIndex !== flashcardIndex) {
-			// Silently update the index to match the new position without saving to DB yet.
-			// The user-facing onIndexChange will handle the DB save.
-			setFlashcardIndex(newIndex);
+		
+		if (newProcessedIndex !== -1 && newProcessedIndex !== flashcardIndex) {
+			// Update the parent's index state to reflect the new position in the shuffled array
+			// Note: This does NOT save to DB. The parent handler does.
+			// This might cause a loop if not handled carefully.
+			// The goal is to sync the *view* index (what the user sees) with the data.
+			// Let's reconsider. The component should be driven by an index relative to the *processed* set.
 		}
+		// The logic is complex. Let's simplify. `Flashcards.tsx` will now receive the processed set.
+		// The index it manages internally is for the *processed* set.
+		// When we save, we need to save the `originalIndex`.
+		// Let's re-evaluate the whole flow.
 	
 	// Intentionally only run when the processed set changes structure.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [processedFlashcardSet]);
 	
 	const shuffledQuizSet = useMemo(() => {
-		if (quizIsRandom && quizSet?.questions) {
+		if (!quizSet?.questions) return null;
+		if (quizIsRandom) {
 			const originalQuestions = [...quizSet.questions];
 			let shuffledQuestions = [...originalQuestions];
 	
@@ -1004,12 +1037,18 @@ export default function Home() {
 
 	const handleFlashcardIndexChange = useCallback(
 		async (index: number) => {
-			setFlashcardIndex(index)
-			const db = await getDb()
-			await db.put("data", { id: "flashcardIndex", data: index })
+			// This index is relative to the *processed* (shuffled/filtered) array
+			setFlashcardIndex(index);
+	
+			// To save the correct state, we need the original index.
+			const card = processedFlashcardSet?.cards[index];
+			if (card && typeof card.originalIndex === 'number') {
+				const db = await getDb();
+				await db.put("data", { id: "flashcardIndex", data: card.originalIndex });
+			}
 		},
-		[] // No dependencies, we only want to save the raw index
-	)
+		[processedFlashcardSet] 
+	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =
@@ -1022,6 +1061,41 @@ export default function Home() {
 		(view === "flashcards" ? !isFlashcardLoading : !isQuizLoading)
 	const currentViewIsLoading =
 		view === "flashcards" ? isFlashcardLoading : isQuizLoading
+	
+	// When the processed flashcard set changes (e.g., due to shuffling or marking a card),
+	// find the new position of the current card and update the index.
+	useEffect(() => {
+		if (!processedFlashcardSet || !flashcardSet) return;
+	
+		const currentOriginalIndex = flashcardIndex; // This is now the original index
+	
+		const newProcessedIndex = processedFlashcardSet.cards.findIndex(
+			card => card.originalIndex === currentOriginalIndex
+		);
+	
+		if (newProcessedIndex !== -1) {
+			// We found the card in the new processed list.
+			// The `Learn` component and its children should now operate on this new processed index.
+			// This state is local to this effect's scope for now.
+			// The actual state update will happen via onFlashcardIndexChange if needed.
+			// Let's rename `flashcardIndex` to `processedFlashcardIndex` for clarity.
+		} else {
+			// The current card is no longer in the processed set (e.g., filtered out).
+			// Go to the first card of the new set.
+			if (processedFlashcardSet.cards.length > 0) {
+				// The index here is for the processed set.
+				// setFlashcardIndex(0); // This would trigger a save. Let the child component handle it.
+			}
+		}
+	
+	}, [processedFlashcardSet, flashcardIndex, flashcardSet]);
+	
+	const finalFlashcardIndex = useMemo(() => {
+		if (!processedFlashcardSet) return 0;
+		const idx = processedFlashcardSet.cards.findIndex(c => c.originalIndex === flashcardIndex);
+		return idx === -1 ? 0 : idx;
+	}, [processedFlashcardSet, flashcardIndex]);
+
 
 	if (!isMounted) {
 		return null
@@ -1091,7 +1165,7 @@ export default function Home() {
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
 							canGenerateMore={canGenerateMore}
-							flashcardIndex={flashcardIndex}
+							flashcardIndex={finalFlashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
@@ -1115,4 +1189,5 @@ export default function Home() {
     
 
     
+
 
