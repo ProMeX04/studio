@@ -15,7 +15,7 @@ import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Loader, Plus, ChevronLeft, ChevronRight } from "lucide-react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
 	getDb,
@@ -33,7 +33,6 @@ import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const BATCH_SIZE = 5;
 
@@ -90,13 +89,13 @@ function Learn({
 			if (flashcardIndex > 0) onFlashcardIndexChange(flashcardIndex - 1);
 		} else if (quizSet && quizState) {
 			if (quizState.currentQuestionIndex > 0) {
-				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex + 1 });
+				onQuizStateChange({ ...quizState, currentQuestionIndex: quizState.currentQuestionIndex - 1 });
 			}
 		}
 	};
 	
 	return (
-		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 relative flex flex-col">
+		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 flex flex-col">
 			<CardContent className="flex-grow flex flex-col p-0">
 				{view === "flashcards" && (
 					<Flashcards
@@ -119,7 +118,7 @@ function Learn({
 			</CardContent>
 
 			{/* Unified Toolbar */}
-			<CardFooter className="flex-col !pt-2 gap-2 items-center justify-center">
+			<div className="flex-col pt-2 gap-2 items-center justify-center">
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-sm">
 					<div className="flex items-center justify-between w-full gap-2">
 						<Tabs
@@ -174,7 +173,7 @@ function Learn({
 						</div>
 					</div>
 				</div>
-			</CardFooter>
+			</div>
 		</Card>
 	)
 }
