@@ -244,7 +244,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 								<div className="space-y-2">
 									<div
 										className={cn(
-											"rounded-lg p-3 max-w-[90%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
+											"rounded-lg p-3 max-w-[75%] prose dark:prose-invert prose-p:my-0 prose-headings:my-1",
 											message.role === "user"
 												? "bg-primary/80 text-primary-foreground float-right"
 												: "bg-muted text-muted-foreground"
@@ -261,9 +261,25 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                     p: ({ node, ...props }) => {
                                                         return <p {...props} className="break-words" />;
                                                     },
-                                                    pre: ({ node, ...props }) => (
-                                                        <pre {...props} className="w-full overflow-x-auto" />
-                                                    ),
+                                                    pre({ node, className, children, ...props }) {
+                                                      const match = /language-(\w+)/.exec(className || '');
+                                                      return match ? (
+                                                        <div className="w-full overflow-x-auto">
+                                                          <Syntax
+                                                            style={vscDarkPlus}
+                                                            language={match[1]}
+                                                            PreTag="pre"
+                                                            {...props}
+                                                          >
+                                                            {String(children).replace(/\n$/, '')}
+                                                          </Syntax>
+                                                        </div>
+                                                      ) : (
+                                                        <pre className={cn(className, "w-full overflow-x-auto")} {...props}>
+                                                          {children}
+                                                        </pre>
+                                                      );
+                                                    },
                                                     code({
                                                         node,
                                                         inline,
@@ -271,59 +287,12 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                         children,
                                                         ...props
                                                     }) {
-                                                        const match =
-                                                            /language-(\w+)/.exec(
-                                                                className || ""
-                                                            )
-                                                        if (!inline && match) {
-                                                            const codeStyle = {
-                                                                ...vscDarkPlus,
-                                                                'pre[class*="language-"]':
-                                                                    {
-                                                                        ...vscDarkPlus[
-                                                                            'pre[class*="language-"]'
-                                                                        ],
-                                                                        background:
-                                                                            "transparent",
-                                                                        padding:
-                                                                            "0",
-                                                                        margin: "0",
-                                                                        fontSize:
-                                                                            "16px",
-                                                                    },
-                                                                'code[class*="language-"]':
-                                                                    {
-                                                                        ...vscDarkPlus[
-                                                                            'code[class*="language-"]'
-                                                                        ],
-                                                                        background:
-                                                                            "transparent",
-                                                                        padding:
-                                                                            "0",
-                                                                        fontSize:
-                                                                            "16px",
-                                                                    },
-                                                            }
-                                                            return (
-                                                                <Syntax
-                                                                    style={
-                                                                        codeStyle
-                                                                    }
-                                                                    language={
-                                                                        match[1]
-                                                                    }
-                                                                    PreTag="pre"
-                                                                    {...props}
-                                                                >
-                                                                    {String(
-                                                                        children
-                                                                    ).replace(
-                                                                        /\n$/,
-                                                                        ""
-                                                                    )}
-                                                                </Syntax>
-                                                            )
+                                                        if (!inline) {
+                                                            // For block code, it's handled by the 'pre' component above.
+                                                            // We render the children directly.
+                                                            return <>{children}</>
                                                         }
+                                                        // For inline code
                                                         return (
                                                             <code
                                                                 className={cn(
@@ -392,3 +361,5 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		</Card>
 	)
 }
+
+    
