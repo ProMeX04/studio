@@ -107,52 +107,28 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 
 	const processStream = useCallback(async (stream: ReadableStream<string>, assistantMessageId: string) => {
 		const reader = stream.getReader();
-		const decoder = new TextDecoder();
 		let accumulatedResponse = "";
-
+		let suggestions: string[] = [];
+		let responseJson = "";
+	
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-				
-				const chunk = decoder.decode(value, { stream: true });
-				accumulatedResponse += chunk;
-
-				try {
-					const parsedResponse = JSON.parse(accumulatedResponse + '"}'); // Attempt to close JSON
-					setMessages(prev => prev.map(msg => 
-						msg.id === assistantMessageId 
-						? { ...msg, text: parsedResponse.answer, suggestions: parsedResponse.suggestions } 
-						: msg
-					));
-				} catch (e) {
-					// Incomplete JSON, update text only
-					setMessages(prev => prev.map(msg => 
-						msg.id === assistantMessageId 
-						? { ...msg, text: accumulatedResponse } 
-						: msg
-					));
-				}
-			}
-
-			// Final parse
-			try {
-				const finalResponse = JSON.parse(accumulatedResponse);
-				setMessages(prev => prev.map(msg => 
-					msg.id === assistantMessageId 
-					? { ...msg, text: finalResponse.answer, suggestions: finalResponse.suggestions } 
-					: msg
-				));
-			} catch(e) {
-				console.error("Final parse of stream failed:", e);
-				// Keep the raw text if final parse fails
+	
+				accumulatedResponse += value;
+	
+				// Cập nhật giao diện với văn bản đang stream
 				setMessages(prev => prev.map(msg => 
 					msg.id === assistantMessageId 
 					? { ...msg, text: accumulatedResponse } 
 					: msg
 				));
 			}
-
+	
+			// Logic xử lý suggestions sau khi stream kết thúc nếu cần
+			// Hiện tại, luồng AI chỉ trả về văn bản
+	
 		} catch (error) {
 			console.error("Error processing stream:", error);
 			setMessages(prev => prev.map(msg => 
@@ -191,6 +167,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 		abortControllerRef.current = new AbortController();
 	
 		try {
+			// askQuestionStream giờ trả về ReadableStream<string>
 			const stream = await askQuestionStream({
 				context,
 				question: questionToSend,
@@ -289,7 +266,11 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                 ]}
                                                 rehypePlugins={[rehypeKatex]}
                                                 components={{
-                                                    p: 'div',
+                                                    p: ({ node, ...props }) => {
+                                                        // This prevents <p> tags from being rendered, which can cause hydration errors
+                                                        // when they contain block-level elements.
+                                                        return <div {...props} />;
+                                                    },
                                                     code({
                                                         node,
                                                         inline,
@@ -339,6 +320,7 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
                                                                         match[1]
                                                                     }
                                                                     PreTag="div"
+                                                                    wrapLongLines={true}
                                                                     {...props}
                                                                 >
                                                                     {String(
