@@ -79,6 +79,15 @@ body {
 	}
 	.inline-code {
 		@apply bg-muted text-secondary-foreground/80 px-1 py-0.5 rounded-sm font-mono text-sm;
+		white-space: nowrap !important;
+		word-break: keep-all !important;
+		display: inline !important;
+	}
+	.inline-code-custom {
+		white-space: nowrap !important;
+		word-break: keep-all !important;
+		display: inline !important;
+		overflow-wrap: normal !important;
 	}
 	.prose pre {
 		text-align: left;
@@ -86,5 +95,22 @@ body {
 	.prose pre code {
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+	
+	/* Force inline code to stay inline */
+	code:not(pre code) {
+		white-space: nowrap !important;
+		word-break: keep-all !important;
+		display: inline !important;
+		overflow-wrap: normal !important;
+		word-wrap: normal !important;
+	}
+	
+	/* Specific overrides for markdown content */
+	.markdown-paragraph code,
+	p code {
+		white-space: nowrap !important;
+		word-break: keep-all !important;
+		display: inline !important;
 	}
 }

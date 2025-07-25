@@ -88,8 +88,14 @@ export const closeBroadcastChannel = () => {
 };
 
 export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  await store.clear();
-  await tx.done;
+  try {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    await store.clear();
+    await tx.done;
+    console.log('✅ All data cleared successfully');
+  } catch (error) {
+    console.error('❌ Error clearing data:', error);
+    throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };

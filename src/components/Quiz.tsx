@@ -1,7 +1,7 @@
 
 "use client"
 
-import {
+import React, {
 	useState,
 	useMemo,
 	useEffect,
@@ -22,6 +22,7 @@ import {
 	Plus,
 } from "lucide-react"
 import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
+import { explainQuizOptionStream } from "@/ai/flows/explain-quiz-option-stream"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import type {
@@ -36,13 +37,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select"
+import { ChatInput } from "./ChatInput"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -54,8 +49,7 @@ interface QuizProps {
 	onGenerateMore: () => void
 	canGenerateMore: boolean
 	isLoading: boolean
-	onViewChange: (view: "flashcards" | "quiz") => void
-	currentView: "flashcards" | "quiz"
+	language: string
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -81,45 +75,59 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: (props: any) => {
-					const hasDiv = Array.isArray(props.children) && props.children.some(
-						(child: any) =>
-							child &&
-							typeof child === "object" &&
-							"type" in child &&
-							child.type === "div"
-					);
+				p: ({ children, ...props }) => {
+					// Check if content contains code blocks by looking for triple backticks
+					const content = String(children)
+					const hasCodeBlock = content.includes('```') || 
+						(typeof children === 'object' && children !== null)
 
-					if (hasDiv) {
-						return <div>{props.children}</div>
+					// If contains code block, render as div to avoid div-in-p
+					if (hasCodeBlock) {
+						return <div className="markdown-paragraph" {...props}>{children}</div>
 					}
-					return <p>{props.children}</p>
+					
+					return <p {...props}>{children}</p>
 				},
-				code({ node, inline, className, children, ...props }) {
+				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					if (inline) {
+					
+					// More robust inline detection
+					const isInline = inline || !match || !className?.includes('language-')
+					
+					if (isInline) {
 						return (
 							<code
-								className={cn(className, "inline-code")}
+								className="inline-code-custom"
+								style={{
+									display: 'inline !important',
+									padding: '2px 6px',
+									backgroundColor: 'rgba(110, 118, 129, 0.4)',
+									borderRadius: '4px',
+									fontSize: '0.875em',
+									fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+									whiteSpace: 'nowrap !important',
+									wordBreak: 'keep-all !important',
+									lineHeight: '1.4',
+									verticalAlign: 'baseline',
+									color: 'inherit'
+								}}
 								{...props}
 							>
 								{children}
 							</code>
 						)
 					}
-					// Handle non-inline code
+					// Handle non-inline code - render directly without extra div wrapper
 					return (
-						<div>
-							<Syntax
-								style={codeStyle as any}
-								language={match ? match[1] : "text"}
-								PreTag="div"
-								wrapLongLines={true}
-								{...props}
-							>
-								{String(children).replace(/\n$/, "")}
-							</Syntax>
-						</div>
+						<Syntax
+							style={codeStyle as any}
+							language={match ? match[1] : "text"}
+							PreTag="div"
+							wrapLongLines={true}
+							{...props}
+						>
+							{String(children).replace(/\n$/, "")}
+						</Syntax>
 					)
 				},
 			}}
@@ -136,8 +144,7 @@ export function Quiz({
 	onGenerateMore,
 	canGenerateMore,
 	isLoading,
-	onViewChange,
-	currentView,
+	language,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -146,6 +153,7 @@ export function Quiz({
 		initialState?.answers || {}
 	)
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
+	const [visibleExplanations, setVisibleExplanations] = useState<Set<string>>(new Set()) // Track which explanations are visible
 	const { toast } = useToast()
 
 	const currentAnswerState = answers[currentQuestionIndex] || {
@@ -175,7 +183,12 @@ export function Quiz({
 	useEffect(() => {
 		if (quizSet) {
 			// Only call onStateChange if there is a quizSet to avoid writing null state
-			onStateChange({ currentQuestionIndex, answers })
+			// Use a timeout to debounce rapid state changes
+			const timeoutId = setTimeout(() => {
+				onStateChange({ currentQuestionIndex, answers })
+			}, 100)
+			
+			return () => clearTimeout(timeoutId)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentQuestionIndex, answers])
@@ -211,35 +224,89 @@ export function Quiz({
 		})
 	}
 
-	const handleExplain = useCallback(
+	const handleOptionExplanation = useCallback(
 		async (option: string) => {
 			if (!quizSet || !currentQuestion) return
 
-			// Do not fetch again if explanation already exists
-			if (currentAnswerState.explanations?.[option]) {
+			const explanationKey = `${currentQuestionIndex}-${option}`
+			
+			// If explanation is currently visible, hide it
+			if (visibleExplanations.has(explanationKey)) {
+				setVisibleExplanations(prev => {
+					const newSet = new Set(prev)
+					newSet.delete(explanationKey)
+					return newSet
+				})
 				return
 			}
 
+			// If explanation already exists, just show it
+			if (currentAnswerState.explanations?.[option]) {
+				setVisibleExplanations(prev => new Set(prev).add(explanationKey))
+				return
+			}
+
+			// Generate new explanation
 			setIsExplaining(option)
+			
+			// Initialize empty explanation for streaming
+			const initialExplanation = { explanation: "" }
+			const newExplanations = {
+				...(currentAnswerState.explanations || {}),
+				[option]: initialExplanation,
+			}
+			setAnswers((prev) => ({
+				...prev,
+				[currentQuestionIndex]: {
+					...prev[currentQuestionIndex],
+					explanations: newExplanations,
+				},
+			}))
+
+			// Show the explanation immediately
+			setVisibleExplanations(prev => new Set(prev).add(explanationKey))
+
 			try {
-				const result = await explainQuizOption({
+				const stream = await explainQuizOptionStream({
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
 					correctAnswer: currentQuestion.answer,
+					language: language,
 				})
 
-				const newExplanations = {
-					...(currentAnswerState.explanations || {}),
-					[option]: result,
+				const reader = stream.getReader()
+				let accumulatedText = ""
+
+				while (true) {
+					const { done, value } = await reader.read()
+					if (done) break
+
+					// Accumulate text to reduce update frequency
+					accumulatedText += value
+					
+					// Update state with throttling to prevent excessive re-renders
+					setAnswers((prev) => {
+						const currentExplanations = prev[currentQuestionIndex]?.explanations || {}
+						
+						return {
+							...prev,
+							[currentQuestionIndex]: {
+								...prev[currentQuestionIndex],
+								explanations: {
+									...currentExplanations,
+									[option]: {
+										explanation: accumulatedText
+									}
+								},
+							},
+						}
+					})
+					
+					// Add small delay to prevent overwhelming the UI
+					await new Promise(resolve => setTimeout(resolve, 50))
 				}
-				setAnswers((prev) => ({
-					...prev,
-					[currentQuestionIndex]: {
-						...prev[currentQuestionIndex],
-						explanations: newExplanations,
-					},
-				}))
+
 			} catch (error) {
 				console.error("Failed to get explanation", error)
 				toast({
@@ -247,6 +314,12 @@ export function Quiz({
 					description:
 						"Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
 					variant: "destructive",
+				})
+				// Hide explanation on error
+				setVisibleExplanations(prev => {
+					const newSet = new Set(prev)
+					newSet.delete(explanationKey)
+					return newSet
 				})
 			} finally {
 				setIsExplaining(null)
@@ -257,6 +330,7 @@ export function Quiz({
 			currentQuestion,
 			currentAnswerState,
 			currentQuestionIndex,
+			visibleExplanations,
 			toast,
 		]
 	)
@@ -278,7 +352,7 @@ export function Quiz({
 
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<CardContent className="flex-grow flex flex-col justify-center items-center pt-8">
+			<CardContent className="flex-grow flex flex-col justify-center items-center">
 				{hasContent && currentQuestion ? (
 					<div className="w-full max-w-5xl mx-auto space-y-6">
 						<div className="text-2xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
@@ -315,7 +389,7 @@ export function Quiz({
 											variant="ghost"
 											onClick={(e) => {
 												e.preventDefault()
-												handleExplain(option)
+												handleOptionExplanation(option)
 											}}
 											disabled={isExplaining !== null}
 											className={cn(
@@ -334,7 +408,7 @@ export function Quiz({
 
 									{currentAnswerState.explanations?.[
 										option
-									] && (
+									] && visibleExplanations.has(`${currentQuestionIndex}-${option}`) && (
 										<Alert
 											variant="default"
 											className="bg-secondary/20 backdrop-blur"
@@ -392,12 +466,7 @@ export function Quiz({
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="flex-col !pt-0 gap-2 items-center">
-				{(!hasContent && !isLoading) && (
-					<Button onClick={onGenerateMore} size="lg" className="mb-4">
-						<Plus className="mr-2" /> Tạo Bài trắc nghiệm
-					</Button>
-				)}
+			<CardFooter className="fixed bottom-2.5 left-1/2 transform -translate-x-1/2 z-50 flex-col !pt-0 gap-2 items-center w-full max-w-3xl" style={{left: 'calc(50% + 25%)'}}>
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 					<div className="flex items-center justify-center w-full gap-4">
 						<Button
@@ -408,22 +477,18 @@ export function Quiz({
 						>
 							<ChevronLeft />
 						</Button>
-						<Select
-							value={currentView}
-							onValueChange={(value) =>
-								onViewChange(value as "flashcards" | "quiz")
-							}
-						>
-							<SelectTrigger className="w-[180px]">
-								<SelectValue placeholder="Chọn chế độ" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="flashcards">
-									Flashcard
-								</SelectItem>
-								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
-							</SelectContent>
-						</Select>
+						
+						{hasContent && currentQuestion && (
+							<div className="flex-1 mx-2">
+								<ChatInput
+									context={`Câu hỏi Quiz: ${currentQuestion.question} - Đáp án đúng: ${currentQuestion.answer} - Giải thích: ${currentQuestion.explanation}`}
+									placeholder="Hỏi AI về câu hỏi này..."
+									title="Chat về Quiz"
+									className="w-full"
+								/>
+							</div>
+						)}
+
 						<Button
 							onClick={handleNextQuestion}
 							disabled={
@@ -436,27 +501,8 @@ export function Quiz({
 						>
 							<ChevronRight />
 						</Button>
-						{hasContent && (
-							<Button
-								onClick={onGenerateMore}
-								disabled={isLoading || !canGenerateMore}
-								variant="outline"
-								size="icon"
-								className="ml-2"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin" />
-								) : (
-									<Plus />
-								)}
-							</Button>
-						)}
 					</div>
 				</div>
-				<p className="text-center text-sm text-muted-foreground w-28">
-					Câu hỏi {hasContent ? currentQuestionIndex + 1 : 0} /{" "}
-					{quizSet?.questions.length ?? 0}
-				</p>
 			</CardFooter>
 		</Card>
 	)

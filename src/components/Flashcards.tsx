@@ -1,7 +1,7 @@
 
 "use client"
 
-import {
+import React, {
 	useState,
 	useEffect,
 	useCallback,
@@ -19,13 +19,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select"
+import { ChatInput } from "./ChatInput"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,8 +45,6 @@ interface FlashcardsProps {
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
-	onViewChange: (view: "flashcards" | "quiz") => void
-	currentView: "flashcards" | "quiz"
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -78,47 +70,59 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: (props: any) => {
-					// Check if the paragraph contains a div, which is what SyntaxHighlighter renders into.
-					// This is a common pattern to avoid p-in-p or div-in-p hydration errors with react-markdown.
-					const hasDiv = Array.isArray(props.children) && props.children.some(
-						(child: any) =>
-							child &&
-							typeof child === "object" &&
-							"type" in child &&
-							child.type === "div"
-					);
+				p: ({ children, ...props }) => {
+					// Check if content contains code blocks by looking for triple backticks
+					const content = String(children)
+					const hasCodeBlock = content.includes('```') || 
+						(typeof children === 'object' && children !== null)
 
-					if (hasDiv) {
-						return <div>{props.children}</div>
+					// If contains code block, render as div to avoid div-in-p
+					if (hasCodeBlock) {
+						return <div className="markdown-paragraph" {...props}>{children}</div>
 					}
-					return <p>{props.children}</p>
+					
+					return <p {...props}>{children}</p>
 				},
-				code({ node, inline, className, children, ...props }) {
+				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
-					if (inline) {
+					
+					// More robust inline detection
+					const isInline = inline || !match || !className?.includes('language-')
+					
+					if (isInline) {
 						return (
 							<code
-								className={cn(className, "inline-code")}
+								className="inline-code-custom"
+								style={{
+									display: 'inline !important',
+									padding: '2px 6px',
+									backgroundColor: 'rgba(110, 118, 129, 0.4)',
+									borderRadius: '4px',
+									fontSize: '0.875em',
+									fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+									whiteSpace: 'nowrap !important',
+									wordBreak: 'keep-all !important',
+									lineHeight: '1.4',
+									verticalAlign: 'baseline',
+									color: 'inherit'
+								}}
 								{...props}
 							>
 								{children}
 							</code>
 						)
 					}
-					// Handle non-inline code
+					// Handle non-inline code - render directly without extra div wrapper
 					return (
-						<div>
-							<Syntax
-								style={codeStyle as any}
-								language={match ? match[1] : "text"}
-								PreTag="div"
-								wrapLongLines={true}
-								{...props}
-							>
-								{String(children).replace(/\n$/, "")}
-							</Syntax>
-						</div>
+						<Syntax
+							style={codeStyle as any}
+							language={match ? match[1] : "text"}
+							PreTag="div"
+							wrapLongLines={true}
+							{...props}
+						>
+							{String(children).replace(/\n$/, "")}
+						</Syntax>
 					)
 				},
 			}}
@@ -172,8 +176,6 @@ export function Flashcards({
 	isLoading,
 	initialIndex,
 	onIndexChange,
-	onViewChange,
-	currentView,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -245,7 +247,7 @@ export function Flashcards({
 
 	return (
 		<Card className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<CardContent className="flex-grow pt-8 flex items-center justify-center">
+			<CardContent className="flex-grow flex items-center justify-center">
 				{hasContent && currentCard ? (
 					<FlashcardItem
 						key={`${flashcardSet?.id ?? ""}-${
@@ -265,12 +267,7 @@ export function Flashcards({
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="flex-col !pt-8 gap-2 items-center">
-				{(!hasContent && !isLoading) && (
-					<Button onClick={onGenerateMore} size="lg" className="mb-4">
-						<Plus className="mr-2" /> Tạo Flashcard
-					</Button>
-				)}
+			<CardFooter className="fixed bottom-2.5 left-1/2 transform -translate-x-1/2 z-50 flex-col !pt-8 gap-2 items-center w-full max-w-3xl" style={{left: 'calc(50% + 25%)'}}>
 				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md">
 					<div className="flex items-center justify-center w-full gap-4">
 						<Button
@@ -281,22 +278,17 @@ export function Flashcards({
 						>
 							<ChevronLeft />
 						</Button>
-						<Select
-							value={currentView}
-							onValueChange={(value) =>
-								onViewChange(value as "flashcards" | "quiz")
-							}
-						>
-							<SelectTrigger className="w-[180px]">
-								<SelectValue placeholder="Chọn chế độ" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="flashcards">
-									Flashcard
-								</SelectItem>
-								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
-							</SelectContent>
-						</Select>
+						
+						{hasContent && currentCard && (
+							<div className="flex-1 mx-2">
+								<ChatInput
+									context={`Flashcard hiện tại - Mặt trước: ${currentCard.front} - Mặt sau: ${currentCard.back}`}
+									placeholder="Hỏi AI về flashcard này..."
+									title="Chat về Flashcard"
+									className="w-full"
+								/>
+							</div>
+						)}
 
 						<Button
 							onClick={handleNextCard}
@@ -308,26 +300,8 @@ export function Flashcards({
 						>
 							<ChevronRight />
 						</Button>
-						{hasContent && (
-							<Button
-								onClick={onGenerateMore}
-								disabled={isLoading || !canGenerateMore}
-								variant="outline"
-								size="icon"
-								className="ml-2"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin" />
-								) : (
-									<Plus />
-								)}
-							</Button>
-						)}
 					</div>
 				</div>
-				<p className="text-center text-sm text-muted-foreground w-24">
-					Thẻ {hasContent ? currentCardIndex + 1 : 0} / {totalCards}
-				</p>
 			</CardFooter>
 		</Card>
 	)

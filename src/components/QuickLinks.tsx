@@ -208,24 +208,27 @@ export function QuickLinks() {
 	}
 
 	return (
-		<div className="flex justify-center items-center gap-2 md:gap-4 w-full">
+		<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 w-full max-w-4xl mx-auto">
 			{links.map((link) => (
 				<div
 					key={link.id}
-					className="group relative bg-background/70 backdrop-blur-sm p-3 rounded-lg"
+					className="group relative bg-background/70 backdrop-blur-sm rounded-lg h-24 flex flex-col"
 				>
 					<a
 						href={link.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex flex-col items-center gap-2 rounded-lg transition-colors w-24"
+						className="flex flex-col items-center justify-center gap-2 rounded-lg transition-colors h-full p-2 min-h-[96px]"
 					>
-						<div className="p-3 rounded-full bg-secondary">
-							{getIconForLink(link)}
+						<div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary">
+							<div className="w-6 h-6 flex items-center justify-center">
+								{getIconForLink(link)}
+							</div>
 						</div>
 						<span
-							className="text-sm font-medium truncate w-full text-center"
+							className="text-xs font-medium truncate w-full text-center leading-tight"
 							style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+							title={link.name}
 						>
 							{link.name}
 						</span>
@@ -235,9 +238,9 @@ export function QuickLinks() {
 							<Button
 								variant="ghost"
 								size="icon"
-								className="absolute top-0 right-0 h-6 w-6 opacity-0 group-hover:opacity-100"
+								className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
 							>
-								<MoreHorizontal className="h-4 w-4" />
+								<MoreHorizontal className="h-3 w-3" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
@@ -257,13 +260,13 @@ export function QuickLinks() {
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogTrigger asChild>
 					<div
-						className="flex flex-col items-center gap-2 p-3 rounded-lg transition-colors w-24 cursor-pointer bg-background/70 backdrop-blur-sm"
+						className="flex flex-col items-center justify-center gap-2 rounded-lg transition-colors h-24 cursor-pointer bg-background/70 backdrop-blur-sm p-2 min-h-[96px]"
 						onClick={openAddDialog}
 					>
-						<div className="p-3 rounded-full bg-secondary">
-							<Plus className="h-6 w-6 text-muted-foreground" />
+						<div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary">
+							<Plus className="h-4 w-4 text-muted-foreground" />
 						</div>
-						<span className="text-sm font-medium">
+						<span className="text-xs font-medium text-center leading-tight">
 							Thêm liên kết
 						</span>
 					</div>

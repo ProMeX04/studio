@@ -63,6 +63,7 @@ export const ExplainQuizOptionInputSchema = z.object({
   question: z.string().describe('The quiz question.'),
   selectedOption: z.string().describe('The answer option the user wants an explanation for.'),
   correctAnswer: z.string().describe('The correct answer to the question.'),
+  language: z.string().describe('The language for the explanation.'),
 });
 export type ExplainQuizOptionInput = z.infer<typeof ExplainQuizOptionInputSchema>;
 

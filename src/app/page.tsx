@@ -32,6 +32,13 @@ import {
 import { ChatAssistant } from "@/components/ChatAssistant"
 import type { Flashcard } from "@/ai/schemas"
 import { Button } from "@/components/ui/button"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 
 const BATCH_SIZE = 5
 
@@ -49,6 +56,8 @@ interface LearnProps {
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
+	currentView: "flashcards" | "quiz"
+	language: string
 }
 
 function Learn({
@@ -65,6 +74,8 @@ function Learn({
 	flashcardIndex,
 	onFlashcardIndexChange,
 	onViewChange,
+	currentView,
+	language,
 }: LearnProps) {
 	const hasLearnContent =
 		(view === "flashcards" &&
@@ -74,7 +85,67 @@ function Learn({
 
 	return (
 		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
-			<CardContent className="pt-8 flex-grow flex flex-col">
+			{/* Top Toolbar with View Selector, Count and Add Button */}
+			<div className="flex items-center justify-between mb-2 bg-background/30 backdrop-blur-sm p-3 rounded-lg">
+				<div className="flex-1"></div>
+				<Select
+					value={currentView}
+					onValueChange={(value) =>
+						onViewChange(value as "flashcards" | "quiz")
+					}
+				>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Chọn chế độ" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="flashcards">
+							Flashcard
+						</SelectItem>
+						<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+					</SelectContent>
+				</Select>
+				<div className="flex-1 flex justify-end items-center gap-2">
+					{view === "flashcards" ? (
+						<>
+							<span className="text-sm text-muted-foreground">
+								Flashcard {flashcardSet ? (flashcardIndex ?? 0) + 1 : 0} / {flashcardSet?.cards.length ?? 0}
+							</span>
+							<Button
+								onClick={() => onGenerateNew()}
+								disabled={isLoading || !canGenerateMore}
+								variant="outline"
+								size="icon"
+							>
+								{isLoading ? (
+									<Loader className="animate-spin w-4 h-4" />
+								) : (
+									<Plus className="w-4 h-4" />
+								)}
+							</Button>
+						</>
+					) : (
+						<>
+							<span className="text-sm text-muted-foreground">
+								Câu hỏi {quizSet ? (quizState?.currentQuestionIndex ?? 0) + 1 : 0} / {quizSet?.questions.length ?? 0}
+							</span>
+							<Button
+								onClick={() => onGenerateNew()}
+								disabled={isLoading || !canGenerateMore}
+								variant="outline"
+								size="icon"
+							>
+								{isLoading ? (
+									<Loader className="animate-spin w-4 h-4" />
+								) : (
+									<Plus className="w-4 h-4" />
+								)}
+							</Button>
+						</>
+					)}
+				</div>
+			</div>
+			
+			<CardContent className="flex-grow flex flex-col" style={{ paddingTop: '2px' }}>
 				{view === "flashcards" && (
 					<Flashcards
 						flashcardSet={flashcardSet}
@@ -85,8 +156,6 @@ function Learn({
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
-						onViewChange={onViewChange}
-						currentView={view}
 					/>
 				)}
 				{view === "quiz" && (
@@ -97,8 +166,7 @@ function Learn({
 						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
-						onViewChange={onViewChange}
-						currentView={view}
+						language={language}
 					/>
 				)}
 			</CardContent>
@@ -759,6 +827,8 @@ export default function Home() {
 			{/* Right Column */}
 			{visibility.learn && (
 				<div className="relative flex flex-col justify-center gap-8 p-4 sm:p-8 md:p-12 max-h-screen">
+					{/* View Selector is now inside Learn component */}
+					
 					<div className="flex-grow overflow-y-auto flex flex-col">
 						<Learn
 							view={view}
@@ -774,10 +844,9 @@ export default function Home() {
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
+							currentView={view}
+							language={language}
 						/>
-					</div>
-					<div className="flex-shrink-0">
-						<ChatAssistant context={assistantContext} />
 					</div>
 				</div>
 			)}

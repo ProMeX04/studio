@@ -42,11 +42,32 @@ const askQuestionFlow = ai.defineFlow(
     outputSchema: AskQuestionOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
-    if (!output) {
-      throw new Error("AI did not return an answer.");
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        throw new Error("AI did not return an answer.");
+      }
+      
+      // Validate output structure
+      if (typeof output.answer !== 'string' || !output.answer.trim()) {
+        throw new Error("AI returned invalid answer format");
+      }
+      
+      // Validate suggestions if present
+      if (output.suggestions && (!Array.isArray(output.suggestions) || 
+          output.suggestions.some(s => typeof s !== 'string'))) {
+        throw new Error("AI returned invalid suggestions format");
+      }
+      
+      return output;
+    } catch (error: any) {
+      console.error('❌ Ask question flow error:', error.message);
+      
+      // Return a fallback response instead of throwing
+      return {
+        answer: "Xin lỗi, tôi không thể trả lời câu hỏi này lúc này. Vui lòng thử lại sau.",
+        suggestions: ["Bạn có thể đặt lại câu hỏi không?", "Cần tôi giải thích chủ đề khác không?"]
+      };
     }
-    
-    return output;
   }
 );
