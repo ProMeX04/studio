@@ -7,6 +7,7 @@ const STORE_NAME = 'data';
 
 export type DataKey =
   | 'flashcards'
+  | 'flashcardState'
   | 'quiz'
   | 'quizState'
   | 'topic'

@@ -18,6 +18,7 @@ import {
 	Plus,
 	Loader,
 	Droplets,
+	CheckCircle,
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -47,6 +48,7 @@ interface FlashcardsProps {
 	initialIndex: number
 	onIndexChange: (index: number) => void
 	topic: string;
+	understoodIndices: number[];
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -104,7 +106,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-function FlashcardItem({ card }: { card: Flashcard }) {
+function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: boolean }) {
 	const [isFlipped, setIsFlipped] = useState(false)
 
 	useEffect(() => {
@@ -127,12 +129,14 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 					<div className="text-2xl font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
 						<MarkdownRenderer>{card.front}</MarkdownRenderer>
 					</div>
+					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
 				</div>
 				{/* Back of the card */}
 				<div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm overflow-y-auto">
 					<div className="text-xl prose dark:prose-invert max-w-none prose-p:my-0">
 						<MarkdownRenderer>{card.back}</MarkdownRenderer>
 					</div>
+					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
 				</div>
 			</div>
 		</div>
@@ -145,6 +149,7 @@ export function Flashcards({
 	initialIndex,
 	onIndexChange,
 	topic,
+	understoodIndices,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -197,6 +202,7 @@ export function Flashcards({
 	const totalCards = displayedCards.length
 	const currentCard = displayedCards[currentCardIndex]
 	const hasContent = flashcardSet && flashcardSet.cards.length > 0
+	const isUnderstood = understoodIndices.includes(currentCardIndex);
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
@@ -207,6 +213,7 @@ export function Flashcards({
 							currentCard.front
 						}-${currentCardIndex}`}
 						card={currentCard}
+						isUnderstood={isUnderstood}
 					/>
 				) : (
 					<div className="text-center h-48 flex flex-col items-center justify-center">

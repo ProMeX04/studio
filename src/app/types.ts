@@ -19,3 +19,7 @@ export interface QuizState {
   currentQuestionIndex: number;
   answers: AnswerState;
 }
+
+export interface FlashcardState {
+  understoodIndices: number[];
+}
