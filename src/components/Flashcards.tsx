@@ -45,13 +45,13 @@ export interface FlashcardSet {
 interface FlashcardsProps {
 	flashcardSet: FlashcardSet | null
 	isRandom: boolean
-	onCurrentCardChange?: (card: Flashcard | null) => void
 	onGenerateMore: () => void
 	canGenerateMore: boolean
 	isLoading: boolean
 	initialIndex: number
 	onIndexChange: (index: number) => void
-	onActivateChat: (initialQuestion?: string) => void;
+	onActivateChat: (context: string, initialQuestion?: string) => void;
+	topic: string;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -147,13 +147,13 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 export function Flashcards({
 	flashcardSet,
 	isRandom,
-	onCurrentCardChange,
 	onGenerateMore,
 	canGenerateMore,
 	isLoading,
 	initialIndex,
 	onIndexChange,
-	onActivateChat
+	onActivateChat,
+	topic,
 }: FlashcardsProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(initialIndex)
 	const [displayedCards, setDisplayedCards] = useState<Flashcard[]>([])
@@ -203,13 +203,6 @@ export function Flashcards({
 		}
 	}, [displayedCards.length, currentCardIndex])
 
-	useEffect(() => {
-		if (onCurrentCardChange) {
-			const card = displayedCards[currentCardIndex] ?? null
-			onCurrentCardChange(card)
-		}
-	}, [currentCardIndex, displayedCards, onCurrentCardChange])
-
 	const totalCards = displayedCards.length
 	const currentCard = displayedCards[currentCardIndex]
 	const hasContent = flashcardSet && flashcardSet.cards.length > 0
@@ -227,7 +220,13 @@ export function Flashcards({
 	}
 
 	const handleActivateChat = (initialQuestion?: string) => {
-		onActivateChat(initialQuestion);
+		if (currentCard) {
+			const context = `Người dùng đang học về chủ đề: ${topic}. Họ đang xem flashcard: Mặt trước "${currentCard.front}", Mặt sau "${currentCard.back}".`
+			onActivateChat(context, initialQuestion);
+		} else {
+			const context = `Người dùng đang học về chủ đề: ${topic}, trong mục flashcards.`;
+			onActivateChat(context, initialQuestion);
+		}
 	};
 
 

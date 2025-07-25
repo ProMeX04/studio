@@ -48,13 +48,13 @@ interface LearnProps {
 	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
 	flashcardIsRandom: boolean
-	onCurrentCardChange: (flashcard: Flashcard | null) => void
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
 	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
-	onActivateChat: (initialQuestion?: string) => void
+	onActivateChat: (context: string, initialQuestion?: string) => void
+	topic: string
 }
 
 function Learn({
@@ -66,13 +66,13 @@ function Learn({
 	onGenerateNew,
 	onQuizStateChange,
 	flashcardIsRandom,
-	onCurrentCardChange,
 	canGenerateMore,
 	flashcardIndex,
 	onFlashcardIndexChange,
 	onViewChange,
 	language,
 	onActivateChat,
+	topic,
 }: LearnProps) {
 	return (
 		<Card className="w-full bg-transparent shadow-none border-none p-0 relative min-h-[300px] flex flex-col flex-grow">
@@ -148,13 +148,13 @@ function Learn({
 					<Flashcards
 						flashcardSet={flashcardSet}
 						isRandom={flashcardIsRandom}
-						onCurrentCardChange={onCurrentCardChange}
 						onGenerateMore={onGenerateNew}
 						canGenerateMore={canGenerateMore}
 						isLoading={isLoading}
 						initialIndex={flashcardIndex}
 						onIndexChange={onFlashcardIndexChange}
 						onActivateChat={onActivateChat}
+						topic={topic}
 					/>
 				)}
 				{view === "quiz" && (
@@ -167,6 +167,7 @@ function Learn({
 						isLoading={isLoading}
 						language={language}
 						onActivateChat={onActivateChat}
+						topic={topic}
 					/>
 				)}
 			</CardContent>
@@ -205,9 +206,7 @@ export default function Home() {
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
 	const [isMounted, setIsMounted] = useState(false)
-	const [currentFlashcard, setCurrentFlashcard] = useState<Flashcard | null>(
-		null
-	)
+	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [isChatActive, setIsChatActive] = useState(false)
 	const [chatContext, setChatContext] = useState("")
@@ -681,39 +680,12 @@ export default function Home() {
 		},
 		[] // No dependencies, we only want to save the raw index
 	)
-
-	const handleCurrentCardChange = useCallback((card: Flashcard | null) => {
-		setCurrentFlashcard(card)
-	}, [])
-
-	const handleActivateChat = useCallback((initialQuestion?: string) => {
-		let currentContext = `Người dùng đang học về chủ đề: ${topic}.`;
-		
-		if (view === "quiz" && quizSet && quizState) {
-			const currentQuestion: QuizQuestion | undefined =
-				quizSet.questions[quizState.currentQuestionIndex]
-			if (currentQuestion) {
-				currentContext += ` Họ đang ở câu hỏi trắc nghiệm: "${
-					currentQuestion.question
-				}" với các lựa chọn: ${currentQuestion.options.join(
-					", "
-				)}. Câu trả lời đúng là ${currentQuestion.answer}.`
-				
-				const userAnswer =
-					quizState.answers[quizState.currentQuestionIndex]
-						?.selected
-				if (userAnswer) {
-					currentContext += ` Người dùng đã chọn "${userAnswer}".`
-				}
-			}
-		} else if (view === "flashcards" && currentFlashcard) {
-			currentContext += ` Người dùng đang xem flashcard: Mặt trước "${currentFlashcard.front}", Mặt sau "${currentFlashcard.back}".`
-		}
-
-		setChatContext(currentContext);
+	
+	const handleActivateChat = useCallback((context: string, initialQuestion?: string) => {
+		setChatContext(context);
 		setInitialChatQuestion(initialQuestion || "");
 		setIsChatActive(true);
-	}, [topic, view, quizSet, quizState, currentFlashcard]);
+	}, []);
 
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
@@ -803,13 +775,13 @@ export default function Home() {
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
 							flashcardIsRandom={flashcardIsRandom}
-							onCurrentCardChange={handleCurrentCardChange}
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}
 							language={language}
 							onActivateChat={handleActivateChat}
+							topic={topic}
 						/>
 					</div>
 				</div>

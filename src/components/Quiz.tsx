@@ -49,7 +49,8 @@ interface QuizProps {
 	canGenerateMore: boolean
 	isLoading: boolean
 	language: string
-	onActivateChat: (initialQuestion?: string) => void;
+	onActivateChat: (context: string, initialQuestion?: string) => void;
+	topic: string;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -116,6 +117,7 @@ export function Quiz({
 	isLoading,
 	language,
 	onActivateChat,
+	topic,
 }: QuizProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
 		initialState?.currentQuestionIndex || 0
@@ -281,7 +283,22 @@ export function Quiz({
 	}
 	
 	const handleActivateChat = (initialQuestion?: string) => {
-		onActivateChat(initialQuestion);
+		if (currentQuestion) {
+			let context = `Người dùng đang học về chủ đề: ${topic}. Họ đang ở câu hỏi trắc nghiệm: "${
+				currentQuestion.question
+			}" với các lựa chọn: ${currentQuestion.options.join(
+				", "
+			)}. Câu trả lời đúng là ${currentQuestion.answer}.`
+			
+			const userAnswer = answers[currentQuestionIndex]?.selected
+			if (userAnswer) {
+				context += ` Người dùng đã chọn "${userAnswer}".`
+			}
+			onActivateChat(context, initialQuestion);
+		} else {
+			const context = `Người dùng đang học về chủ đề: ${topic}, trong mục trắc nghiệm.`;
+			onActivateChat(context, initialQuestion);
+		}
 	};
 
 
