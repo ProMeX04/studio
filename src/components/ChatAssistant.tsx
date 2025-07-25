@@ -158,9 +158,9 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 	
 		try {
 			const stream = await askQuestionStream({
-				context,
-				question,
-				history,
+				context: context,
+				question: question,
+				history: history,
 			});
 	
 			await processStream(stream, assistantMessageId);
@@ -221,7 +221,8 @@ export function ChatAssistant({ context, initialQuestion, onClose }: ChatAssista
 	useEffect(() => {
 		if (initialQuestion && messages.length === 2 && messages[0].role === 'user' && messages[1].role === 'model') {
 			const assistantMessageId = messages[1].id!;
-			streamResponse(initialQuestion, [], assistantMessageId);
+			const history = [messages[0]]; // History includes the initial user message
+			streamResponse(initialQuestion, history, assistantMessageId);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []); // Only run once when the component mounts.

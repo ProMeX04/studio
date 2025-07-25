@@ -33,7 +33,7 @@ Here is the context of what the user is seeing:
 
 Here is the conversation history so far:
 {{#each history}}
-- {{this.role}}: {{this.text}}
+- {{this.role}}: {{{this.text}}}
 {{/each}}
 
 Here is the user's new question:
