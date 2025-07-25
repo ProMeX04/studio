@@ -11,6 +11,7 @@ import {
 	AlertTriangle,
 	Brush,
 	BookOpen,
+	KeyRound
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -60,9 +61,11 @@ interface GlobalSettingsProps {
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
+	onApiKeyChange: (apiKey: string) => void;
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
-	currentBackgroundImage: string | null
+	currentBackgroundImage: string | null;
+	apiKey: string;
 }
 
 interface LearnSettingsProps {
@@ -106,18 +109,25 @@ export function Settings(props: SettingsProps) {
 	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
+	
+	// Local state for global settings
+	const [apiKey, setApiKey] = useState(!isLearnScope ? (props as GlobalSettingsProps).apiKey : "")
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
+		if (!isOpen) return;
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
 			setTopic(learnProps.topic)
 			setLanguage(learnProps.language)
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
+		} else {
+			const globalProps = props as GlobalSettingsProps;
+			setApiKey(globalProps.apiKey);
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -132,6 +142,13 @@ export function Settings(props: SettingsProps) {
 			})
 		}
 	}
+
+	const handleApiKeySave = () => {
+		if (!isLearnScope) {
+			const globalProps = props as GlobalSettingsProps;
+			globalProps.onApiKeyChange(apiKey);
+		}
+	};
 
 	const handleGenerateNew = () => {
 		if (isLearnScope) {
@@ -316,6 +333,28 @@ export function Settings(props: SettingsProps) {
 		const globalProps = props as GlobalSettingsProps;
 		return (
 			<>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="apiKey" className="font-medium text-foreground flex items-center gap-2">
+							<KeyRound className="w-4 h-4" />
+							<span>Gemini API Key</span>
+						</Label>
+						<div className="flex items-center gap-2">
+							<Input
+								id="apiKey"
+								type="password"
+								value={apiKey}
+								onChange={(e) => setApiKey(e.target.value)}
+								placeholder="Nhập khóa API của bạn ở đây"
+							/>
+							<Button onClick={handleApiKeySave}>Lưu</Button>
+						</div>
+						<p className="text-xs text-muted-foreground pl-1">
+							Khóa API của bạn được lưu trữ an toàn trong trình duyệt và không bao giờ được chia sẻ.
+						</p>
+					</div>
+				</div>
+				<Separator />
 				<div className="space-y-4">
 					<Label className="font-medium text-foreground">
 						Hình nền

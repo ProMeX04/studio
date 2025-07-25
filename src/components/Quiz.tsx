@@ -37,6 +37,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { QuizSummary } from "./QuizSummary"
+import { AIOperationError } from "@/lib/ai-utils"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -49,6 +50,7 @@ interface QuizProps {
 	topic: string;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
+	apiKey: string;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -113,7 +115,8 @@ export function Quiz({
 	language,
 	topic,
 	currentQuestionIndex,
-	onCurrentQuestionIndexChange
+	onCurrentQuestionIndexChange,
+	apiKey,
 }: QuizProps) {
 	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
@@ -188,7 +191,12 @@ export function Quiz({
 			setIsExplaining(option);
 	
 			try {
+				if (!apiKey) {
+					throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
+				}
+
 				const result = await explainQuizOption({
+					apiKey,
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
@@ -215,13 +223,21 @@ export function Quiz({
 				} else {
 					throw new Error("Empty explanation received");
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.error("Failed to get explanation", error);
-				toast({
-					title: "Lỗi",
-					description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
-					variant: "destructive",
-				});
+				if (error instanceof AIOperationError && error.code === 'API_KEY_REQUIRED') {
+					toast({
+						title: "Thiếu API Key",
+						description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+						variant: "destructive",
+					});
+				} else {
+					toast({
+						title: "Lỗi",
+						description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
+						variant: "destructive",
+					});
+				}
 			} finally {
 				setIsExplaining(null);
 			}
@@ -235,7 +251,8 @@ export function Quiz({
 			visibleExplanations,
 			language,
 			toast,
-			onQuizStateChange
+			onQuizStateChange,
+			apiKey
 		]
 	);
 
@@ -374,5 +391,3 @@ export function Quiz({
 		</div>
 	)
 }
-
-    

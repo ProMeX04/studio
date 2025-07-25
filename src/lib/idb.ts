@@ -18,7 +18,8 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'flashcardIndex';
+  | 'flashcardIndex'
+  | 'apiKey';
 
 export type LabeledData<T> = {
   id: string;
@@ -90,9 +91,13 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
   try {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
+    const apiKey = await store.get('apiKey'); // Preserve API key
     await store.clear();
+    if (apiKey) {
+      await store.put(apiKey); // Put it back after clearing
+    }
     await tx.done;
-    console.log('✅ All data cleared successfully');
+    console.log('✅ All data cleared successfully (API key preserved)');
   } catch (error) {
     console.error('❌ Error clearing data:', error);
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);

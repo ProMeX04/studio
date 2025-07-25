@@ -63,6 +63,7 @@ interface LearnProps {
 	settingsProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
+	apiKey: string;
 }
 
 function Learn({
@@ -89,7 +90,8 @@ function Learn({
 	onFlashcardReset,
 	settingsProps,
 	currentQuestionIndex,
-	onCurrentQuestionIndexChange
+	onCurrentQuestionIndexChange,
+	apiKey,
 }: LearnProps) {
 	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
 	const currentIndex = view === "flashcards" ? flashcardIndex : currentQuestionIndex;
@@ -218,6 +220,7 @@ function Learn({
 						topic={topic}
 						currentQuestionIndex={currentQuestionIndex}
 						onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
+						apiKey={apiKey}
 					/>
 				)}
 			</CardContent>
@@ -353,6 +356,7 @@ export default function Home() {
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
 	const [isMounted, setIsMounted] = useState(false)
+	const [apiKey, setApiKey] = useState("");
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
@@ -393,6 +397,15 @@ export default function Home() {
 			forceNew: boolean = false,
 			genType: "flashcards" | "quiz"
 		) => {
+			if (!apiKey) {
+				toast({
+					title: "Thiếu API Key",
+					description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+					variant: "destructive",
+				});
+				return;
+			}
+
 			if (!currentTopic.trim()) {
 				toast({
 					title: "Chủ đề trống",
@@ -462,6 +475,7 @@ export default function Home() {
 						const count = Math.min(BATCH_SIZE, flashcardsNeeded)
 						const newCards = await safeAICall(() =>
 							generateFlashcards({
+								apiKey,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
@@ -525,6 +539,7 @@ export default function Home() {
 						const count = Math.min(BATCH_SIZE, quizNeeded)
 						const newQuestions = await safeAICall(() =>
 							generateQuiz({
+								apiKey,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
@@ -555,11 +570,25 @@ export default function Home() {
 
 			} catch (error: any) {
 				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
-				if (error instanceof AIOperationError && error.code === "ABORTED") {
-					toast({
-						title: "Đã hủy",
-						description: `Quá trình tạo ${genType} đã được hủy.`,
-					});
+				if (error instanceof AIOperationError) {
+					if (error.code === "ABORTED") {
+						toast({
+							title: "Đã hủy",
+							description: `Quá trình tạo ${genType} đã được hủy.`,
+						});
+					} else if (error.code === 'API_KEY_REQUIRED') {
+						toast({
+							title: "Thiếu API Key",
+							description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+							variant: "destructive",
+						});
+					} else {
+						toast({
+							title: "Lỗi tạo nội dung",
+							description: `Không thể tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
+							variant: "destructive",
+						})
+					}
 				} else {
 					toast({
 						title: "Lỗi tạo nội dung",
@@ -574,13 +603,14 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax]
+		[toast, flashcardMax, quizMax, apiKey]
 	)
 	
 	const loadInitialData = useCallback(async () => {
-		const db = await getDb()
-
+		const db = await getDb();
+	
 		const [
+			savedApiKeyRes,
 			savedViewRes,
 			savedTopicRes,
 			savedLanguageRes,
@@ -594,6 +624,7 @@ export default function Home() {
 			quizDataRes,
 			quizStateRes,
 		] = await Promise.all([
+			db.get("data", "apiKey"),
 			db.get("data", "view"),
 			db.get("data", "topic"),
 			db.get("data", "language"),
@@ -608,21 +639,21 @@ export default function Home() {
 			db.get("data", "quizState"),
 		]);
 	
+		const savedApiKey = (savedApiKeyRes?.data as string) || "";
 		const savedView = (savedViewRes?.data as "flashcards" | "quiz") || "flashcards";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
 		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
 		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
-		
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
-		
 		const flashcardData = flashcardDataRes as LabeledData<FlashcardSet>;
 		const flashcardStateData = flashcardStateRes as AppData;
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
-
+	
+		if (savedApiKey) setApiKey(savedApiKey);
 		if (savedBg) setBackgroundImage(savedBg);
 		setUploadedBackgrounds(savedUploadedBgs);
 	
@@ -631,7 +662,7 @@ export default function Home() {
 		setLanguage(savedLanguage);
 		setFlashcardMax(savedFlashcardMax);
 		setQuizMax(savedQuizMax);
-		
+	
 		setVisibility(
 			savedVisibility ?? {
 				clock: true,
@@ -684,8 +715,8 @@ export default function Home() {
 		}
 		setQuizState(currentQuizState);
 		setCurrentQuestionIndex(currentQuizState.currentQuestionIndex);
-	
 	}, []);
+	
 
 	const handleClearAllData = useCallback(async () => {
 		const db = await getDb()
@@ -771,6 +802,19 @@ export default function Home() {
 		},
 		[backgroundImage]
 	)
+
+	const handleApiKeyChange = useCallback(
+		async (newApiKey: string) => {
+			setApiKey(newApiKey);
+			const db = await getDb();
+			await db.put("data", { id: "apiKey", data: newApiKey });
+			toast({
+				title: "Đã lưu API Key",
+				description: "Khóa API của bạn đã được lưu vào bộ nhớ cục bộ.",
+			});
+		},
+		[toast]
+	);
 
 	const handleUploadedBackgroundsChange = useCallback(
 		async (newUploadedBgs: string[]) => {
@@ -922,9 +966,11 @@ export default function Home() {
 		onVisibilityChange: handleVisibilityChange,
 		onBackgroundChange: handleBackgroundChange,
 		onUploadedBackgroundsChange: handleUploadedBackgroundsChange,
+		onApiKeyChange: handleApiKeyChange,
 		visibility: visibility,
 		uploadedBackgrounds: uploadedBackgrounds,
 		currentBackgroundImage: backgroundImage,
+		apiKey: apiKey,
 	}
 
 	return (
@@ -982,6 +1028,7 @@ export default function Home() {
 							settingsProps={learnSettingsProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
+							apiKey={apiKey}
 						/>
 					</div>
 				</div>

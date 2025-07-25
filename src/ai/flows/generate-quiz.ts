@@ -7,18 +7,37 @@
  * - generateQuiz - A function that generates a quiz for a given topic.
  */
 
-import { ai } from '@/ai/genkit';
+import { configureGenkit } from '@/ai/genkit';
 import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizInput, GenerateQuizOutput } from '@/ai/schemas';
+import { AIOperationError } from '@/lib/ai-utils';
+import { z } from 'genkit';
 
-export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
+const GenerateQuizServerInputSchema = GenerateQuizInputSchema.extend({
+    apiKey: z.string().optional(),
+});
+type GenerateQuizServerInput = z.infer<typeof GenerateQuizServerInputSchema>;
+
+export async function generateQuiz(input: GenerateQuizServerInput): Promise<GenerateQuizOutput> {
   return generateQuizFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateQuizPrompt',
-  input: { schema: GenerateQuizInputSchema },
-  output: { schema: GenerateQuizOutputSchema },
-  prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+const generateQuizFlow = z.defineFlow(
+  {
+    name: 'generateQuizFlow',
+    inputSchema: GenerateQuizServerInputSchema,
+    outputSchema: GenerateQuizOutputSchema,
+  },
+  async (input) => {
+    if (!input.apiKey) {
+      throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
+    }
+    const ai = configureGenkit(input.apiKey);
+
+    const prompt = ai.definePrompt({
+      name: 'generateQuizPrompt',
+      input: { schema: GenerateQuizInputSchema },
+      output: { schema: GenerateQuizOutputSchema },
+      prompt: `You are a quiz generator. Generate a {{{count}}}-question multiple-choice quiz for the topic: {{{topic}}} in the language: {{{language}}}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
@@ -41,15 +60,8 @@ The content for "question", "options", and "explanation" fields MUST be valid st
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 Ensure explanations are well-structured with clear paragraphs.
 `,
-});
-
-const generateQuizFlow = ai.defineFlow(
-  {
-    name: 'generateQuizFlow',
-    inputSchema: GenerateQuizInputSchema,
-    outputSchema: GenerateQuizOutputSchema,
-  },
-  async (input) => {
+    });
+    
     let attempts = 0;
     const maxAttempts = 3;
 
@@ -58,7 +70,6 @@ const generateQuizFlow = ai.defineFlow(
       try {
         const { output } = await prompt(input);
 
-        // Validate response
         if (!output) {
           throw new Error('AI_EMPTY_RESPONSE');
         }
@@ -68,7 +79,6 @@ const generateQuizFlow = ai.defineFlow(
         }
 
         let allValid = true;
-        // Validate each question
         for (const question of output) {
           if (!question.question || !question.options || !question.answer || !question.explanation) {
             allValid = false;
@@ -82,8 +92,6 @@ const generateQuizFlow = ai.defineFlow(
 
           if (!question.options.includes(question.answer)) {
             allValid = false;
-            // This is a critical data integrity error from the model.
-            // We will retry the whole generation.
             console.warn(`Attempt ${attempts}: AI generated an answer that is not in the options list. Retrying...`);
             throw new Error('AI_ANSWER_NOT_IN_OPTIONS');
           }
@@ -97,19 +105,16 @@ const generateQuizFlow = ai.defineFlow(
       } catch (error: any) {
         console.error(`❌ Quiz generation attempt ${attempts} failed:`, error.message);
         
-        // If it's the last attempt or a non-retryable error, rethrow
         if (attempts >= maxAttempts || error.message !== 'AI_ANSWER_NOT_IN_OPTIONS') {
           if (error.message.startsWith('AI_')) {
             throw error;
           }
           throw new Error('AI_GENERATION_FAILED');
         }
-        // Wait a bit before retrying
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
-    // If all attempts fail, throw a final error
     throw new Error('AI_GENERATION_FAILED_ALL_ATTEMPTS');
   }
 );

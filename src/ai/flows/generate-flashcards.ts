@@ -7,18 +7,38 @@
  * - generateFlashcards - A function that generates flashcards for a given topic.
  */
 
-import { ai } from '@/ai/genkit';
+import { configureGenkit } from '@/ai/genkit';
 import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsInput, GenerateFlashcardsOutput } from '@/ai/schemas';
+import { AIOperationError } from '@/lib/ai-utils';
+import { z } from 'genkit';
 
-export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
+const GenerateFlashcardsServerInputSchema = GenerateFlashcardsInputSchema.extend({
+    apiKey: z.string().optional(),
+});
+type GenerateFlashcardsServerInput = z.infer<typeof GenerateFlashcardsServerInputSchema>;
+
+
+export async function generateFlashcards(input: GenerateFlashcardsServerInput): Promise<GenerateFlashcardsOutput> {
   return generateFlashcardsFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateFlashcardsPrompt',
-  input: { schema: GenerateFlashcardsInputSchema },
-  output: { schema: GenerateFlashcardsOutputSchema },
-  prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a "front" and a "back".
+const generateFlashcardsFlow = z.defineFlow(
+  {
+    name: 'generateFlashcardsFlow',
+    inputSchema: GenerateFlashcardsServerInputSchema,
+    outputSchema: GenerateFlashcardsOutputSchema,
+  },
+  async (input) => {
+    if (!input.apiKey) {
+      throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
+    }
+    const ai = configureGenkit(input.apiKey);
+
+    const prompt = ai.definePrompt({
+      name: 'generateFlashcardsPrompt',
+      input: { schema: GenerateFlashcardsInputSchema },
+      output: { schema: GenerateFlashcardsOutputSchema },
+      prompt: `You are a flashcard generator. Generate a set of {{{count}}} new, unique flashcards for the topic: {{{topic}}} in the language: {{{language}}}. Each flashcard should have a "front" and a "back".
 
 {{#if existingCards}}
 You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
@@ -36,19 +56,11 @@ IMPORTANT: Your response MUST be a valid JSON array of objects, where each objec
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 - For example: [{"front": "What does \`console.log()\` do?", "back": "It prints a message to the web console."}, {"front": "What is the Pythagorean theorem?", "back": "It is defined as: $$a^2 + b^2 = c^2$$"}]
 `,
-});
+    });
 
-const generateFlashcardsFlow = ai.defineFlow(
-  {
-    name: 'generateFlashcardsFlow',
-    inputSchema: GenerateFlashcardsInputSchema,
-    outputSchema: GenerateFlashcardsOutputSchema,
-  },
-  async input => {
     try {
       const { output } = await prompt(input);
 
-      // Validate response
       if (!output) {
         throw new Error('AI_EMPTY_RESPONSE');
       }
@@ -57,7 +69,6 @@ const generateFlashcardsFlow = ai.defineFlow(
         throw new Error('AI_INVALID_FORMAT');
       }
 
-      // Validate each flashcard
       for (const card of output) {
         if (!card.front || !card.back || typeof card.front !== 'string' || typeof card.back !== 'string') {
           throw new Error('AI_INVALID_FLASHCARD');
@@ -70,7 +81,6 @@ const generateFlashcardsFlow = ai.defineFlow(
     } catch (error: any) {
       console.error('❌ Flashcard generation error:', error.message);
 
-      // Rethrow with a clear message
       if (error.message.startsWith('AI_')) {
         throw error;
       }
