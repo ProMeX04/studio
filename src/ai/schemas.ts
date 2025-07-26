@@ -8,22 +8,22 @@ import { Schema, Part, FunctionDeclaration, GenerationConfig } from '@google/gen
 
 // --- Manually Defined JSON Schemas for Google AI ---
 
-export const GenerateFlashcardsJsonSchema: Schema = {
+export const GenerateCardsJsonSchema: Schema = {
   type: "OBJECT",
   properties: {
     cards: {
       type: "ARRAY",
-      description: "An array of generated flashcards.",
+      description: "An array of generated cards or items.",
       items: {
         type: "OBJECT",
         properties: {
           front: {
             type: "STRING",
-            description: "The front side of the flashcard (a question or term)."
+            description: "The front side of the card (a question, term, or title)."
           },
           back: {
             type: "STRING",
-            description: "The back side of the flashcard (the answer or definition)."
+            description: "The back side of the card (the answer, definition, or content)."
           }
         },
         required: ["front", "back"]
@@ -85,33 +85,33 @@ export const ExplainQuizOptionJsonSchema: Schema = {
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
-// Flashcards / Typing
-export const FlashcardSchema = z.object({
-    front: z.string().describe('The front side of the flashcard.'),
-    back: z.string().describe('The back side of the flashcard.'),
+// Generic Card / Typing
+export const CardSchema = z.object({
+    front: z.string().describe('The front side of the card (term/question/title).'),
+    back: z.string().describe('The back side of the card (definition/answer/content).'),
 });
-export type Flashcard = z.infer<typeof FlashcardSchema>;
+export type CardData = z.infer<typeof CardSchema>;
 
-export const GenerateFlashcardsInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate flashcards.'),
-  count: z.number().describe('The number of flashcards to generate.'),
-  language: z.string().describe('The language for the flashcards.'),
-  existingCards: z.array(FlashcardSchema).optional().describe('An array of existing flashcards to avoid duplication.'),
+export const GenerateCardsInputSchema = z.object({
+  topic: z.string().describe('The topic for which to generate content.'),
+  count: z.number().describe('The number of items to generate.'),
+  language: z.string().describe('The language for the content.'),
+  existingCards: z.array(CardSchema).optional().describe('An array of existing items to avoid duplication.'),
 });
-export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
+export type GenerateCardsInput = z.infer<typeof GenerateCardsInputSchema>;
 
-export const GenerateFlashcardsOutputSchema = z.array(FlashcardSchema);
-export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
+export const GenerateCardsOutputSchema = z.array(CardSchema);
+export type GenerateCardsOutput = z.infer<typeof GenerateCardsOutputSchema>;
 
-export const GenerateFlashcardsOutputContainerSchema = z.object({
-    cards: GenerateFlashcardsOutputSchema.describe("An array of generated flashcards."),
+export const GenerateCardsOutputContainerSchema = z.object({
+    cards: GenerateCardsOutputSchema.describe("An array of generated cards."),
 });
 
 
-export interface FlashcardSet {
+export interface CardSet {
   id: string;
   topic: string;
-  cards: Flashcard[];
+  cards: CardData[];
 }
 
 

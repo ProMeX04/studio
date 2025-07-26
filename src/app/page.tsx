@@ -7,13 +7,14 @@ import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
 import { Clock } from "@/components/Clock"
 import { Flashcards } from "@/components/Flashcards"
-import type { Flashcard, FlashcardSet } from "@/ai/schemas"
+import type { CardData, CardSet } from "@/ai/schemas"
 import { Quiz } from "@/components/Quiz"
 import type { QuizSet, QuizQuestion } from "@/ai/schemas"
 import { Typing } from "@/components/Typing"
 import type { QuizState, FlashcardState, TypingState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
+import { generateTypingContent } from "@/ai/flows/generate-typing-content"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, Type } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,9 +40,9 @@ const TYPING_BATCH_SIZE = 10;
 interface LearnProps {
 	view: "flashcards" | "quiz" | "typing"
 	isLoading: boolean
-	flashcardSet: FlashcardSet | null
+	flashcardSet: CardSet | null
 	quizSet: QuizSet | null
-	typingSet: FlashcardSet | null
+	typingSet: CardSet | null
 	quizState: QuizState | null
 	typingState: TypingState | null
 	onGenerateNew: () => void
@@ -376,9 +377,9 @@ export default function Home() {
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
 	const [isTypingLoading, setIsTypingLoading] = useState(false)
-	const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null)
+	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
-	const [typingSet, setTypingSet] = useState<FlashcardSet | null>(null)
+	const [typingSet, setTypingSet] = useState<CardSet | null>(null)
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
 	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(null)
 	const [typingState, setTypingState] = useState<TypingState | null>(null)
@@ -479,48 +480,39 @@ export default function Home() {
 			const db = await getDb()
 
 			try {
-				if (genType === "flashcards" || genType === "typing") {
-					const stateKey = genType === "flashcards" ? "flashcards" : "typing";
-					const setFn = genType === "flashcards" ? setFlashcardSet : setTypingSet;
-					const setIndexFn = genType === "flashcards" ? setFlashcardIndex : setTypingIndex;
-					const setStateFn = genType === "flashcards" ? setFlashcardState : setTypingState;
-					const maxCount = genType === "flashcards" ? flashcardMax : typingMax;
-					const stateResetValue = genType === "flashcards" ? { understoodIndices: [] } : { inputs: {} };
-					
+				if (genType === "flashcards") {
 					if (forceNew) {
-						setFn(null)
-						setIndexFn(0)
-						setStateFn(null)
-						if (genType === 'flashcards') setShowFlashcardSummary(false);
-						await db.delete("data", stateKey as DataKey)
-						await db.delete("data", `${stateKey}State` as DataKey)
+						setFlashcardSet(null)
+						setFlashcardIndex(0)
+						setFlashcardState(null)
+						setShowFlashcardSummary(false);
+						await db.delete("data", "flashcards")
+						await db.delete("data", "flashcardState")
 					}
 
 					const existingData = (await db.get(
 						"data",
-						stateKey
-					)) as LabeledData<FlashcardSet>
+						"flashcards"
+					)) as LabeledData<CardSet>
 					const currentSet =
 						!forceNew && existingData && existingData.topic === currentTopic
 							? existingData.data
-							: { id: `idb-${stateKey}`, topic: currentTopic, cards: [] }
+							: { id: `idb-flashcards`, topic: currentTopic, cards: [] }
 
 					if (isMountedRef.current && forceNew) {
-						setFn({ ...currentSet })
-						setStateFn(stateResetValue as any);
+						setFlashcardSet({ ...currentSet })
+						setFlashcardState({ understoodIndices: [] });
 					}
 
-					let itemsNeeded = maxCount - currentSet.cards.length
+					let itemsNeeded = flashcardMax - currentSet.cards.length
 					if (itemsNeeded <= 0) {
 						setIsLoading(false)
 						isGeneratingRef.current = false
 						return
 					}
 
-					const batchSize = genType === 'flashcards' ? FLASHCARD_BATCH_SIZE : TYPING_BATCH_SIZE;
-
 					while (itemsNeeded > 0) {
-						const count = Math.min(batchSize, itemsNeeded)
+						const count = Math.min(FLASHCARD_BATCH_SIZE, itemsNeeded)
 						
 						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
 							apiKeys,
@@ -540,9 +532,73 @@ export default function Home() {
 						) {
 							currentSet.cards.push(...newCards)
 							itemsNeeded -= newCards.length
-							setFn({ ...currentSet }) 
+							setFlashcardSet({ ...currentSet }) 
 							await db.put("data", {
-								id: stateKey,
+								id: "flashcards",
+								topic: currentTopic,
+								data: currentSet,
+							} as any)
+						} else {
+							itemsNeeded = 0;
+						}
+						if(itemsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+					}
+				}
+
+				if (genType === "typing") {
+					if (forceNew) {
+						setTypingSet(null)
+						setTypingIndex(0)
+						setTypingState(null)
+						await db.delete("data", "typing")
+						await db.delete("data", "typingState")
+					}
+
+					const existingData = (await db.get(
+						"data",
+						"typing"
+					)) as LabeledData<CardSet>
+					const currentSet =
+						!forceNew && existingData && existingData.topic === currentTopic
+							? existingData.data
+							: { id: `idb-typing`, topic: currentTopic, cards: [] }
+
+					if (isMountedRef.current && forceNew) {
+						setTypingSet({ ...currentSet })
+						setTypingState({ inputs: {} });
+					}
+
+					let itemsNeeded = typingMax - currentSet.cards.length
+					if (itemsNeeded <= 0) {
+						setIsLoading(false)
+						isGeneratingRef.current = false
+						return
+					}
+
+					while (itemsNeeded > 0) {
+						const count = Math.min(TYPING_BATCH_SIZE, itemsNeeded)
+						
+						const { result: newCards, newApiKeyIndex } = await generateTypingContent({
+							apiKeys,
+							apiKeyIndex,
+							topic: currentTopic,
+							count,
+							language: currentLanguage,
+							existingCards: currentSet.cards,
+						});
+
+						await handleApiKeyIndexChange(newApiKeyIndex);
+
+						if (
+							Array.isArray(newCards) &&
+							newCards.length > 0 &&
+							isMountedRef.current
+						) {
+							currentSet.cards.push(...newCards)
+							itemsNeeded -= newCards.length
+							setTypingSet({ ...currentSet }) 
+							await db.put("data", {
+								id: "typing",
 								topic: currentTopic,
 								data: currentSet,
 							} as any)
@@ -713,11 +769,11 @@ export default function Home() {
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
 		
-		const flashcardData = flashcardDataRes as LabeledData<FlashcardSet>;
+		const flashcardData = flashcardDataRes as LabeledData<CardSet>;
 		const flashcardStateData = flashcardStateRes as AppData;
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
-		const typingData = typingDataRes as LabeledData<FlashcardSet>;
+		const typingData = typingDataRes as LabeledData<CardSet>;
 		const typingStateData = typingStateRes as AppData;
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);

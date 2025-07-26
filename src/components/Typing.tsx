@@ -5,11 +5,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
-import type { FlashcardSet } from '@/ai/schemas';
+import type { CardSet } from '@/ai/schemas';
 import type { TypingState } from '@/app/types';
 
 interface TypingProps {
-    typingSet: FlashcardSet | null;
+    typingSet: CardSet | null;
     typingIndex: number;
     typingState: TypingState | null;
     onTypingStateChange: (newState: TypingState) => void;
@@ -95,7 +95,7 @@ export function Typing({
                     />
                     <CardHeader>
                         <CardTitle className="text-xl text-muted-foreground text-center">
-                            Gõ lại nội dung sau đây:
+                            {currentCard.front}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4 cursor-text" onClick={() => document.querySelector('textarea')?.focus()}>

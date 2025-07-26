@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Flashcard generation flow using Google Generative AI SDK.
+ * @fileOverview Typing content generation flow using Google Generative AI SDK.
  *
- * - generateFlashcards - A function that generates flashcards for a given topic.
+ * - generateTypingContent - A function that generates content suitable for typing practice.
  */
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
@@ -10,14 +10,14 @@ import { z } from 'zod';
 import { GenerateCardsInputSchema, GenerateCardsOutputContainerSchema, GenerateCardsOutput, GenerateCardsJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
-const GenerateFlashcardsClientInputSchema = GenerateCardsInputSchema.extend({
+const GenerateTypingClientInputSchema = GenerateCardsInputSchema.extend({
     apiKeys: z.array(z.string()),
     apiKeyIndex: z.number(),
 });
-type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInputSchema>;
+type GenerateTypingClientInput = z.infer<typeof GenerateTypingClientInputSchema>;
 
-export async function generateFlashcards(
-  input: GenerateFlashcardsClientInput
+export async function generateTypingContent(
+  input: GenerateTypingClientInput
 ): Promise<{ result: GenerateCardsOutput; newApiKeyIndex: number }> {
   const { apiKeys, apiKeyIndex, ...promptInput } = input;
   
@@ -36,14 +36,17 @@ export async function generateFlashcards(
 
       const existingCardsPrompt = promptInput.existingCards && promptInput.existingCards.length > 0 
         ? `
-      You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
+      You have already generated the following content. Do not repeat them or create items with very similar content.
 
-      Existing Flashcards:
-      ${promptInput.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back}"`).join('\n')}
+      Existing Content:
+      ${promptInput.existingCards.map(card => `- Title: "${card.front}" / Content: "${card.back}"`).join('\n')}
       ` 
         : '';
 
-      const promptText = `You are a flashcard generator. Generate a set of ${promptInput.count} new, unique flashcards for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" (a question or term) and a "back" (the answer or definition).
+      const promptText = `You are a content generator for a typing practice app. Generate a set of ${promptInput.count} new, unique items for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "cards" array in the JSON object. 
+      Each item should be a short, interesting definition, a fact, or a small code snippet related to the topic.
+      - The "front" field should be a short title or hint for the content.
+      - The "back" field should be the actual text content for the user to type. This content should be between 100 and 400 characters.
       ${existingCardsPrompt}
       The "front" and "back" fields MUST contain valid standard Markdown.
       - Use standard backticks (\`) for inline code blocks.
@@ -83,7 +86,7 @@ export async function generateFlashcards(
       const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateCardsOutputContainerSchema.parse(parsedJson);
 
-      console.log(`✅ Generated ${validatedOutput.cards.length} valid flashcards`);
+      console.log(`✅ Generated ${validatedOutput.cards.length} valid typing content items`);
       return { result: validatedOutput.cards, newApiKeyIndex: currentKeyIndex };
 
     } catch (error: any) {
@@ -94,14 +97,14 @@ export async function generateFlashcards(
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
             console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
         } else {
-            console.error('❌ Flashcard generation error:', error);
+            console.error('❌ Typing content generation error:', error);
             if (error.message.includes('JSON')) {
                 throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
             if (error instanceof z.ZodError) {
               throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
-            throw new AIOperationError('Failed to generate flashcards from AI.', 'AI_GENERATION_FAILED');
+            throw new AIOperationError('Failed to generate typing content from AI.', 'AI_GENERATION_FAILED');
         }
     }
   }

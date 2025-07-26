@@ -26,24 +26,15 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import type { CardData, CardSet } from "@/ai/schemas"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
 
-interface Flashcard {
-	front: string
-	back: string;
-}
-
-export interface FlashcardSet {
-	id: string
-	topic: string
-	cards: Flashcard[]
-}
 
 interface FlashcardsProps {
-	flashcardSet: FlashcardSet | null
+	flashcardSet: CardSet | null
 	flashcardIndex: number
 	topic: string;
 	isCurrentUnderstood: boolean;
@@ -104,7 +95,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-function FlashcardItem({ card, isUnderstood }: { card: Flashcard; isUnderstood: boolean }) {
+function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: boolean }) {
 	const [isFlipped, setIsFlipped] = useState(false)
 
 	useEffect(() => {
