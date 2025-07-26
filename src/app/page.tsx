@@ -643,7 +643,10 @@ export default function Home() {
 				}
 
 				if (genType === "theory") {
-					if (forceNew) {
+					const theoryData = (await db.get("data", "theory")) as LabeledData<TheorySet>;
+					const shouldForceNew = forceNew || !theoryData || theoryData.topic !== currentTopic;
+			
+					if (shouldForceNew) {
 						setTheorySet(null);
 						setTheoryChapterIndex(0);
 						setTheoryState(null);
@@ -651,65 +654,69 @@ export default function Home() {
 						await db.delete("data", "theory");
 						await db.delete("data", "theoryState");
 						await db.delete("data", "theoryChapterIndex");
-					}
-			
-					// Step 1: Generate Outline
-					const { result: outlineResult, newApiKeyIndex: outlineKeyIndex } = await generateTheoryOutline({
-						apiKeys,
-						apiKeyIndex,
-						topic: currentTopic,
-						language: currentLanguage,
-					});
-					await handleApiKeyIndexChange(outlineKeyIndex);
-			
-					if (!outlineResult?.outline || outlineResult.outline.length === 0) {
-						throw new Error("Failed to generate a valid theory outline.");
-					}
-			
-					// Initialize TheorySet with outline
-					const newTheorySet: TheorySet = {
-						id: 'idb-theory',
-						topic: currentTopic,
-						outline: outlineResult.outline,
-						chapters: outlineResult.outline.map(title => ({ title, content: null })),
-					};
 					
-					if (isMountedRef.current) {
-						setTheorySet(newTheorySet);
-						setTheoryState({ understoodIndices: [] });
-						setTheoryChapterIndex(0);
-					}
-					await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
-			
-					// Step 2: Generate content for each chapter sequentially
-					let currentKeyIndex = outlineKeyIndex;
-					for (let i = 0; i < newTheorySet.outline.length; i++) {
-						if (!isMountedRef.current) break; // Exit if component is unmounted
-						const chapterTitle = newTheorySet.outline[i];
-						
-						const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
+						// Step 1: Generate Outline
+						const { result: outlineResult, newApiKeyIndex: outlineKeyIndex } = await generateTheoryOutline({
 							apiKeys,
-							apiKeyIndex: currentKeyIndex,
+							apiKeyIndex,
 							topic: currentTopic,
-							chapterTitle,
 							language: currentLanguage,
 						});
-						
-						currentKeyIndex = chapterKeyIndex;
-						await handleApiKeyIndexChange(chapterKeyIndex);
-			
-						if (chapterResult?.content && isMountedRef.current) {
-							// Update the specific chapter in the set
-							const updatedChapters = newTheorySet.chapters.map((chap, index) => 
-								index === i ? { ...chap, content: chapterResult.content } : chap
-							);
-							newTheorySet.chapters = updatedChapters;
-			
-							setTheorySet({ ...newTheorySet }); // Update UI
-							await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any); // Update DB
+						await handleApiKeyIndexChange(outlineKeyIndex);
+				
+						if (!outlineResult?.outline || outlineResult.outline.length === 0) {
+							throw new Error("Failed to generate a valid theory outline.");
 						}
-						// Optional delay between chapter generations to avoid hitting rate limits
-						await new Promise(resolve => setTimeout(resolve, 500)); 
+				
+						// Initialize TheorySet with outline
+						const newTheorySet: TheorySet = {
+							id: 'idb-theory',
+							topic: currentTopic,
+							outline: outlineResult.outline,
+							chapters: outlineResult.outline.map(title => ({ title, content: null })),
+						};
+						
+						if (isMountedRef.current) {
+							setTheorySet(newTheorySet);
+							setTheoryState({ understoodIndices: [] });
+							setTheoryChapterIndex(0);
+						}
+						await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
+				
+						// Step 2: Generate content for each chapter sequentially
+						let currentKeyIndex = outlineKeyIndex;
+						for (let i = 0; i < newTheorySet.outline.length; i++) {
+							if (!isMountedRef.current) break; // Exit if component is unmounted
+							const chapterTitle = newTheorySet.outline[i];
+							
+							const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
+								apiKeys,
+								apiKeyIndex: currentKeyIndex,
+								topic: currentTopic,
+								chapterTitle,
+								language: currentLanguage,
+							});
+							
+							currentKeyIndex = chapterKeyIndex;
+							await handleApiKeyIndexChange(chapterKeyIndex);
+				
+							if (chapterResult?.content && isMountedRef.current) {
+								// Update the specific chapter in the set
+								const updatedChapters = newTheorySet.chapters.map((chap, index) => 
+									index === i ? { ...chap, content: chapterResult.content } : chap
+								);
+								newTheorySet.chapters = updatedChapters;
+				
+								setTheorySet({ ...newTheorySet }); // Update UI
+								await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any); // Update DB
+							}
+							// Optional delay between chapter generations to avoid hitting rate limits
+							await new Promise(resolve => setTimeout(resolve, 500)); 
+						}
+					} else {
+						// Logic for when theory data already exists and we're not forcing new
+						// (Currently, this means do nothing, but could be extended to add more chapters)
+						console.log("Theory data already exists for this topic. No new generation needed.");
 					}
 				}
 
