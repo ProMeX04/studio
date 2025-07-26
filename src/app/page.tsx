@@ -104,7 +104,7 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: theorySet?.chapters.length ?? 0;
+		: theorySet?.chapters?.length ?? 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
@@ -115,7 +115,7 @@ function Learn({
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
 		: view === 'theory' 
-		? theorySet?.outline.length ?? 0
+		? theorySet?.outline?.length ?? 0
 		: 0;
 
 	const hasContent = view === 'theory' 
