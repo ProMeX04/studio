@@ -161,6 +161,7 @@ export function Settings(props: SettingsProps) {
 	// Local state for learn settings
 	const [topic, setTopic] = useState(scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : "")
 	const [language, setLanguage] = useState(scope === "learn" ? (props as LearnSettingsProps).language ?? "Vietnamese" : "Vietnamese")
+	const [model, setModel] = useState(scope === "learn" ? (props as LearnSettingsProps).model ?? "gemini-1.5-flash-latest" : "gemini-1.5-flash-latest");
 	const [flashcardMax, setFlashcardMax] = useState(scope === "learn" ? (props as LearnSettingsProps).flashcardMax ?? 50 : 50)
 	const [quizMax, setQuizMax] = useState(scope === "learn" ? (props as LearnSettingsProps).quizMax ?? 50 : 50)
 	
@@ -173,6 +174,7 @@ export function Settings(props: SettingsProps) {
 	
 	const learnProps = scope === 'learn' ? (props as LearnSettingsProps) : undefined;
 	const topicChanged = learnProps && learnProps.topic !== topic;
+
 	const settingsChanged = learnProps && (
 		topicChanged ||
 		learnProps.language !== language ||
@@ -188,6 +190,7 @@ export function Settings(props: SettingsProps) {
 			if(isSheetOpen) {
 				setTopic(learnProps.topic ?? "")
 				setLanguage(learnProps.language ?? "Vietnamese")
+				setModel(learnProps.model ?? "gemini-1.5-flash-latest");
 				setFlashcardMax(learnProps.flashcardMax ?? 50)
 				setQuizMax(learnProps.quizMax ?? 50)
 				setLocalApiKeys(learnProps.apiKeys);
@@ -225,6 +228,7 @@ export function Settings(props: SettingsProps) {
 			description: "Các thay đổi của bạn đã được lưu lại.",
 		});
 		setIsConfirmingTopicChange(false); // Reset confirmation state after saving
+		setIsSheetOpen(false); // Close sheet after saving
 	}
 	
 	const handleCancelTopicChange = () => {
@@ -310,6 +314,13 @@ export function Settings(props: SettingsProps) {
 				}
 				reader.readAsDataURL(file)
 			}
+		}
+	}
+
+	const handleModelChange = (newModel: string) => {
+		if (scope === 'learn' && learnProps) {
+			setModel(newModel);
+			learnProps.onModelChange(newModel);
 		}
 	}
 
@@ -490,7 +501,7 @@ export function Settings(props: SettingsProps) {
 						<BrainCircuit className="w-4 h-4" />
 						<span>Cài đặt AI</span>
 					</Label>
-					<Select value={learnProps.model} onValueChange={learnProps.onModelChange}>
+					<Select value={model} onValueChange={handleModelChange}>
 						<SelectTrigger>
 							<SelectValue placeholder="Chọn một model AI" />
 						</SelectTrigger>
@@ -535,24 +546,6 @@ export function Settings(props: SettingsProps) {
 					</Select>
 				</div>
 	
-				{settingsChanged && !isConfirmingTopicChange && (
-					<Button onClick={handleSave} className="w-full mt-4">
-						<Save className="mr-2 h-4 w-4" />
-						Lưu thay đổi
-					</Button>
-				)}
-
-				{isConfirmingTopicChange && (
-					<div className="space-y-2 mt-4 rounded-lg border border-destructive p-4">
-						<p className="text-sm text-destructive-foreground font-medium">Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập cũ.</p>
-						<p className="text-sm text-muted-foreground">Bạn có chắc chắn muốn tiếp tục?</p>
-						<div className="flex justify-end gap-2 pt-2">
-							<Button variant="ghost" onClick={handleCancelTopicChange}>Hủy</Button>
-							<Button variant="destructive" onClick={handleSave}>Xác nhận</Button>
-						</div>
-					</div>
-				)}
-
 				<Separator />
 				{renderContentGenerationControls()}
 			</div>
@@ -746,15 +739,25 @@ export function Settings(props: SettingsProps) {
 					</div>
 				</div>
 
-				<SheetFooter className="mt-auto pt-4 border-t">
+				<SheetFooter className="mt-auto pt-4 border-t space-y-2">
+					{isLearnScope && isConfirmingTopicChange && (
+						<div className="space-y-2 rounded-lg border border-destructive p-4">
+							<p className="text-sm text-destructive-foreground font-medium">Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập cũ.</p>
+							<p className="text-sm text-muted-foreground">Bạn có chắc chắn muốn tiếp tục?</p>
+							<div className="flex justify-end gap-2 pt-2">
+								<Button variant="ghost" onClick={handleCancelTopicChange}>Hủy</Button>
+								<Button variant="destructive" onClick={handleSave}>Xác nhận</Button>
+							</div>
+						</div>
+					)}
 					{isLearnScope ? (
 						<div className="w-full flex justify-between items-center">
 							<div className="flex gap-2">
 								<AlertDialog>
 									<AlertDialogTrigger asChild>
-										<Button variant="destructive">
+										<Button variant="outline" size="sm">
 											<Trash2 className="mr-2 h-4 w-4" />
-											Xóa dữ liệu
+											Xóa DL
 										</Button>
 									</AlertDialogTrigger>
 									<AlertDialogContent>
@@ -779,9 +782,9 @@ export function Settings(props: SettingsProps) {
 								</AlertDialog>
 								<AlertDialog>
 									<AlertDialogTrigger asChild>
-										<Button variant="outline">
+										<Button variant="outline" size="sm">
 											<RefreshCw className="mr-2 h-4 w-4" />
-											Hướng dẫn
+											H.dẫn
 										</Button>
 									</AlertDialogTrigger>
 									<AlertDialogContent>
@@ -805,6 +808,13 @@ export function Settings(props: SettingsProps) {
 									</AlertDialogContent>
 								</AlertDialog>
 							</div>
+							
+							{settingsChanged && !isConfirmingTopicChange && (
+								<Button onClick={handleSave}>
+									<Save className="mr-2 h-4 w-4" />
+									Lưu thay đổi
+								</Button>
+							)}
 						</div>
 					) : (
 						<AlertDialog>
@@ -850,7 +860,7 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
     
 
 
+    
