@@ -20,6 +20,7 @@ import {
 	Menu,
 	Save,
 	BrainCircuit,
+	Minus,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -312,12 +313,34 @@ export function Settings(props: SettingsProps) {
 		}
 	}
 
-	const numericInputProps = {
-		onWheel: (e: React.WheelEvent<HTMLInputElement>) =>
-			(e.target as HTMLElement).blur(),
-		onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) =>
-			["e", "E", "+", "-"].includes(e.key) && e.preventDefault(),
-	}
+	const handleIncrement = (type: 'flashcard' | 'quiz') => {
+		if (scope !== 'learn' || !learnProps) return;
+		const STEP = 5;
+		const MAX = 200;
+	
+		if (type === 'flashcard') {
+			const newValue = Math.min(flashcardMax + STEP, MAX);
+			setFlashcardMax(newValue);
+		} else {
+			const newValue = Math.min(quizMax + STEP, MAX);
+			setQuizMax(newValue);
+		}
+	};
+	
+	const handleDecrement = (type: 'flashcard' | 'quiz') => {
+		if (scope !== 'learn' || !learnProps) return;
+		const STEP = 5;
+	
+		if (type === 'flashcard') {
+			const min = learnProps.flashcardCount ?? 0;
+			const newValue = Math.max(flashcardMax - STEP, min, 0);
+			setFlashcardMax(newValue);
+		} else {
+			const min = learnProps.quizCount ?? 0;
+			const newValue = Math.max(quizMax - STEP, min, 0);
+			setQuizMax(newValue);
+		}
+	};
 
 	const renderApiKeyManagement = () => {
 		if (!scope.startsWith("learn")) return null;
@@ -373,9 +396,9 @@ export function Settings(props: SettingsProps) {
 		if (scope !== 'learn' && scope !== 'learn-onboarding-generate') return null;
 		const learnProps = props as LearnSettingsProps | LearnOnboardingSettingsProps;
 		
-		const fMax = 'flashcardMax' in learnProps ? learnProps.flashcardMax ?? 50 : 50;
-		const qMax = 'quizMax' in learnProps ? learnProps.quizMax ?? 50 : 50;
-
+		const fMax = scope === 'learn' ? flashcardMax : learnProps.flashcardMax ?? 50;
+		const qMax = scope === 'learn' ? quizMax : learnProps.quizMax ?? 50;
+	
 		return (
 			<div className="space-y-4">
 				{scope === "learn" && <Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>}
@@ -398,7 +421,19 @@ export function Settings(props: SettingsProps) {
 				<div className="space-y-2">
 					<div className="flex justify-between items-center text-sm">
 						<Label htmlFor="flashcard-progress">Flashcards</Label>
-						<span className="text-muted-foreground">{learnProps.flashcardCount} / {fMax}</span>
+						{scope === "learn" ? (
+							<div className="flex items-center gap-2">
+								<Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleDecrement('flashcard')} disabled={flashcardMax <= (learnProps.flashcardCount ?? 0)}>
+									<Minus className="h-4 w-4" />
+								</Button>
+								<span className="text-muted-foreground text-center w-12">{learnProps.flashcardCount} / {fMax}</span>
+								<Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleIncrement('flashcard')}>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						) : (
+							<span className="text-muted-foreground">{learnProps.flashcardCount} / {fMax}</span>
+						)}
 					</div>
 					<div className="flex items-center gap-2">
 						<Progress value={(learnProps.flashcardCount! / fMax) * 100} id="flashcard-progress" />
@@ -406,24 +441,25 @@ export function Settings(props: SettingsProps) {
 							{learnProps.isFlashcardLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
-					{scope === "learn" && <div className="space-y-2">
-						<Label htmlFor="flashcardMax">Số lượng tối đa</Label>
-						<Input
-							id="flashcardMax"
-							type="number"
-							value={flashcardMax}
-							onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
-							placeholder="ví dụ: 50"
-							{...numericInputProps}
-						/>
-					</div>}
 				</div>
 
 				{/* Quiz Progress */}
 				<div className="space-y-2">
 					<div className="flex justify-between items-center text-sm">
 						<Label htmlFor="quiz-progress">Trắc nghiệm</Label>
-						<span className="text-muted-foreground">{learnProps.quizCount} / {qMax}</span>
+						{scope === "learn" ? (
+							<div className="flex items-center gap-2">
+								<Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleDecrement('quiz')} disabled={quizMax <= (learnProps.quizCount ?? 0)}>
+									<Minus className="h-4 w-4" />
+								</Button>
+								<span className="text-muted-foreground text-center w-12">{learnProps.quizCount} / {qMax}</span>
+								<Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleIncrement('quiz')}>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						) : (
+							<span className="text-muted-foreground">{learnProps.quizCount} / {qMax}</span>
+						)}
 					</div>
 					<div className="flex items-center gap-2">
 						<Progress value={(learnProps.quizCount! / qMax) * 100} id="quiz-progress" />
@@ -431,17 +467,6 @@ export function Settings(props: SettingsProps) {
 							{learnProps.isQuizLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
-					{scope === "learn" && <div className="space-y-2">
-						<Label htmlFor="quizMax">Số lượng tối đa</Label>
-						<Input
-							id="quizMax"
-							type="number"
-							value={quizMax}
-							onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
-							placeholder="ví dụ: 50"
-							{...numericInputProps}
-						/>
-					</div>}
 				</div>
 			</div>
 		)
@@ -827,4 +852,5 @@ export function Settings(props: SettingsProps) {
 }
 
     
+
 
