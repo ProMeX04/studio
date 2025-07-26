@@ -58,7 +58,7 @@ const OnboardingTour = ({
     const handleApiKeySubmit = () => {
         if (apiKey.trim()) {
             onApiKeysChange([apiKey.trim()]);
-            onStepComplete(1);
+            onStepComplete(1, { hasCompletedOnboarding: true });
         }
     };
 
@@ -142,9 +142,11 @@ const OnboardingTour = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-[99] animate-in fade-in-50" onClick={() => {
-             if (step === 3) onOpenLearnSettings();
-             else onStepComplete(0); // Close tour if clicking away
+        <div className="fixed inset-0 bg-black/70 z-[99] animate-in fade-in-50" onClick={(e) => {
+            if (e.target === e.currentTarget) { // Only close if clicking on the overlay itself
+                 if (step === 3) onOpenLearnSettings();
+                 else if (step !== 1) onStepComplete(0); // Don't close for API key dialog
+            }
         }}>
             {step === 2 && topicRect && renderHighlight(topicRect, "Tuyệt vời! Giờ hãy nhập chủ đề bạn muốn học tại đây.", 'bottom')}
             {step === 3 && menuRect && renderHighlight(menuRect, "Cuối cùng, nhấn vào đây để tạo nội dung học tập.", 'left')}
@@ -1466,11 +1468,7 @@ export default function Home() {
 			<OnboardingTour 
                 step={tourStep}
                 onStepComplete={handleTourStepComplete}
-                onApiKeysChange={async (keys) => {
-					await handleApiKeysChange(keys);
-					const db = await getDb();
-					await db.put("data", { id: "hasCompletedOnboarding", data: true });
-				}}
+                onApiKeysChange={handleApiKeysChange}
                 onOpenLearnSettings={() => setLearnSettingsOpen(true)}
             />
 			{backgroundImage && (

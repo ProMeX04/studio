@@ -344,10 +344,10 @@ export function Settings(props: SettingsProps) {
 
 				<Separator />
 
-				<div id="topic-input-for-tour" className="space-y-2">
-					<Label htmlFor="topic">Chủ đề</Label>
+				<div className="space-y-2">
+					<Label htmlFor="topic-input-for-tour">Chủ đề</Label>
 					<Input
-						id="topic"
+						id="topic-input-for-tour"
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder="ví dụ: Lịch sử La Mã"
