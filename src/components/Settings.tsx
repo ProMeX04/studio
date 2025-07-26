@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -465,9 +466,8 @@ export function Settings(props: SettingsProps) {
 			| LearnSettingsProps
 			| LearnOnboardingSettingsProps
 
-		const fMax =
-			scope === "learn" ? flashcardMax : learnProps.flashcardMax ?? 50
-		const qMax = scope === "learn" ? quizMax : learnProps.quizMax ?? 50
+		const fMax = learnProps.flashcardMax ?? 50
+		const qMax = learnProps.quizMax ?? 50
 
 		return (
 			<div className="space-y-4">
@@ -533,7 +533,7 @@ export function Settings(props: SettingsProps) {
 									<Minus className="h-4 w-4" />
 								</Button>
 								<span className="text-muted-foreground text-center w-12">
-									{learnProps.flashcardCount} / {fMax}
+									{learnProps.flashcardCount} / {flashcardMax}
 								</span>
 								<Button
 									size="icon"
@@ -552,7 +552,7 @@ export function Settings(props: SettingsProps) {
 					</div>
 					<div className="flex items-center gap-2">
 						<Progress
-							value={(learnProps.flashcardCount! / fMax) * 100}
+							value={((learnProps.flashcardCount ?? 0) / (scope === "learn" ? flashcardMax : fMax)) * 100}
 							id="flashcard-progress"
 						/>
 						<Button
@@ -560,7 +560,7 @@ export function Settings(props: SettingsProps) {
 							variant="outline"
 							onClick={() => handleGenerateType("flashcards")}
 							disabled={
-								learnProps.flashcardCount! >= fMax ||
+								(learnProps.flashcardCount ?? 0) >= (scope === "learn" ? flashcardMax : fMax) ||
 								learnProps.isFlashcardLoading
 							}
 						>
@@ -591,7 +591,7 @@ export function Settings(props: SettingsProps) {
 									<Minus className="h-4 w-4" />
 								</Button>
 								<span className="text-muted-foreground text-center w-12">
-									{learnProps.quizCount} / {qMax}
+									{learnProps.quizCount} / {quizMax}
 								</span>
 								<Button
 									size="icon"
@@ -610,7 +610,7 @@ export function Settings(props: SettingsProps) {
 					</div>
 					<div className="flex items-center gap-2">
 						<Progress
-							value={(learnProps.quizCount! / qMax) * 100}
+							value={((learnProps.quizCount ?? 0) / (scope === "learn" ? quizMax : qMax)) * 100}
 							id="quiz-progress"
 						/>
 						<Button
@@ -618,7 +618,7 @@ export function Settings(props: SettingsProps) {
 							variant="outline"
 							onClick={() => handleGenerateType("quiz")}
 							disabled={
-								learnProps.quizCount! >= qMax ||
+								(learnProps.quizCount ?? 0) >= (scope === "learn" ? quizMax : qMax) ||
 								learnProps.isQuizLoading
 							}
 						>
@@ -893,9 +893,9 @@ export function Settings(props: SettingsProps) {
 
 				<SheetFooter className="mt-auto pt-4 border-t">
 					{isLearnScope ? (
-						<>
+						<div className="w-full flex justify-between items-center">
 							{isConfirmingTopicChange ? (
-								<div className="space-y-2 rounded-lg border border-destructive p-4">
+								<div className="w-full space-y-2 rounded-lg border border-destructive p-4">
 									<p className="text-sm text-destructive-foreground font-medium">
 										Thay đổi chủ đề sẽ xóa tất cả dữ liệu
 										học tập cũ.
@@ -919,7 +919,7 @@ export function Settings(props: SettingsProps) {
 									</div>
 								</div>
 							) : (
-								<div className="w-full flex justify-between items-center">
+								<>
 									<div className="flex gap-2">
 										<AlertDialog>
 											<AlertDialogTrigger asChild>
@@ -1018,9 +1018,9 @@ export function Settings(props: SettingsProps) {
 											Lưu thay đổi
 										</Button>
 									)}
-								</div>
+								</>
 							)}
-						</>
+						</div>
 					) : (
 						<AlertDialog>
 							<AlertDialogTrigger asChild>
@@ -1065,3 +1065,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    

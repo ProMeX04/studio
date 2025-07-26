@@ -26,7 +26,6 @@ import {
 	AppData,
 	DataKey,
 	closeDb,
-	clearAllData,
 } from "@/lib/idb"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -701,7 +700,7 @@ export interface ComponentVisibility {
 
 export default function Home() {
 	const [view, setView] = useState<ViewType>("theory")
-	const [topic, setTopic] = useState("")
+	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
 	const [model, setModel] = useState("gemini-2.5-flash-lite");
 	const [flashcardMax, setFlashcardMax] = useState(50)
@@ -1221,29 +1220,55 @@ export default function Home() {
 
 	const handleClearAllData = useCallback(async (isLearningReset: boolean = false) => {
 		const db = await getDb();
-	
-		const keysToDelete: DataKey[] = [
-			"flashcards", "flashcardState", "flashcardIndex",
-			"quiz", "quizState",
-			"theory", "theoryState", "theoryChapterIndex",
-		];
-	
-		// Full reset also clears topic, settings, etc.
-		if (!isLearningReset) {
-			keysToDelete.push(
+		const keysToDelete: DataKey[] = isLearningReset 
+			? [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
+			]
+			: [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
 				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
 				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
 				'hasCompletedOnboarding'
-			);
-		}
+			];
 	
 		const tx = db.transaction("data", 'readwrite');
 		const store = tx.objectStore("data");
 		await Promise.all(keysToDelete.map(key => store.delete(key)));
 		await tx.done;
+
+		// Reset state in memory
+		setFlashcardSet(null);
+		setFlashcardState({ understoodIndices: [] });
+		setFlashcardIndex(0);
+		setQuizSet(null);
+		setQuizState({ currentQuestionIndex: 0, answers: {} });
+		setCurrentQuestionIndex(0);
+		setTheorySet(null);
+		setTheoryState({ understoodIndices: [] });
+		setTheoryChapterIndex(0);
+		setShowFlashcardSummary(false);
+		setShowQuizSummary(false);
+		setShowTheorySummary(false);
 	
-		await loadInitialData(); // Reload all data from scratch
+		if (!isLearningReset) {
+			setTopic("Lịch sử La Mã");
+			setLanguage("Vietnamese");
+			setModel("gemini-2.5-flash-lite");
+			setView("theory");
+			setVisibility({ clock: true, greeting: true, search: true, quickLinks: true, learn: true });
+			setBackgroundImage("");
+			setUploadedBackgrounds([]);
+			setFlashcardMax(50);
+			setQuizMax(50);
+			setApiKeys([]);
+			setApiKeyIndex(0);
+			setHasCompletedOnboarding(false);
+		}
 	
 		toast({
 			title: "Đã xóa dữ liệu",
@@ -1251,7 +1276,7 @@ export default function Home() {
 				? "Toàn bộ dữ liệu học tập đã được xóa." 
 				: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
 		});
-	}, [loadInitialData, toast]);
+	}, [toast]);
 
 	const handleResetOnboarding = useCallback(async () => {
         const db = await getDb();
@@ -1285,7 +1310,6 @@ export default function Home() {
 			if (topicChanged) {
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
-				// Since topic changed, clear old learning data
 				await handleClearAllData(true);
 			}
 			if (language !== newLanguage) {
@@ -1660,12 +1684,3 @@ export default function Home() {
 }
 
     
-
-    
-
-
-
-
-
-
-
