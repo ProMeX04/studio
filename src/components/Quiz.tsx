@@ -9,7 +9,7 @@ import React, {
 	useRef,
 	Fragment,
 } from "react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
@@ -394,13 +394,19 @@ export function Quiz({
 						)}
 					</div>
 				) : (
-					<div className="text-center h-64 flex flex-col items-center justify-center p-4">
-						<BookOpen className="w-16 h-16 text-muted-foreground/50 mb-4" />
-						<h3 className="text-xl font-semibold mb-2">Bắt đầu kiểm tra kiến thức!</h3>
-						<p className="text-muted-foreground max-w-sm">
-							Mở <strong>Cài đặt học tập</strong> <Menu className="inline w-4 h-4" />, sau đó nhấn nút <Plus className="inline w-4 h-4" /> để AI tạo bài trắc nghiệm cho bạn.
-						</p>
-					</div>
+					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
+						<CardHeader>
+							<div className="mx-auto bg-primary/10 p-4 rounded-full">
+								<HelpCircle className="w-12 h-12 text-primary" />
+							</div>
+							<CardTitle className="mt-4 text-2xl">Kiểm tra kiến thức của bạn</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-muted-foreground">
+								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong>, và để AI tạo ra các câu hỏi trắc nghiệm thử thách bạn!
+							</p>
+						</CardContent>
+					</Card>
 				)}
 			</div>
 		</div>

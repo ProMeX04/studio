@@ -2,7 +2,7 @@
 "use client"
 
 import React from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -108,13 +108,19 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 							</div>
 						</div>
 					) : (
-						<div className="text-center h-48 flex flex-col items-center justify-center p-4">
-							<BookOpen className="w-16 h-16 text-muted-foreground/50 mb-4" />
-							<h3 className="text-xl font-semibold mb-2">Bắt đầu học ngay!</h3>
-							<p className="text-muted-foreground max-w-sm">
-								Mở <strong>Cài đặt học tập</strong> <Menu className="inline w-4 h-4" />, sau đó nhấn nút <Plus className="inline w-4 h-4" /> để AI tạo dàn bài và nội dung lý thuyết cho bạn.
-							</p>
-						</div>
+						<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm mt-20">
+							<CardHeader>
+								<div className="mx-auto bg-primary/10 p-4 rounded-full">
+									<BookOpen className="w-12 h-12 text-primary" />
+								</div>
+								<CardTitle className="mt-4 text-2xl">Xây dựng nền tảng kiến thức</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<p className="text-muted-foreground">
+									Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong>, và để AI tạo ra dàn bài và nội dung lý thuyết chi tiết cho bạn!
+								</p>
+							</CardContent>
+						</Card>
 					)}
 				</div>
 			</div>
