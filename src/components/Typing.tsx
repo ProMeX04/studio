@@ -19,6 +19,8 @@ const TypingResultDisplay = ({ original, userInput }: { original: string; userIn
     const originalChars = original.split('');
     const inputChars = userInput.split('');
 
+    const caretPosition = inputChars.length;
+
     const renderedChars = originalChars.map((char, index) => {
         let className = 'text-muted-foreground/50'; // Default: untyped
         if (index < inputChars.length) {
@@ -44,19 +46,13 @@ const TypingResultDisplay = ({ original, userInput }: { original: string; userIn
         )) 
         : [];
         
-    const caretPosition = Math.min(inputChars.length, originalChars.length);
+    const caret = <span className="border-l-2 border-primary animate-pulse" />;
 
     return (
         <div className="relative p-4 rounded-md bg-secondary text-2xl font-mono tracking-wider leading-relaxed break-words">
-            <span 
-                className="absolute border-l-2 border-primary animate-pulse"
-                style={{ 
-                    left: `${caretPosition * 0.6 + 1}em`, // font-mono approx 0.6em width + padding
-                    top: '1rem',
-                    bottom: '1rem',
-                 }}
-            />
-            {renderedChars}
+            {renderedChars.slice(0, caretPosition)}
+            {caret}
+            {renderedChars.slice(caretPosition)}
             {extraChars.length > 0 && <>{extraChars}</>}
         </div>
     );
