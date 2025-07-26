@@ -2,12 +2,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
 
 export function Greeting() {
-  const [fullGreeting, setFullGreeting] = useState('');
-  const [typedGreeting, setTypedGreeting] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
+  const [greeting, setGreeting] = useState('');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -31,28 +28,8 @@ export function Greeting() {
 
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     const dateText = `. ${today.toLocaleDateString('vi-VN', options)}.`;
-    setFullGreeting(greetingText + dateText);
+    setGreeting(greetingText + dateText);
   }, [isMounted]);
-
-  useEffect(() => {
-    // Reset typing effect when greeting changes
-    if (isMounted) {
-      setTypedGreeting('');
-      setIsTyping(true);
-    }
-  }, [fullGreeting, isMounted]);
-
-
-  useEffect(() => {
-    if (isMounted && isTyping && fullGreeting && typedGreeting.length < fullGreeting.length) {
-      const timeoutId = setTimeout(() => {
-        setTypedGreeting(fullGreeting.slice(0, typedGreeting.length + 1));
-      }, 50);
-      return () => clearTimeout(timeoutId);
-    } else if (typedGreeting.length === fullGreeting.length && fullGreeting.length > 0) {
-        setIsTyping(false);
-    }
-  }, [fullGreeting, typedGreeting, isTyping, isMounted]);
 
   if (!isMounted) {
     return null;
@@ -60,11 +37,7 @@ export function Greeting() {
 
   return (
     <p className="text-xl relative text-foreground/80 text-shadow">
-      {typedGreeting}
-      <span className={cn(
-          'ml-1 h-5 w-0.5 bg-current inline-block', 
-          isTyping ? 'animate-pulse' : 'hidden'
-      )}></span>
+      {greeting}
     </p>
   );
 }
