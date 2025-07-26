@@ -17,6 +17,7 @@ import {
 	Loader,
 	ExternalLink,
 	HelpCircle,
+	Menu,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -630,7 +631,7 @@ export function Settings(props: SettingsProps) {
 		>
 			<SheetTrigger asChild>
 				<Button variant={isLearnScope ? "outline" : "ghost"} size="icon" className={cn(isLearnScope && "h-9 w-9")}>
-					<SettingsIcon />
+					{isLearnScope ? <Menu /> : <SettingsIcon />}
 					<span className="sr-only">Cài đặt</span>
 				</Button>
 			</SheetTrigger>
@@ -696,3 +697,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
