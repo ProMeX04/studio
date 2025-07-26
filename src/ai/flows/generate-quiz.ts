@@ -10,55 +10,58 @@ import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQui
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
-    apiKey: z.string(), // API key is now required and passed directly
+    apiKeys: z.array(z.string()),
+    apiKeyIndex: z.number(),
 });
 type GenerateQuizClientInput = z.infer<typeof GenerateQuizClientInputSchema>;
 
-export async function generateQuiz(input: GenerateQuizClientInput): Promise<GenerateQuizOutput> {
-  const { apiKey, ...promptInput } = input;
+export async function generateQuiz(
+  input: GenerateQuizClientInput
+): Promise<{ result: GenerateQuizOutput; newApiKeyIndex: number }> {
+  const { apiKeys, apiKeyIndex, ...promptInput } = input;
 
-  if (!apiKey) {
+  if (!apiKeys || apiKeys.length === 0) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  let currentKeyIndex = apiKeyIndex;
+  const maxAttempts = apiKeys.length;
 
-  const existingQuestionsPrompt = promptInput.existingQuestions && promptInput.existingQuestions.length > 0
-    ? `
-You have already generated the following questions. Do not repeat them or create questions with very similar content.
-
-Existing Questions:
-${promptInput.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
-`
-    : '';
-
-  const promptText = `You are a quiz generator. Generate a ${promptInput.count}-question multiple-choice quiz for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
-
-For the "options" array:
- - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
-
-**Critically important**: The value for the "answer" field for each question object MUST be an exact, verbatim copy of one of the strings from the "options" array for that same question.
-
-The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
-- Use standard backticks (\`) for inline code blocks.
-- Use triple backticks with a language identifier for multi-line code blocks.
-- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-${existingQuestionsPrompt}
-`;
-  
-  const generationConfig: GenerationConfig = {
-    responseMimeType: "application/json",
-    // @ts-ignore - responseSchema is a valid property
-    responseSchema: GenerateQuizJsonSchema,
-  };
-  
-  let attempts = 0;
-  const maxAttempts = 3;
-
-  while (attempts < maxAttempts) {
-    attempts++;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const apiKey = apiKeys[currentKeyIndex];
     try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+      const existingQuestionsPrompt = promptInput.existingQuestions && promptInput.existingQuestions.length > 0
+        ? `
+      You have already generated the following questions. Do not repeat them or create questions with very similar content.
+
+      Existing Questions:
+      ${promptInput.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
+      `
+        : '';
+
+      const promptText = `You are a quiz generator. Generate a ${promptInput.count}-question multiple-choice quiz for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
+
+      For the "options" array:
+      - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
+
+      **Critically important**: The value for the "answer" field for each question object MUST be an exact, verbatim copy of one of the strings from the "options" array for that same question.
+
+      The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
+      - Use standard backticks (\`) for inline code blocks.
+      - Use triple backticks with a language identifier for multi-line code blocks.
+      - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+      ${existingQuestionsPrompt}
+      `;
+      
+      const generationConfig: GenerationConfig = {
+        responseMimeType: "application/json",
+        // @ts-ignore - responseSchema is a valid property
+        responseSchema: GenerateQuizJsonSchema,
+      };
+
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: promptText }] }],
         generationConfig,
@@ -85,7 +88,6 @@ ${existingQuestionsPrompt}
       const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateQuizOutputContainerSchema.parse(parsedJson);
 
-      // Filter out invalid questions instead of throwing an error.
       const validQuestions = validatedOutput.questions.filter(question => {
         const isValid = question.options.includes(question.answer);
         if (!isValid) {
@@ -95,27 +97,28 @@ ${existingQuestionsPrompt}
       });
 
       console.log(`✅ Generated ${validQuestions.length} valid quiz questions (filtered from ${validatedOutput.questions.length}).`);
-      return validQuestions;
+      return { result: validQuestions, newApiKeyIndex: currentKeyIndex };
 
     } catch (error: any) {
-      console.error(`❌ Quiz generation attempt ${attempts} failed:`, error);
-      
-      const isRetryableError = error instanceof AIOperationError && error.isRetryable;
-
-      if (isRetryableError && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retrying
-      } else {
-        if (error.message.includes('JSON')) {
-            throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+        const isQuotaError = error.message?.includes('quota');
+        console.warn(`API Key at index ${currentKeyIndex} failed.`, error.message);
+        
+        if (isQuotaError && attempt < maxAttempts - 1) {
+            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+            console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
+        } else {
+            console.error(`❌ Quiz generation attempt ${attempt + 1} failed:`, error);
+            if (error.message.includes('JSON')) {
+                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+            if (error instanceof z.ZodError) {
+                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+            if (error instanceof AIOperationError) throw error;
+            throw new AIOperationError('Failed to generate quiz from AI.', 'AI_GENERATION_FAILED');
         }
-        if (error instanceof z.ZodError) {
-            throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
-        }
-        if (error instanceof AIOperationError) throw error;
-        throw new AIOperationError('Failed to generate quiz from AI.', 'AI_GENERATION_FAILED');
-      }
     }
   }
 
-  throw new AIOperationError('AI_GENERATION_FAILED_ALL_ATTEMPTS');
+  throw new AIOperationError('All API keys failed due to quota or other issues.', 'ALL_KEYS_FAILED');
 }

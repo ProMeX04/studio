@@ -11,87 +11,111 @@ import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptio
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
-    apiKey: z.string(), // API key is now required and passed directly
+    apiKeys: z.array(z.string()),
+    apiKeyIndex: z.number(),
 });
 type ExplainQuizOptionClientInput = z.infer<typeof ExplainQuizOptionClientInputSchema>;
 
-export async function explainQuizOption(input: ExplainQuizOptionClientInput): Promise<ExplainQuizOptionOutput> {
-  const { apiKey, ...promptInput } = input;
+export async function explainQuizOption(
+    input: ExplainQuizOptionClientInput
+): Promise<{ result: ExplainQuizOptionOutput; newApiKeyIndex: number }> {
+  const { apiKeys, apiKeyIndex, ...promptInput } = input;
 
-  if (!apiKey) {
+  if (!apiKeys || apiKeys.length === 0) {
       throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-  
-  const promptText = `You are a helpful quiz tutor.
-${promptInput.selectedOption === promptInput.correctAnswer 
-    ? `The user has chosen the CORRECT answer and wants a more detailed explanation.
+  let currentKeyIndex = apiKeyIndex;
 
-Topic: ${promptInput.topic}
-Question: "${promptInput.question}"
-Correct Answer: "${promptInput.correctAnswer}"
-
-Please provide a more in-depth explanation of why "${promptInput.selectedOption}" is the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.`
-    : `The user has chosen an INCORRECT answer and wants to know why it's wrong.
-
-Topic: ${promptInput.topic}
-Question: "${promptInput.question}"
-Correct Answer: "${promptInput.correctAnswer}"
-The Incorrect Option to Explain: "${promptInput.selectedOption}"
-
-Please explain specifically why "${promptInput.selectedOption}" is not the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. Populate the "explanation" field in the JSON output with this information.`
-}
-
-The "explanation" field must be valid standard Markdown:
-- Use backticks (\`) for inline code.
-- Use triple backticks (\`\`\`) for code blocks.
-- Use standard LaTeX syntax for math ($...$ or $$...$$).`;
-
-  const generationConfig: GenerationConfig = {
-    responseMimeType: "application/json",
-    // @ts-ignore - responseSchema is a valid property
-    responseSchema: ExplainQuizOptionJsonSchema,
-  };
-
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: promptText }] }],
-      generationConfig,
-      safetySettings: [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-      ]
-    });
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[currentKeyIndex];
     
-    const parsedJson = JSON.parse(result.response.text());
-    const validatedOutput = ExplainQuizOptionOutputSchema.parse(parsedJson);
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        
+        const promptText = `You are a helpful quiz tutor.
+      ${promptInput.selectedOption === promptInput.correctAnswer 
+          ? `The user has chosen the CORRECT answer and wants a more detailed explanation.
 
-    return validatedOutput;
+      Topic: ${promptInput.topic}
+      Question: "${promptInput.question}"
+      Correct Answer: "${promptInput.correctAnswer}"
 
-  } catch (error: any) {
-    console.error('❌ AI Explanation Error:', error);
-    if (error.message.includes('JSON')) {
-        throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+      Please provide a more in-depth explanation of why "${promptInput.selectedOption}" is the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.`
+          : `The user has chosen an INCORRECT answer and wants to know why it's wrong.
+
+      Topic: ${promptInput.topic}
+      Question: "${promptInput.question}"
+      Correct Answer: "${promptInput.correctAnswer}"
+      The Incorrect Option to Explain: "${promptInput.selectedOption}"
+
+      Please explain specifically why "${promptInput.selectedOption}" is not the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. Populate the "explanation" field in the JSON output with this information.`
+      }
+
+      The "explanation" field must be valid standard Markdown:
+      - Use backticks (\`) for inline code.
+      - Use triple backticks (\`\`\`) for code blocks.
+      - Use standard LaTeX syntax for math ($...$ or $$...$$).`;
+
+        const generationConfig: GenerationConfig = {
+          responseMimeType: "application/json",
+          // @ts-ignore - responseSchema is a valid property
+          responseSchema: ExplainQuizOptionJsonSchema,
+        };
+
+      
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: promptText }] }],
+            generationConfig,
+            safetySettings: [
+              {
+                  category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                  threshold: HarmBlockThreshold.BLOCK_NONE,
+              },
+              {
+                  category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                  threshold: HarmBlockThreshold.BLOCK_NONE,
+              },
+              {
+                  category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                  threshold: HarmBlockThreshold.BLOCK_NONE,
+              },
+              {
+                  category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                  threshold: HarmBlockThreshold.BLOCK_NONE,
+              },
+            ]
+        });
+        
+        const parsedJson = JSON.parse(result.response.text());
+        const validatedOutput = ExplainQuizOptionOutputSchema.parse(parsedJson);
+
+        // Success, return result and the working key index
+        return { result: validatedOutput, newApiKeyIndex: currentKeyIndex };
+
+    } catch (error: any) {
+        const isQuotaError = error.message?.includes('quota');
+        console.warn(`API Key at index ${currentKeyIndex} failed.`, error.message);
+
+        if (isQuotaError) {
+            // Move to the next key
+            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+            console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
+        } else {
+            // For non-quota errors, fail fast
+            console.error('❌ AI Explanation Error:', error);
+            if (error.message.includes('JSON')) {
+                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+            if (error instanceof z.ZodError) {
+              throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+            throw new AIOperationError('Failed to generate explanation from AI.', 'AI_GENERATION_FAILED');
+        }
     }
-    if (error instanceof z.ZodError) {
-      throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
-    }
-    throw new AIOperationError('Failed to generate explanation from AI.', 'AI_GENERATION_FAILED');
   }
+
+  // If all keys failed
+  throw new AIOperationError('All API keys failed due to quota or other issues.', 'ALL_KEYS_FAILED');
 }

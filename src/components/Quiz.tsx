@@ -198,18 +198,18 @@ export function Quiz({
 				if (!apiKeys || apiKeys.length === 0) {
 					throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
 				}
-				const apiKeyToUse = apiKeys[apiKeyIndex];
-				onApiKeyIndexChange((apiKeyIndex + 1) % apiKeys.length);
-
-
-				const result = await explainQuizOption({
-					apiKey: apiKeyToUse,
+				
+				const { result, newApiKeyIndex } = await explainQuizOption({
+					apiKeys,
+					apiKeyIndex,
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
 					correctAnswer: currentQuestion.answer,
 					language: language,
 				});
+
+				onApiKeyIndexChange(newApiKeyIndex);
 	
 				if (result?.explanation) {
 					const newState: QuizState = {
@@ -232,12 +232,22 @@ export function Quiz({
 				}
 			} catch (error: any) {
 				console.error("Failed to get explanation", error);
-				if (error instanceof AIOperationError && error.code === 'API_KEY_REQUIRED') {
-					toast({
-						title: "Thiếu API Key",
-						description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
-						variant: "destructive",
-					});
+				if (error instanceof AIOperationError) {
+					if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
+						toast({
+							title: "Lỗi API Key",
+							description: error.code === 'ALL_KEYS_FAILED' 
+								? "Tất cả các API key của bạn đều không thành công. Vui lòng kiểm tra lại."
+								: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+							variant: "destructive",
+						});
+					} else {
+						toast({
+							title: "Lỗi",
+							description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
+							variant: "destructive",
+						});
+					}
 				} else {
 					toast({
 						title: "Lỗi",

@@ -389,14 +389,12 @@ export default function Home() {
 		setIsMounted(true)
 	}, [])
 
-	const getNextApiKey = useCallback(async () => {
-        const currentKeyIndex = apiKeyIndex;
-        const nextKeyIndex = (currentKeyIndex + 1) % (apiKeys.length || 1);
-        setApiKeyIndex(nextKeyIndex);
-        const db = await getDb();
-        await db.put("data", { id: "apiKeyIndex", data: nextKeyIndex });
-        return apiKeys[currentKeyIndex];
-    }, [apiKeys, apiKeyIndex]);
+	const handleApiKeyIndexChange = useCallback(async (index: number) => {
+		if (apiKeyIndex === index) return;
+		setApiKeyIndex(index);
+		const db = await getDb();
+		await db.put("data", { id: "apiKeyIndex", data: index });
+	}, [apiKeyIndex]);
 
 	const handleGenerate = useCallback(
 		async (
@@ -481,16 +479,19 @@ export default function Home() {
 
 					while (flashcardsNeeded > 0 && !signal.aborted) {
 						const count = Math.min(FLASHCARD_BATCH_SIZE, flashcardsNeeded)
-						const apiKeyToUse = await getNextApiKey();
-						const newCards = await safeAICall(() =>
+						
+						const { result: newCards, newApiKeyIndex } = await safeAICall(() =>
 							generateFlashcards({
-								apiKey: apiKeyToUse,
+								apiKeys,
+								apiKeyIndex,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
 								existingCards: currentFlashcards.cards,
 							}), { signal }
 						)
+
+						await handleApiKeyIndexChange(newApiKeyIndex);
 
 						if (
 							Array.isArray(newCards) &&
@@ -546,16 +547,19 @@ export default function Home() {
 
 					while (quizNeeded > 0 && !signal.aborted) {
 						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
-						const apiKeyToUse = await getNextApiKey();
-						const newQuestions = await safeAICall(() =>
+
+						const { result: newQuestions, newApiKeyIndex } = await safeAICall(() =>
 							generateQuiz({
-								apiKey: apiKeyToUse,
+								apiKeys,
+								apiKeyIndex,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
 								existingQuestions: currentQuiz.questions,
 							}), { signal }
 						)
+
+						await handleApiKeyIndexChange(newApiKeyIndex);
 
 						if (
 							Array.isArray(newQuestions) &&
@@ -586,10 +590,12 @@ export default function Home() {
 							title: "Đã hủy",
 							description: `Quá trình tạo ${genType} đã được hủy.`,
 						});
-					} else if (error.code === 'API_KEY_REQUIRED') {
+					} else if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
 						toast({
-							title: "Thiếu API Key",
-							description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+							title: "Lỗi API Key",
+							description: error.code === 'ALL_KEYS_FAILED' 
+								? "Tất cả các API key của bạn đều không thành công. Vui lòng kiểm tra lại."
+								: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
 							variant: "destructive",
 						});
 					} else {
@@ -613,7 +619,7 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, apiKeys, getNextApiKey]
+		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange]
 	)
 	
 	const loadInitialData = useCallback(async () => {
@@ -674,7 +680,7 @@ export default function Home() {
 		const quizStateData = quizStateRes as AppData;
 	
 		if (savedApiKeys) setApiKeys(savedApiKeys);
-		if (savedApiKeyIndex) setApiKeyIndex(savedApiKeyIndex);
+		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
 		if (savedBg) setBackgroundImage(savedBg);
 		setUploadedBackgrounds(savedUploadedBgs);
 	
@@ -956,15 +962,6 @@ export default function Home() {
 		},
 		[] 
 	);
-
-	const handleApiKeyIndexChange = useCallback(
-        async (index: number) => {
-            setApiKeyIndex(index);
-            const db = await getDb();
-            await db.put("data", { id: "apiKeyIndex", data: index });
-        },
-        []
-    );
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =

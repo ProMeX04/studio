@@ -49,6 +49,8 @@ export const GenerateQuizJsonSchema: Schema = {
                     options: {
                         type: "ARRAY",
                         description: "A list of 2 to 4 possible answers.",
+                        minItems: 2,
+                        maxItems: 4,
                         items: {
                             type: "STRING"
                         }
