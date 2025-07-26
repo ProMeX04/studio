@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 5; // Incremented version
+const DB_VERSION = 6; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -53,17 +53,8 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-        if (oldVersion < 3) {
-            // In v3, we remove old randomization keys.
-        }
-        if (oldVersion < 4) {
-            // In v4, we are migrating 'apiKey' to 'apiKeys'.
-            // This logic is handled in page.tsx's loadInitialData to ensure it runs once.
-        }
-        if (oldVersion < 5) {
-            // In v5, we add support for typing mode. No schema changes needed for stores.
-            // This version is now being reverted.
-        }
+        // No specific migration logic needed for v6 as we are just changing data structure
+        // The loading logic in page.tsx will handle cases where old data format exists.
       },
     });
   }

@@ -15,7 +15,8 @@ import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { generateTheory } from "@/ai/flows/generate-theory"
+import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
+import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
@@ -103,7 +104,7 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: theorySet?.content ? 1 : 0;
+		: theorySet?.chapters.length ?? 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
@@ -113,9 +114,13 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0 
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: theorySet?.content ? 1 : 0;
+		: view === 'theory' 
+		? theorySet?.outline.length ?? 0
+		: 0;
 
-	const hasContent = totalItems > 0;
+	const hasContent = view === 'theory' 
+		? (theorySet?.outline?.length ?? 0) > 0
+		: totalItems > 0;
 
 	const handleNext = () => {
 		if (currentIndex < totalItems - 1) {
@@ -271,7 +276,7 @@ function Learn({
 							</Button>
 
 							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Tài liệu"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {view === 'theory' ? currentCount : hasContent ? currentIndex + 1 : 0} / {totalItems}
 							</span>
 
 							<Button
@@ -597,28 +602,61 @@ export default function Home() {
 						setTheorySet(null);
 						await db.delete("data", "theory");
 					}
-	
-					const { result: newTheory, newApiKeyIndex } = await generateTheory({
+			
+					// Step 1: Generate Outline
+					const { result: outlineResult, newApiKeyIndex: outlineKeyIndex } = await generateTheoryOutline({
 						apiKeys,
 						apiKeyIndex,
 						topic: currentTopic,
 						language: currentLanguage,
 					});
-	
-					await handleApiKeyIndexChange(newApiKeyIndex);
-	
-					if (newTheory?.theory && isMountedRef.current) {
-						const newTheorySet: TheorySet = {
-							id: 'idb-theory',
-							topic: currentTopic,
-							content: newTheory.theory,
-						};
+					await handleApiKeyIndexChange(outlineKeyIndex);
+			
+					if (!outlineResult?.outline || outlineResult.outline.length === 0) {
+						throw new Error("Failed to generate a valid theory outline.");
+					}
+			
+					// Initialize TheorySet with outline
+					const newTheorySet: TheorySet = {
+						id: 'idb-theory',
+						topic: currentTopic,
+						outline: outlineResult.outline,
+						chapters: outlineResult.outline.map(title => ({ title, content: null })),
+					};
+					
+					if (isMountedRef.current) {
 						setTheorySet(newTheorySet);
-						await db.put("data", {
-							id: "theory",
+					}
+					await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
+			
+					// Step 2: Generate content for each chapter sequentially
+					let currentKeyIndex = outlineKeyIndex;
+					for (let i = 0; i < newTheorySet.outline.length; i++) {
+						const chapterTitle = newTheorySet.outline[i];
+						
+						const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
+							apiKeys,
+							apiKeyIndex: currentKeyIndex,
 							topic: currentTopic,
-							data: newTheorySet,
-						} as any);
+							chapterTitle,
+							language: currentLanguage,
+						});
+						
+						currentKeyIndex = chapterKeyIndex;
+						await handleApiKeyIndexChange(chapterKeyIndex);
+			
+						if (chapterResult?.content && isMountedRef.current) {
+							// Update the specific chapter in the set
+							const updatedChapters = newTheorySet.chapters.map((chap, index) => 
+								index === i ? { ...chap, content: chapterResult.content } : chap
+							);
+							newTheorySet.chapters = updatedChapters;
+			
+							setTheorySet({ ...newTheorySet }); // Update UI
+							await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any); // Update DB
+						}
+						// Optional delay between chapter generations to avoid hitting rate limits
+						await new Promise(resolve => setTimeout(resolve, 500)); 
 					}
 				}
 
@@ -995,7 +1033,7 @@ export default function Home() {
 	}, [toast]);
 
 	const onGenerateNew = useCallback(() => {
-		const isTheoryAndHasContent = view === 'theory' && theorySet?.content;
+		const isTheoryAndHasContent = view === 'theory' && theorySet?.chapters && theorySet.chapters.length > 0;
 		const forceNew = isTheoryAndHasContent || view !== 'theory';
 		handleGenerate(topic, language, forceNew, view)
 	}, [handleGenerate, topic, language, view, theorySet])
@@ -1015,13 +1053,15 @@ export default function Home() {
 			? flashcardSet?.cards.length ?? 0
 			: view === 'quiz'
 			? quizSet?.questions.length ?? 0
-			: theorySet?.content ? 1 : 0;
+			: view === 'theory'
+			? (theorySet?.chapters.filter(c => c.content).length ?? 0)
+			: 0;
 	
 	const targetCount = view === "flashcards" 
 		? flashcardMax 
 		: view === 'quiz'
 		? quizMax
-		: 1;
+		: (theorySet?.outline.length ?? 0);
 
 	const canGenerateMore = currentCount < targetCount && !isOverallLoading
 

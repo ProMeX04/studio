@@ -82,15 +82,30 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
-export const GenerateTheoryJsonSchema: Schema = {
+export const GenerateTheoryOutlineJsonSchema: Schema = {
   type: "OBJECT",
   properties: {
-    theory: {
-      type: "STRING",
-      description: "A comprehensive, well-structured theoretical document in Markdown format."
+    outline: {
+      type: "ARRAY",
+      description: "A structured outline of topics to cover.",
+      items: {
+        type: "STRING",
+        description: "The title of a chapter or section."
+      }
     }
   },
-  required: ["theory"]
+  required: ["outline"]
+};
+
+export const GenerateTheoryChapterJsonSchema: Schema = {
+  type: "OBJECT",
+  properties: {
+    content: {
+      type: "STRING",
+      description: "The detailed content for the chapter in Markdown format."
+    }
+  },
+  required: ["content"]
 };
 
 
@@ -174,23 +189,37 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 
 
 // Theory
-export const GenerateTheoryInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate a theory document.'),
+export const GenerateTheoryOutlineInputSchema = z.object({
+  topic: z.string().describe('The topic for which to generate a theory document outline.'),
   language: z.string().describe('The language for the theory document.'),
 });
-export type GenerateTheoryInput = z.infer<typeof GenerateTheoryInputSchema>;
+export type GenerateTheoryOutlineInput = z.infer<typeof GenerateTheoryOutlineInputSchema>;
 
-export const GenerateTheoryOutputSchema = z.object({
-  theory: z.string().describe('A comprehensive, well-structured theoretical document in Markdown format.'),
+export const GenerateTheoryOutlineOutputSchema = z.object({
+  outline: z.array(z.string()).describe('A structured outline of topics to cover.'),
 });
-export type GenerateTheoryOutput = z.infer<typeof GenerateTheoryOutputSchema>;
+export type GenerateTheoryOutlineOutput = z.infer<typeof GenerateTheoryOutlineOutputSchema>;
 
-export const GenerateTheoryOutputContainerSchema = z.object({
-  theory: z.string().describe("A comprehensive, well-structured theoretical document in Markdown format."),
+export const GenerateTheoryChapterInputSchema = z.object({
+  topic: z.string().describe('The overall topic of the document.'),
+  chapterTitle: z.string().describe('The title of the specific chapter to generate content for.'),
+  language: z.string().describe('The language for the chapter content.'),
 });
+export type GenerateTheoryChapterInput = z.infer<typeof GenerateTheoryChapterInputSchema>;
 
+export const GenerateTheoryChapterOutputSchema = z.object({
+  content: z.string().describe('The detailed content for the chapter in Markdown format.'),
+});
+export type GenerateTheoryChapterOutput = z.infer<typeof GenerateTheoryChapterOutputSchema>;
+
+
+export interface TheoryChapter {
+  title: string;
+  content: string | null; // Null while generating
+}
 export interface TheorySet {
   id: string;
   topic: string;
-  content: string;
+  outline: string[];
+  chapters: TheoryChapter[];
 }

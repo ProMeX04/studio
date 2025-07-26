@@ -1,24 +1,22 @@
 
 /**
- * @fileOverview Theory generation flow using Google Generative AI SDK.
- *
- * - generateTheory - A function that generates a theory document for a given topic.
+ * @fileOverview Flow to generate content for a specific chapter of a theory document.
  */
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateTheoryInputSchema, GenerateTheoryOutput, GenerateTheoryOutputContainerSchema, GenerateTheoryJsonSchema } from '@/ai/schemas';
+import { GenerateTheoryChapterInputSchema, GenerateTheoryChapterOutputSchema, GenerateTheoryChapterOutput, GenerateTheoryChapterJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
-const GenerateTheoryClientInputSchema = GenerateTheoryInputSchema.extend({
+const ClientInputSchema = GenerateTheoryChapterInputSchema.extend({
     apiKeys: z.array(z.string()),
     apiKeyIndex: z.number(),
 });
-type GenerateTheoryClientInput = z.infer<typeof GenerateTheoryClientInputSchema>;
+type ClientInput = z.infer<typeof ClientInputSchema>;
 
-export async function generateTheory(
-  input: GenerateTheoryClientInput
-): Promise<{ result: GenerateTheoryOutput; newApiKeyIndex: number }> {
+export async function generateTheoryChapter(
+  input: ClientInput
+): Promise<{ result: GenerateTheoryChapterOutput; newApiKeyIndex: number }> {
   const { apiKeys, apiKeyIndex, ...promptInput } = input;
   
   if (!apiKeys || apiKeys.length === 0) {
@@ -34,28 +32,26 @@ export async function generateTheory(
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-      const promptText = `You are a professional educator and expert on the given topic. Your task is to generate a comprehensive, well-structured, and in-depth theoretical document about the topic: "${promptInput.topic}" in the language: ${promptInput.language}.
+      const promptText = `You are a professional educator and expert on the given topic. Your task is to write a detailed, well-structured, and in-depth chapter for a larger document.
 
-The document must be structured in a specific, logical order to facilitate learning, starting from a high-level overview and progressively diving into details. Please strictly adhere to the following structure:
+Overall Topic: "${promptInput.topic}"
+Current Chapter to Write: "${promptInput.chapterTitle}"
+Language: ${promptInput.language}
 
-1.  **Overview**: Start with a concise introduction to the topic.
-2.  **History and Context**: Briefly discuss the history and context of the topic's development.
-3.  **Learning Outline**: Provide a clear, bulleted or numbered list of the key concepts and sections that will be covered in detail.
-4.  **Detailed Chapters**: For each item in the Learning Outline, create a detailed section (using H2 or H3 markdown headings). Explain the concepts thoroughly. Use clear headings, subheadings, bullet points, tables, and code examples where appropriate.
+Please write the content for this specific chapter. Explain the concepts thoroughly. Use clear headings (starting from h2 or h3), subheadings, bullet points, tables, and code examples where appropriate to structure the information logically.
 
-The entire output must be a single, valid Markdown string. Populate the "theory" field in the JSON object with this Markdown string.
+The entire output must be a single, valid Markdown string. Populate the "content" field in the JSON object with this Markdown string.
 
-The Markdown content in the "theory" field MUST be valid standard Markdown.
-- Use '#' for headings (e.g., # Main Title, ## Sub-title).
+The Markdown content in the "content" field MUST be valid standard Markdown.
+- Use '##' or '###' for headings.
 - Use standard backticks (\`) for inline code blocks.
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`javascript).
-- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-`;
+- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.`;
 
       const generationConfig: GenerationConfig = {
         responseMimeType: "application/json",
         // @ts-ignore - responseSchema is a valid property
-        responseSchema: GenerateTheoryJsonSchema,
+        responseSchema: GenerateTheoryChapterJsonSchema,
       };
 
       const result = await model.generateContent({
@@ -82,9 +78,9 @@ The Markdown content in the "theory" field MUST be valid standard Markdown.
       });
       
       const parsedJson = JSON.parse(result.response.text());
-      const validatedOutput = GenerateTheoryOutputContainerSchema.parse(parsedJson);
+      const validatedOutput = GenerateTheoryChapterOutputSchema.parse(parsedJson);
 
-      console.log(`✅ Generated theory document`);
+      console.log(`✅ Generated content for chapter: "${promptInput.chapterTitle}"`);
       return { result: validatedOutput, newApiKeyIndex: currentKeyIndex };
 
     } catch (error: any) {
@@ -95,14 +91,14 @@ The Markdown content in the "theory" field MUST be valid standard Markdown.
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
             console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
         } else {
-            console.error('❌ Theory generation error:', error);
+            console.error('❌ Theory chapter generation error:', error);
             if (error.message.includes('JSON')) {
                 throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
             if (error instanceof z.ZodError) {
               throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
-            throw new AIOperationError('Failed to generate theory from AI.', 'AI_GENERATION_FAILED');
+            throw new AIOperationError('Failed to generate theory chapter from AI.', 'AI_GENERATION_FAILED');
         }
     }
   }

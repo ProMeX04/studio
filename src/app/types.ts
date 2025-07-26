@@ -25,6 +25,6 @@ export interface FlashcardState {
 }
 
 export interface TheoryState {
-  // Currently no state needed, but can be extended
-  // e.g. { scrollPosition: number }
+  // Used to track which accordion items are open
+  openChapters: string[];
 }
