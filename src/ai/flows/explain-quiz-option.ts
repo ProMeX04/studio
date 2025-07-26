@@ -21,7 +21,7 @@ export async function explainQuizOption(input: ExplainQuizOptionClientInput): Pr
   }
 
   const genAI = new GoogleGenerativeAI(input.apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   
   const promptText = `You are a helpful quiz tutor.
 ${input.selectedOption === input.correctAnswer 

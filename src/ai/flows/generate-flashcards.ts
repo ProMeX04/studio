@@ -21,7 +21,7 @@ export async function generateFlashcards(input: GenerateFlashcardsClientInput): 
   }
   
   const genAI = new GoogleGenerativeAI(input.apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const existingCardsPrompt = input.existingCards && input.existingCards.length > 0 
     ? `
