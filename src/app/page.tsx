@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, ChevronsRight } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -34,11 +34,120 @@ import { AIOperationError } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
 
 type ViewType = "flashcards" | "quiz" | "theory";
+
+const OnboardingTour = ({
+    step,
+    onStepComplete,
+    onApiKeysChange,
+    onOpenLearnSettings,
+}: {
+    step: number;
+    onStepComplete: (step: number, data?: any) => void;
+    onApiKeysChange: (keys: string[]) => void;
+    onOpenLearnSettings: () => void;
+}) => {
+    const [apiKey, setApiKey] = useState('');
+
+    const handleApiKeySubmit = () => {
+        if (apiKey.trim()) {
+            onApiKeysChange([apiKey.trim()]);
+            onStepComplete(1);
+        }
+    };
+
+    if (step === 0) return null;
+
+    if (step === 1) {
+        return (
+            <Dialog open={true} onOpenChange={() => {}}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl flex items-center gap-2">
+                            <Sparkles className="w-6 h-6 text-primary" />
+                            Chào mừng bạn đến với AI New Tab!
+                        </DialogTitle>
+                        <DialogDescription className="text-base pt-2">
+                            Để bắt đầu, bạn cần có API Key miễn phí từ Google.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <p>Ứng dụng này sử dụng Gemini AI để tạo nội dung học tập. Hãy lấy API Key của bạn và dán vào đây.</p>
+                        <div className="flex items-center gap-2">
+                            <KeyRound className="w-4 h-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Dán API Key của bạn tại đây"
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleApiKeySubmit()}
+                            />
+                        </div>
+                         <Button asChild variant="link" className="p-0 h-auto">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-sm">
+                                Lấy API Key miễn phí tại Google AI Studio <ExternalLink className="ml-1 h-3 w-3" />
+                            </a>
+                        </Button>
+                    </div>
+                    <Button onClick={handleApiKeySubmit} disabled={!apiKey.trim()}>
+                        Lưu và Tiếp tục <ChevronsRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+    
+    const getElementRect = (selector: string) => {
+        const element = document.querySelector(selector);
+        return element ? element.getBoundingClientRect() : null;
+    };
+
+    const topicRect = getElementRect('#topic-input-for-tour');
+    const menuRect = getElementRect('#learn-settings-button-for-tour');
+
+    const renderHighlight = (rect: DOMRect | null, text: string, position: 'top' | 'bottom' | 'left' | 'right') => {
+        if (!rect) return null;
+        const baseClasses = "absolute z-[101] bg-background/90 text-foreground p-3 rounded-lg shadow-2xl animate-in fade-in-50 flex items-center gap-2";
+        const positionClasses = {
+            top: { top: rect.top - 8, left: rect.left + rect.width / 2, transform: 'translate(-50%, -100%)' },
+            bottom: { top: rect.bottom + 8, left: rect.left + rect.width / 2, transform: 'translate(-50%, 0)' },
+            right: { top: rect.top + rect.height / 2, left: rect.right + 8, transform: 'translate(0, -50%)' },
+            left: { top: rect.top + rect.height / 2, right: rect.left - 8, transform: 'translate(-100%, -50%)' },
+        };
+        return (
+            <>
+                <div 
+                    className="fixed z-[100] border-2 border-primary rounded-lg shadow-2xl pointer-events-none"
+                    style={{
+                        top: rect.top - 4,
+                        left: rect.left - 4,
+                        width: rect.width + 8,
+                        height: rect.height + 8,
+                        transition: 'all 0.3s ease',
+                    }}
+                />
+                <div style={positionClasses[position]} className={baseClasses}>
+                   {text}
+                </div>
+            </>
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-[99] animate-in fade-in-50" onClick={() => {
+             if (step === 3) onOpenLearnSettings();
+        }}>
+            {step === 2 && topicRect && renderHighlight(topicRect, "Tuyệt vời! Giờ hãy nhập chủ đề bạn muốn học tại đây.", 'bottom')}
+            {step === 3 && menuRect && renderHighlight(menuRect, "Cuối cùng, nhấn vào đây để tạo nội dung học tập.", 'left')}
+        </div>
+    );
+};
+
 
 const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
 	<div className="w-full h-full flex flex-col items-center justify-center p-4">
@@ -483,6 +592,11 @@ export default function Home() {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [theoryChapterIndex, setTheoryChapterIndex] = useState(0);
 
+	// Onboarding Tour State
+    const [tourStep, setTourStep] = useState(0); // 0 = off, 1 = api key, 2 = topic, 3 = menu
+    const [learnSettingsOpen, setLearnSettingsOpen] = useState(false);
+
+
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
 	const isQuizGeneratingRef = useRef(false)
@@ -517,6 +631,14 @@ export default function Home() {
 			forceNew: boolean = false,
 			genType: "flashcards" | "quiz" | "theory"
 		) => {
+
+			if (tourStep !== 0) {
+                setTourStep(0);
+                const db = await getDb();
+                await db.put("data", { id: "hasCompletedOnboarding", data: true });
+            }
+
+
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
@@ -800,7 +922,7 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange]
+		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange, tourStep]
 	)
 	
 	const loadInitialData = useCallback(async () => {
@@ -831,6 +953,7 @@ export default function Home() {
 			quizStateRes,
 			theoryDataRes,
 			theoryStateRes,
+			hasCompletedOnboardingRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -849,6 +972,7 @@ export default function Home() {
 			db.get("data", "quizState"),
 			db.get("data", "theory"),
 			db.get("data", "theoryState"),
+			db.get("data", "hasCompletedOnboarding"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
@@ -862,6 +986,7 @@ export default function Home() {
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
+		const hasCompletedOnboarding = hasCompletedOnboardingRes?.data as boolean;
 		
 		const flashcardData = flashcardDataRes as LabeledData<CardSet>;
 		const flashcardStateData = flashcardStateRes as AppData;
@@ -956,6 +1081,10 @@ export default function Home() {
 		}
 		setTheoryChapterIndex(initialTheoryIndex);
 
+		if (!hasCompletedOnboarding && savedApiKeys.length === 0) {
+            setTimeout(() => setTourStep(1), 500);
+        }
+
 	}, []);
 	
 
@@ -973,7 +1102,8 @@ export default function Home() {
 			keysToDelete.push(
 				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
-				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex'
+				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
+				'hasCompletedOnboarding'
 			);
 		}
 	
@@ -1042,6 +1172,10 @@ export default function Home() {
 				setQuizMax(newQuizMax)
 				await db.put("data", { id: "quizMax", data: newQuizMax })
 			}
+
+			if (tourStep === 2 && newTopic.trim()) {
+                setTourStep(3);
+            }
 		},
 		[
 			topic, 
@@ -1049,7 +1183,8 @@ export default function Home() {
 			model,
 			flashcardMax, 
 			quizMax,
-			handleClearAllData
+			handleClearAllData,
+			tourStep
 		]
 	)
 
@@ -1237,6 +1372,12 @@ export default function Home() {
 		[] 
 	);
 
+	const handleTourStepComplete = useCallback((step: number) => {
+        if (step === 1) {
+            setTourStep(2);
+        }
+    }, []);
+
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
 	const currentCount =
 		view === "flashcards"
@@ -1286,6 +1427,9 @@ export default function Home() {
 		isQuizLoading,
 		onApiKeysChange: handleApiKeysChange,
 		apiKeys: apiKeys,
+		isOpen: learnSettingsOpen,
+        onOpenChange: setLearnSettingsOpen,
+		tourStep: tourStep,
 	};
 
 	const globalSettingsProps = {
@@ -1300,6 +1444,12 @@ export default function Home() {
 
 	return (
 		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1.2fr,1.5fr]">
+			<OnboardingTour 
+                step={tourStep}
+                onStepComplete={handleTourStepComplete}
+                onApiKeysChange={handleApiKeysChange}
+                onOpenLearnSettings={() => setLearnSettingsOpen(true)}
+            />
 			{backgroundImage && (
 				<div
 					className="absolute inset-0 bg-cover bg-center"
