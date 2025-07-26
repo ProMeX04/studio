@@ -13,6 +13,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
+import { CheckCircle } from "lucide-react"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +23,7 @@ interface TheoryProps {
 	theorySet: TheorySet | null
 	topic: string;
 	chapterIndex: number;
+	isCurrentUnderstood: boolean;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -32,7 +34,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			background: "hsl(var(--muted))",
 			padding: "1rem",
             borderRadius: "0.5rem",
-            fontSize: "16px",
+            fontSize: "1rem",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
 		},
@@ -40,7 +42,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			...vscDarkPlus['code[class*="language-"]'],
 			background: "transparent",
 			padding: "0",
-            fontSize: "16px",
+            fontSize: "1rem",
 		},
 	}
 
@@ -77,7 +79,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, chapterIndex }: TheoryProps) {
+export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryProps) {
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
 
@@ -86,20 +88,21 @@ export function Theory({ theorySet, chapterIndex }: TheoryProps) {
 			<div className="h-full flex flex-col bg-transparent shadow-none border-none">
 				<div className="flex-grow flex items-start justify-center overflow-y-auto pb-4">
 					{hasContent ? (
-						<div className="w-full max-w-5xl mx-auto">
+						<div className="w-full max-w-5xl mx-auto relative">
 							<h1 className="text-4xl font-bold mt-4 mb-8 text-center">{currentChapter.title}</h1>
-							<div className="prose dark:prose-invert max-w-none text-lg">
+							{isCurrentUnderstood && <CheckCircle className="absolute top-0 right-0 text-success w-6 h-6" />}
+							<div className="prose dark:prose-invert max-w-none text-xl">
 								{currentChapter.content ? (
 									<MarkdownRenderer>{currentChapter.content}</MarkdownRenderer>
 								) : (
 									<div className="space-y-4 pt-4">
-										<Skeleton className="h-6 w-3/4" />
-										<Skeleton className="h-4 w-full" />
-										<Skeleton className="h-4 w-full" />
-										<Skeleton className="h-4 w-5/6" />
+										<Skeleton className="h-8 w-3/4" />
+										<Skeleton className="h-6 w-full" />
+										<Skeleton className="h-6 w-full" />
+										<Skeleton className="h-6 w-5/6" />
 										<br/>
-										<Skeleton className="h-4 w-full" />
-										<Skeleton className="h-4 w-4/5" />
+										<Skeleton className="h-6 w-full" />
+										<Skeleton className="h-6 w-4/5" />
 									</div>
 								)}
 							</div>

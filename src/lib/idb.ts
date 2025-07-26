@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 7; // Incremented version
+const DB_VERSION = 8; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -54,12 +54,7 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-        // Migration logic for version 7
-        if (oldVersion < 7) {
-          // The key 'theoryState' might now be obsolete if we just store an index.
-          // Let's add 'theoryChapterIndex' for the new paginated view.
-          // No need to create indexes if we are always getting by key.
-        }
+        // Migration logic, if needed in the future
       },
     });
   }

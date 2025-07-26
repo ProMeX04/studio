@@ -25,6 +25,5 @@ export interface FlashcardState {
 }
 
 export interface TheoryState {
-  // Now tracks the current page index for paginated view
-  currentChapterIndex: number;
+  understoodIndices: number[];
 }

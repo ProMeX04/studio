@@ -33,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError, safeAICall } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
+import { TheorySummary } from "@/components/TheorySummary"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
@@ -59,9 +60,14 @@ interface LearnProps {
 	setShowQuizSummary: (show: boolean) => void;
 	showFlashcardSummary: boolean;
 	setShowFlashcardSummary: (show: boolean) => void;
+	showTheorySummary: boolean;
+	setShowTheorySummary: (show: boolean) => void;
 	flashcardState: FlashcardState | null;
 	onFlashcardStateChange: (newState: FlashcardState) => void;
 	onFlashcardReset: () => void;
+	theoryState: TheoryState | null;
+	onTheoryStateChange: (newState: TheoryState) => void;
+	onTheoryReset: () => void;
 	settingsProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
@@ -92,9 +98,14 @@ function Learn({
 	setShowQuizSummary,
 	showFlashcardSummary,
 	setShowFlashcardSummary,
+	showTheorySummary,
+	setShowTheorySummary,
 	flashcardState,
 	onFlashcardStateChange,
 	onFlashcardReset,
+	theoryState,
+	onTheoryStateChange,
+	onTheoryReset,
 	settingsProps,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
@@ -163,7 +174,7 @@ function Learn({
 		return { correctAnswers: correct, incorrectAnswers: incorrect, unansweredQuestions: unanswered };
 	}, [quizSet, quizState]);
 
-	const { understoodCount, notUnderstoodCount } = React.useMemo(() => {
+	const { understoodCount: flashcardUnderstood, notUnderstoodCount: flashcardNotUnderstood } = React.useMemo(() => {
 		if (!flashcardSet || !flashcardState) {
 			return { understoodCount: 0, notUnderstoodCount: flashcardSet?.cards.length ?? 0 };
 		}
@@ -172,37 +183,57 @@ function Learn({
 		return { understoodCount: understood, notUnderstoodCount: total - understood };
 	}, [flashcardSet, flashcardState]);
 
+	const { understoodCount: theoryUnderstood, notUnderstoodCount: theoryNotUnderstood } = React.useMemo(() => {
+		if (!theorySet || !theoryState) {
+			return { understoodCount: 0, notUnderstoodCount: theorySet?.chapters.length ?? 0 };
+		}
+		const understood = theoryState.understoodIndices.length;
+		const total = theorySet.chapters.length;
+		return { understoodCount: understood, notUnderstoodCount: total - understood };
+	}, [theorySet, theoryState]);
+
+
 	const allQuestionsAnswered = quizSet && (unansweredQuestions === 0);
 	const shouldShowQuizSummary = (showQuizSummary || allQuestionsAnswered) && view === 'quiz';
 
-	const allFlashcardsMarked = flashcardSet && (understoodCount === flashcardSet.cards.length);
+	const allFlashcardsMarked = flashcardSet && (flashcardUnderstood === flashcardSet.cards.length);
     const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === 'flashcards';
 
-	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary;
+	const allTheoryChaptersMarked = theorySet && (theoryUnderstood === theorySet.chapters.length);
+    const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && view === 'theory';
+
+	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary || shouldShowTheorySummary;
 	const isNavDisabled = isSummaryActive;
 
 	const handleToggleUnderstood = () => {
-		if (!flashcardState || !flashcardSet) return;
-		const currentCard = flashcardSet.cards[flashcardIndex];
-		if(!currentCard) return;
-
-		const originalIndex = flashcardIndex; // Index is now stable
-		
-		const newUnderstoodIndices = [...flashcardState.understoodIndices];
-		const indexPosition = newUnderstoodIndices.indexOf(originalIndex);
-
-		if (indexPosition > -1) {
-			newUnderstoodIndices.splice(indexPosition, 1); // Unmark
-		} else {
-			newUnderstoodIndices.push(originalIndex); // Mark
+		if (view === 'flashcards') {
+			if (!flashcardState || !flashcardSet) return;
+			const newUnderstoodIndices = [...flashcardState.understoodIndices];
+			const indexPosition = newUnderstoodIndices.indexOf(flashcardIndex);
+			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1);
+			else newUnderstoodIndices.push(flashcardIndex);
+			onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
+		} else if (view === 'theory') {
+			if (!theoryState || !theorySet) return;
+			const newUnderstoodIndices = [...theoryState.understoodIndices];
+			const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex);
+			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1);
+			else newUnderstoodIndices.push(theoryChapterIndex);
+			onTheoryStateChange({ understoodIndices: newUnderstoodIndices });
 		}
-		onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
 	};
 
-	const isCurrentCardUnderstood = useMemo(() => {
-		if (!flashcardState || !flashcardSet) return false;
-		return flashcardState.understoodIndices.includes(flashcardIndex);
-	}, [flashcardState, flashcardIndex]);
+	const isCurrentItemUnderstood = useMemo(() => {
+		if (view === 'flashcards') {
+			if (!flashcardState || !flashcardSet) return false;
+			return flashcardState.understoodIndices.includes(flashcardIndex);
+		}
+		if (view === 'theory') {
+			if (!theoryState || !theorySet) return false;
+			return theoryState.understoodIndices.includes(theoryChapterIndex);
+		}
+		return false;
+	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
 
 	return (
@@ -220,19 +251,28 @@ function Learn({
 					/>
 				) : shouldShowFlashcardSummary && flashcardSet ? (
 					<FlashcardSummary
-						understoodCount={understoodCount}
-						notUnderstoodCount={notUnderstoodCount}
+						understoodCount={flashcardUnderstood}
+						notUnderstoodCount={flashcardNotUnderstood}
 						totalCards={flashcardSet.cards.length}
 						onReset={onFlashcardReset}
 						onBack={() => setShowFlashcardSummary(false)}
 						isCompleted={allFlashcardsMarked}
+					/>
+				) : shouldShowTheorySummary && theorySet ? (
+					<TheorySummary
+						understoodCount={theoryUnderstood}
+						notUnderstoodCount={theoryNotUnderstood}
+						totalChapters={theorySet.chapters.length}
+						onReset={onTheoryReset}
+						onBack={() => setShowTheorySummary(false)}
+						isCompleted={allTheoryChaptersMarked}
 					/>
 				) : view === "flashcards" ? (
 					<Flashcards
 						flashcardSet={flashcardSet}
 						flashcardIndex={flashcardIndex}
 						topic={topic}
-						isCurrentUnderstood={isCurrentCardUnderstood}
+						isCurrentUnderstood={isCurrentItemUnderstood}
 					/>
 				) : view === "quiz" ? (
 					<Quiz
@@ -248,7 +288,7 @@ function Learn({
 						onApiKeyIndexChange={onApiKeyIndexChange}
 					/>
 				) : (
-					<Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} />
+					<Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />
 				)}
 			</CardContent>
 
@@ -293,19 +333,19 @@ function Learn({
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 							
-							{view === 'flashcards' && (
+							{(view === 'flashcards' || view === 'theory') && (
 								<>
 									<Button
 										onClick={handleToggleUnderstood}
 										disabled={!hasContent || isSummaryActive}
-										variant={isCurrentCardUnderstood ? "default" : "outline"}
+										variant={isCurrentItemUnderstood ? "default" : "outline"}
 										size="icon"
 										className="h-9 w-9"
 									>
 										<CheckCircle className="w-4 h-4" />
 									</Button>
 									<Button
-										onClick={() => setShowFlashcardSummary(true)}
+										onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
 										disabled={!hasContent || isSummaryActive}
 										variant="outline"
 										size="icon"
@@ -375,6 +415,7 @@ export default function Home() {
 	const [theorySet, setTheorySet] = useState<TheorySet | null>(null);
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
 	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(null)
+	const [theoryState, setTheoryState] = useState<TheoryState | null>(null);
 	const { toast } = useToast()
 	const [visibility, setVisibility] = useState<ComponentVisibility>({
 		clock: true,
@@ -392,6 +433,7 @@ export default function Home() {
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false);
+	const [showTheorySummary, setShowTheorySummary] = useState(false);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [theoryChapterIndex, setTheoryChapterIndex] = useState(0);
 
@@ -606,7 +648,10 @@ export default function Home() {
 					if (forceNew) {
 						setTheorySet(null);
 						setTheoryChapterIndex(0);
+						setTheoryState(null);
+						setShowTheorySummary(false);
 						await db.delete("data", "theory");
+						await db.delete("data", "theoryState");
 						await db.delete("data", "theoryChapterIndex");
 					}
 			
@@ -633,6 +678,7 @@ export default function Home() {
 					
 					if (isMountedRef.current) {
 						setTheorySet(newTheorySet);
+						setTheoryState({ understoodIndices: [] });
 						setTheoryChapterIndex(0);
 					}
 					await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
@@ -640,6 +686,7 @@ export default function Home() {
 					// Step 2: Generate content for each chapter sequentially
 					let currentKeyIndex = outlineKeyIndex;
 					for (let i = 0; i < newTheorySet.outline.length; i++) {
+						if (!isMountedRef.current) break; // Exit if component is unmounted
 						const chapterTitle = newTheorySet.outline[i];
 						
 						const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
@@ -729,7 +776,7 @@ export default function Home() {
 			quizDataRes,
 			quizStateRes,
 			theoryDataRes,
-			theoryChapterIndexRes,
+			theoryStateRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -746,7 +793,7 @@ export default function Home() {
 			db.get("data", "quiz"),
 			db.get("data", "quizState"),
 			db.get("data", "theory"),
-			db.get("data", "theoryChapterIndex"),
+			db.get("data", "theoryState"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
@@ -765,7 +812,7 @@ export default function Home() {
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
 		const theoryData = theoryDataRes as LabeledData<TheorySet>;
-		const theoryChapterIndexData = theoryChapterIndexRes as AppData;
+		const theoryStateData = theoryStateRes as AppData;
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);
 		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
@@ -836,10 +883,21 @@ export default function Home() {
 		setQuizState(currentQuizState);
 		setCurrentQuestionIndex(currentQuizState.currentQuestionIndex);
 
-		const currentTheoryChapterIndex = (theoryData && theoryData.topic === savedTopic && theoryChapterIndexData)
-			? theoryChapterIndexData.data as number
-			: 0;
-		setTheoryChapterIndex(currentTheoryChapterIndex);
+		const currentTheoryState = (theoryData && theoryData.topic === savedTopic && theoryStateData)
+			? theoryStateData.data as TheoryState
+			: { understoodIndices: [] };
+		setTheoryState(currentTheoryState);
+
+		let initialTheoryIndex = 0;
+		if (currentTheory && currentTheory.chapters.length > 0) {
+			const firstUnseenIndex = currentTheory.chapters.findIndex(
+				(_, index) => !currentTheoryState.understoodIndices.includes(index)
+			);
+			if (firstUnseenIndex !== -1) {
+				initialTheoryIndex = firstUnseenIndex;
+			}
+		}
+		setTheoryChapterIndex(initialTheoryIndex);
 
 	}, []);
 	
@@ -983,6 +1041,7 @@ export default function Home() {
 			setView(newView)
 			setShowQuizSummary(false); // Hide summary when switching views
 			setShowFlashcardSummary(false);
+			setShowTheorySummary(false);
 			const db = await getDb()
 			await db.put("data", { id: "view", data: newView })
 		},
@@ -1046,6 +1105,30 @@ export default function Home() {
 		toast({
 			title: "Bắt đầu lại",
 			description: "Bạn có thể bắt đầu lại bộ thẻ này.",
+		});
+	}, [toast]);
+
+	const handleTheoryStateChange = useCallback(async (newState: TheoryState) => {
+		setTheoryState(newState);
+		const db = await getDb();
+		await db.put("data", { id: "theoryState", data: newState });
+	}, []);
+	
+	const handleTheoryReset = useCallback(async () => {
+		const newTheoryState: TheoryState = {
+			understoodIndices: [],
+		};
+		setTheoryState(newTheoryState);
+		setShowTheorySummary(false);
+		setTheoryChapterIndex(0);
+	
+		const db = await getDb();
+		await db.put("data", { id: "theoryState", data: newTheoryState });
+		await db.put("data", { id: "theoryChapterIndex", data: 0 });
+	
+		toast({
+			title: "Bắt đầu lại",
+			description: "Bạn có thể bắt đầu lại phần lý thuyết.",
 		});
 	}, [toast]);
 
@@ -1175,9 +1258,14 @@ export default function Home() {
 							setShowQuizSummary={setShowQuizSummary}
 							showFlashcardSummary={showFlashcardSummary}
 							setShowFlashcardSummary={setShowFlashcardSummary}
+							showTheorySummary={showTheorySummary}
+							setShowTheorySummary={setShowTheorySummary}
 							flashcardState={flashcardState}
 							onFlashcardStateChange={handleFlashcardStateChange}
 							onFlashcardReset={handleFlashcardReset}
+							theoryState={theoryState}
+							onTheoryStateChange={handleTheoryStateChange}
+							onTheoryReset={handleTheoryReset}
 							settingsProps={learnSettingsProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
