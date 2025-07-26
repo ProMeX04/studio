@@ -14,6 +14,7 @@ import {
 	KeyRound,
 	Plus,
 	X,
+	Loader,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -40,7 +41,7 @@ import {
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { getDb } from "@/lib/idb"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
+import { Progress } from "@/components/ui/progress"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -53,6 +54,8 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+
+type ViewType = "flashcards" | "quiz" | "theory";
 
 interface CommonSettingsProps {
 	scope: "global" | "learn";
@@ -79,12 +82,20 @@ interface LearnSettingsProps {
 		flashcardMax: number
 		quizMax: number
 	}) => void
-	onGenerateNew: (topic: string) => void
-	currentView: "flashcards" | "quiz"
+	onGenerateType: (type: ViewType) => void;
+	onClearLearningData: () => void;
+	currentView: ViewType
 	topic: string
 	language: string
 	flashcardMax: number
 	quizMax: number
+	theoryCount: number;
+	theoryMax: number;
+	flashcardCount: number;
+	quizCount: number;
+	isTheoryLoading: boolean;
+	isFlashcardLoading: boolean;
+	isQuizLoading: boolean;
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -168,14 +179,14 @@ export function Settings(props: SettingsProps) {
 		}
 	};
 
-	const handleGenerateNew = () => {
+	const handleGenerateType = (type: ViewType) => {
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
-			handleLocalSettingsSave() // Save current settings first
-			learnProps.onGenerateNew(topic)      // Then generate with the new topic
-			setIsOpen(false)
+			handleLocalSettingsSave(); // Save settings first
+			learnProps.onGenerateType(type);
+			// Keep the sheet open
 		}
-	}
+	};
 	
 	const handleClearData = () => {
 		if (!isLearnScope) {
@@ -184,6 +195,13 @@ export function Settings(props: SettingsProps) {
 			setIsOpen(false)
 		}
 	}
+
+	const handleClearLearningData = () => {
+		if (isLearnScope) {
+			(props as LearnSettingsProps).onClearLearningData();
+			setIsOpen(false);
+		}
+	};
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (!isLearnScope) {
@@ -222,31 +240,24 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderLearnSettings = () => {
-		if (!isLearnScope) return null
-		const learnProps = props as LearnSettingsProps
-		const isFlashcardView = learnProps.currentView === "flashcards"
-		const isQuizView = learnProps.currentView === "quiz"
+		if (!isLearnScope) return null;
+		const learnProps = props as LearnSettingsProps;
 
 		return (
 			<div className="space-y-4">
-				<div className="grid grid-cols-4 items-center gap-4">
-					<Label htmlFor="topic" className="text-right">
-						Chủ đề
-					</Label>
+				<div className="space-y-2">
+					<Label htmlFor="topic">Chủ đề</Label>
 					<Input
 						id="topic"
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
-						className="col-span-3"
 						placeholder="ví dụ: Lịch sử La Mã"
 					/>
 				</div>
-				<div className="grid grid-cols-4 items-center gap-4">
-					<Label htmlFor="language" className="text-right">
-						Ngôn ngữ
-					</Label>
+				<div className="space-y-2">
+					<Label htmlFor="language">Ngôn ngữ</Label>
 					<Select value={language} onValueChange={setLanguage}>
-						<SelectTrigger className="col-span-3">
+						<SelectTrigger>
 							<SelectValue placeholder="Chọn một ngôn ngữ" />
 						</SelectTrigger>
 						<SelectContent>
@@ -258,72 +269,81 @@ export function Settings(props: SettingsProps) {
 						</SelectContent>
 					</Select>
 				</div>
-
+	
 				<Separator />
-
+	
 				<div className="space-y-4">
-					<div className="text-center font-semibold text-foreground">
-						{isFlashcardView
-							? "Cài đặt Flashcard"
-							: "Cài đặt Trắc nghiệm"
-						}
+					<Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>
+					
+					{/* Theory Progress */}
+					<div className="space-y-2">
+						<div className="flex justify-between items-center text-sm">
+							<Label htmlFor="theory-progress">Lý thuyết</Label>
+							<span className="text-muted-foreground">{learnProps.theoryCount} / {learnProps.theoryMax > 0 ? learnProps.theoryMax : '?'}</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<Progress value={learnProps.theoryMax > 0 ? (learnProps.theoryCount / learnProps.theoryMax) * 100 : 0} id="theory-progress" />
+							<Button size="icon" variant="outline" onClick={() => handleGenerateType('theory')} disabled={learnProps.isTheoryLoading}>
+								{learnProps.isTheoryLoading ? <Loader className="animate-spin" /> : <Plus />}
+							</Button>
+						</div>
 					</div>
-
-					{isFlashcardView && (
-						<div className="space-y-4 pt-2">
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label
-									htmlFor="flashcardMax"
-									className="text-right"
-								>
-									Số lượng tối đa
-								</Label>
-								<Input
-									id="flashcardMax"
-									type="number"
-									value={flashcardMax}
-									onChange={(e) =>
-										setFlashcardMax(
-											parseInt(e.target.value) || 0
-										)
-									}
-									className="col-span-3"
-									placeholder="ví dụ: 50"
-									{...numericInputProps}
-								/>
-							</div>
+	
+					{/* Flashcard Progress */}
+					<div className="space-y-2">
+						<div className="flex justify-between items-center text-sm">
+							<Label htmlFor="flashcard-progress">Flashcards</Label>
+							<span className="text-muted-foreground">{learnProps.flashcardCount} / {flashcardMax}</span>
 						</div>
-					)}
-
-					{isQuizView && (
-						<div className="space-y-4 pt-2">
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label htmlFor="quizMax" className="text-right">
-									Số lượng tối đa
-								</Label>
-								<Input
-									id="quizMax"
-									type="number"
-									value={quizMax}
-									onChange={(e) =>
-										setQuizMax(parseInt(e.target.value) || 0)
-									}
-									className="col-span-3"
-									placeholder="ví dụ: 50"
-									{...numericInputProps}
-								/>
-							</div>
+						<div className="flex items-center gap-2">
+							<Progress value={(learnProps.flashcardCount / flashcardMax) * 100} id="flashcard-progress" />
+							<Button size="icon" variant="outline" onClick={() => handleGenerateType('flashcards')} disabled={learnProps.flashcardCount >= flashcardMax || learnProps.isFlashcardLoading}>
+								{learnProps.isFlashcardLoading ? <Loader className="animate-spin" /> : <Plus />}
+							</Button>
 						</div>
-					)}
-
+						<Input
+							id="flashcardMax"
+							type="number"
+							value={flashcardMax}
+							onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
+							className="mt-2"
+							placeholder="Số lượng tối đa, ví dụ: 50"
+							{...numericInputProps}
+						/>
+					</div>
+	
+					{/* Quiz Progress */}
+					<div className="space-y-2">
+						<div className="flex justify-between items-center text-sm">
+							<Label htmlFor="quiz-progress">Trắc nghiệm</Label>
+							<span className="text-muted-foreground">{learnProps.quizCount} / {quizMax}</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<Progress value={(learnProps.quizCount / quizMax) * 100} id="quiz-progress" />
+							<Button size="icon" variant="outline" onClick={() => handleGenerateType('quiz')} disabled={learnProps.quizCount >= quizMax || learnProps.isQuizLoading}>
+								{learnProps.isQuizLoading ? <Loader className="animate-spin" /> : <Plus />}
+							</Button>
+						</div>
+						<Input
+							id="quizMax"
+							type="number"
+							value={quizMax}
+							onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
+							className="mt-2"
+							placeholder="Số lượng tối đa, ví dụ: 50"
+							{...numericInputProps}
+						/>
+					</div>
 				</div>
-
+	
+				<Separator />
+	
 				<div className="flex justify-center pt-2">
 					<AlertDialog>
 						<AlertDialogTrigger asChild>
 							<Button variant="destructive">
-								<RefreshCw className="mr-2 h-4 w-4" />
-								Tạo lại & Xóa dữ liệu cũ
+								<Trash2 className="mr-2 h-4 w-4" />
+								Xóa dữ liệu học tập
 							</Button>
 						</AlertDialogTrigger>
 						<AlertDialogContent>
@@ -335,13 +355,13 @@ export function Settings(props: SettingsProps) {
 									</div>
 								</AlertDialogTitle>
 								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả flashcard hoặc bài trắc nghiệm của chủ đề <strong>{topic}</strong> và tạo lại từ đầu. Hành động này không thể hoàn tác.
+									Hành động này sẽ xóa vĩnh viễn tất cả flashcard, bài trắc nghiệm và lý thuyết của chủ đề hiện tại. Hành động này không thể hoàn tác.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction onClick={handleGenerateNew}>
-									Vâng, tạo lại
+								<AlertDialogAction onClick={handleClearLearningData}>
+									Vâng, xóa dữ liệu
 								</AlertDialogAction>
 							</AlertDialogFooter>
 						</AlertDialogContent>

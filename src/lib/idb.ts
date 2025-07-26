@@ -80,10 +80,13 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const apiKeys = await store.get('apiKeys'); // Preserve API keys
+    const apiKeyIndex = await store.get('apiKeyIndex');
+    
     await store.clear();
-    if (apiKeys) {
-      await store.put(apiKeys); // Put it back after clearing
-    }
+    
+    if (apiKeys) await store.put(apiKeys); // Put it back after clearing
+    if (apiKeyIndex) await store.put(apiKeyIndex);
+
     await tx.done;
     console.log('✅ All data cleared successfully (API keys preserved)');
   } catch (error) {

@@ -900,15 +900,38 @@ export default function Home() {
 	}, []);
 	
 
-	const handleClearAllData = useCallback(async () => {
-		const db = await getDb()
-		await clearAllData(db)
-		await loadInitialData()
+	const handleClearAllData = useCallback(async (isLearningReset: boolean = false) => {
+		const db = await getDb();
+	
+		const keysToDelete: DataKey[] = [
+			"flashcards", "flashcardState", "flashcardIndex",
+			"quiz", "quizState",
+			"theory", "theoryState", "theoryChapterIndex",
+		];
+	
+		// Full reset also clears topic, settings, etc.
+		if (!isLearningReset) {
+			keysToDelete.push(
+				'topic', 'language', 'view', 'visibility', 
+				'background', 'uploadedBackgrounds', 
+				'flashcardMax', 'quizMax'
+			);
+		}
+	
+		const tx = db.transaction("data", 'readwrite');
+		const store = tx.objectStore("data");
+		await Promise.all(keysToDelete.map(key => store.delete(key)));
+		await tx.done;
+	
+		await loadInitialData(); // Reload all data from scratch
+	
 		toast({
 			title: "Đã xóa dữ liệu",
-			description: "Toàn bộ flashcard và quiz đã được xóa.",
-		})
-	}, [loadInitialData, toast])
+			description: isLearningReset 
+				? "Toàn bộ dữ liệu học tập đã được xóa." 
+				: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
+		});
+	}, [loadInitialData, toast]);
 
 	useEffect(() => {
 		if (isMounted) {
@@ -961,12 +984,14 @@ export default function Home() {
 		]
 	)
 
-	const onGenerateFromSettings = useCallback(
-		(newTopic: string) => {
-			handleGenerate(newTopic, language, true, view);
+	const onGenerateType = useCallback(
+		(genType: ViewType) => {
+			const isTheoryAndHasContent = genType === 'theory' && theorySet?.chapters && theorySet.chapters.length > 0;
+			const forceNew = isTheoryAndHasContent;
+			handleGenerate(topic, language, forceNew, genType);
 		}, 
-		[handleGenerate, language, view]
-	)
+		[handleGenerate, topic, language, theorySet]
+	);
 
 
 	const handleBackgroundChange = useCallback(
@@ -1186,16 +1211,24 @@ export default function Home() {
 	
 	const learnSettingsProps = {
 		onSettingsChange: onSettingsSave,
-		onGenerateNew: onGenerateFromSettings,
+		onGenerateType: onGenerateType,
+		onClearLearningData: () => handleClearAllData(true),
 		currentView: view,
 		topic: topic,
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
-	}
+		theoryCount: theorySet?.chapters.length ?? 0,
+		theoryMax: theorySet?.outline.length ?? 0,
+		flashcardCount: flashcardSet?.cards.length ?? 0,
+		quizCount: quizSet?.questions.length ?? 0,
+		isTheoryLoading,
+		isFlashcardLoading,
+		isQuizLoading,
+	};
 
 	const globalSettingsProps = {
-		onClearAllData: handleClearAllData,
+		onClearAllData: () => handleClearAllData(false),
 		onVisibilityChange: handleVisibilityChange,
 		onBackgroundChange: handleBackgroundChange,
 		onUploadedBackgroundsChange: handleUploadedBackgroundsChange,
