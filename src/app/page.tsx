@@ -216,6 +216,41 @@ const ApiKeyGuide = ({
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
 				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 					<CardHeader className="p-0 mb-6 text-center">
+						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+						</Button>
+						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+							<BookOpen className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							Làm thế nào để tạo nội dung?
+						</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							Bạn đã sẵn sàng! Bây giờ, làm thế nào để bắt đầu tạo nội dung?
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
+						<div className="bg-secondary/30 p-4 rounded-lg space-y-4 text-center">
+							<p className="text-lg">
+								Bất cứ khi nào bạn muốn tạo hoặc thêm nội dung (Lý thuyết, Flashcard, Trắc nghiệm), chỉ cần nhấn vào nút <strong>Menu</strong> <Menu className="inline-block h-5 w-5 mx-1" /> trên thanh công cụ và chọn <strong>Tạo</strong>.
+							</p>
+						</div>
+					</CardContent>
+					<CardFooter className="p-0 mt-6">
+						<Button onClick={handleNextStep} className="w-full h-12">
+							Đã hiểu!
+						</Button>
+					</CardFooter>
+				</Card>
+			</div>
+		);
+	}
+
+	if (onboardingStep === 6) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6 text-center">
 						<div className="flex items-center justify-center gap-4 mb-4">
 							<CheckCircle className="w-12 h-12 text-success" />
 						</div>
@@ -1043,9 +1078,17 @@ export default function Home() {
 				greeting: true,
 				search: true,
 				quickLinks: true,
+				learn: true,
 			}
 		);
 	
+		const flashcardData = flashcardDataRes as LabeledData<CardSet>;
+		const quizData = quizDataRes as LabeledData<QuizSet>;
+		const theoryData = theoryDataRes as LabeledData<TheorySet>;
+		const flashcardStateData = flashcardStateRes as AppData;
+		const quizStateData = quizStateRes as AppData;
+		const theoryStateData = theoryStateRes as AppData;
+
 		let currentFlashcards =
 			flashcardData && flashcardData.topic === savedTopic
 				? flashcardData.data
@@ -1080,7 +1123,7 @@ export default function Home() {
 
 		let currentQuizState: QuizState = { currentQuestionIndex: 0, answers: {} };
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
-			currentQuizState = quizStateData.data;
+			currentQuizState = quizStateData.data as QuizState;
 		}
 		
 		if (currentQuiz && currentQuiz.questions.length > 0) {
@@ -1552,3 +1595,4 @@ export default function Home() {
     
 
     
+
