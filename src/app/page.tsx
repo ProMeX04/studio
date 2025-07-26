@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -39,6 +39,29 @@ const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
 
 type ViewType = "flashcards" | "quiz" | "theory";
+
+const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
+	<div className="w-full h-full flex flex-col items-center justify-center p-4">
+		<Card className="max-w-md text-center p-8 bg-background/80 backdrop-blur-sm">
+			<CardContent className="p-0 flex flex-col items-center">
+				<KeyRound className="h-12 w-12 text-primary mb-4" />
+				<h2 className="text-2xl font-bold mb-2">Cần có Gemini API Key</h2>
+				<p className="text-muted-foreground mb-6">
+					Để tạo nội dung học tập, bạn cần cung cấp một API Key (miễn phí) từ Google AI Studio.
+				</p>
+				<div className="flex flex-col sm:flex-row gap-4 justify-center">
+					<Settings {...settingsProps} scope="global" />
+					<Button asChild variant="secondary">
+						<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+							Lấy API Key <ExternalLink className="ml-2 h-4 w-4" />
+						</a>
+					</Button>
+				</div>
+			</CardContent>
+		</Card>
+	</div>
+);
+
 
 interface LearnProps {
 	view: ViewType
@@ -76,6 +99,7 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
+	globalSettingsProps: any;
 }
 
 function Learn({
@@ -114,6 +138,7 @@ function Learn({
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
+	globalSettingsProps,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -235,6 +260,9 @@ function Learn({
 		return false;
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
+	if (!apiKeys || apiKeys.length === 0) {
+		return <ApiKeyGuide settingsProps={globalSettingsProps} />;
+	}
 
 	return (
 		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 flex flex-col">
@@ -1305,6 +1333,7 @@ export default function Home() {
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
+							globalSettingsProps={globalSettingsProps}
 						/>
 					</div>
 				</div>
