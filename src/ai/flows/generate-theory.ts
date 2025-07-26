@@ -36,8 +36,12 @@ export async function generateTheory(
 
       const promptText = `You are a professional educator and expert on the given topic. Your task is to generate a comprehensive, well-structured, and in-depth theoretical document about the topic: "${promptInput.topic}" in the language: ${promptInput.language}.
 
-The document should be easy to understand for a learner but also detailed enough to be a solid reference. Structure the content logically: start with an overview, move to core concepts, and then to more advanced topics or practical examples.
-Use clear headings (#, ##, ###), subheadings, bullet points, tables, and code examples where appropriate to explain the concepts.
+The document must be structured in a specific, logical order to facilitate learning, starting from a high-level overview and progressively diving into details. Please strictly adhere to the following structure:
+
+1.  **Overview**: Start with a concise introduction to the topic.
+2.  **History and Context**: Briefly discuss the history and context of the topic's development.
+3.  **Learning Outline**: Provide a clear, bulleted or numbered list of the key concepts and sections that will be covered in detail.
+4.  **Detailed Chapters**: For each item in the Learning Outline, create a detailed section (using H2 or H3 markdown headings). Explain the concepts thoroughly. Use clear headings, subheadings, bullet points, tables, and code examples where appropriate.
 
 The entire output must be a single, valid Markdown string. Populate the "theory" field in the JSON object with this Markdown string.
 
