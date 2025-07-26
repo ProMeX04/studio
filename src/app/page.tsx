@@ -43,35 +43,6 @@ const QUIZ_BATCH_SIZE = 5;
 
 type ViewType = "flashcards" | "quiz" | "theory";
 
-const TypingEffect = ({ text, onComplete }: { text: string; onComplete?: () => void }) => {
-	const [typedText, setTypedText] = useState('');
-	const [isTyping, setIsTyping] = useState(true);
-  
-	useEffect(() => {
-	  setTypedText('');
-	  setIsTyping(true);
-	}, [text]);
-  
-	useEffect(() => {
-	  if (isTyping && typedText.length < text.length) {
-		const timeoutId = setTimeout(() => {
-		  setTypedText(text.slice(0, typedText.length + 1));
-		}, 30);
-		return () => clearTimeout(timeoutId);
-	  } else if (isTyping && typedText.length === text.length && text.length > 0) {
-		setIsTyping(false);
-		onComplete?.();
-	  }
-	}, [text, typedText, isTyping, onComplete]);
-  
-	return (
-	  <>
-		{typedText}
-		<span className={cn('ml-1 h-full w-0.5 bg-current inline-block', isTyping ? 'animate-pulse' : 'hidden')} />
-	  </>
-	);
-  };
-
 const ApiKeyGuide = ({ 
 	settingsProps, 
 	onOnboardingComplete,
@@ -87,32 +58,16 @@ const ApiKeyGuide = ({
 	const [topic, setTopic] = useState(initialTopic);
 	const [language, setLanguage] = useState(initialLanguage);
 
-	// State to control sequential typing effect
-	const [showStep1Title, setShowStep1Title] = useState(true);
-	const [showStep1Desc, setShowStep1Desc] = useState(false);
-	const [showStep1Input, setShowStep1Input] = useState(false);
-	
-	const [showStep2Title, setShowStep2Title] = useState(false);
-	const [showStep2Desc, setShowStep2Desc] = useState(false);
-	const [showStep2Input, setShowStep2Input] = useState(false);
-
-	const [showStep3Title, setShowStep3Title] = useState(false);
-	const [showStep3Desc, setShowStep3Desc] = useState(false);
-	const [showStep3Content, setShowStep3Content] = useState(false);
-
-
 	const handleTopicSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (topic.trim()) {
 			setOnboardingStep(2);
-			setTimeout(() => setShowStep2Title(true), 200);
 		}
 	};
 
 	const handleLanguageSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		setOnboardingStep(3);
-		setTimeout(() => setShowStep3Title(true), 200);
 	};
 
 	const handleBack = () => {
@@ -128,40 +83,29 @@ const ApiKeyGuide = ({
 	if (onboardingStep === 1) {
 		return (
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
-				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm">
+				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 					<CardHeader className="p-0 mb-6">
 						<div className="flex items-center justify-center gap-4 mb-4">
 							<Sparkles className="w-12 h-12 text-primary" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							{showStep1Title && <TypingEffect text="Chào mừng bạn đến với AI New Tab!" onComplete={() => setShowStep1Desc(true)} />}
+							Để bắt đầu, bạn muốn học về chủ đề gì?
 						</CardTitle>
-						{showStep1Desc && (
-							<CardDescription className="text-lg mt-2">
-								<TypingEffect text="Một trang tab mới được hỗ trợ bởi AI, giúp bạn học bất cứ chủ đề nào bạn muốn." />
-							</CardDescription>
-						)}
+						<CardDescription className="text-lg mt-2">
+							Nhập một chủ đề bất kỳ và AI sẽ giúp bạn học nó.
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
-						{showStep1Desc && (
-							<>
-								<h3 className="text-xl font-semibold mb-4">
-									<TypingEffect text="Để bắt đầu, bạn muốn học về chủ đề gì?" onComplete={() => setShowStep1Input(true)} />
-								</h3>
-								{showStep1Input && (
-									<form onSubmit={handleTopicSubmit} className="flex items-center gap-2 animate-in fade-in duration-500">
-										<Input
-											value={topic}
-											onChange={(e) => setTopic(e.target.value)}
-											placeholder="ví dụ: Lịch sử La Mã, Lập trình React..."
-											className="text-base h-12"
-											autoFocus
-										/>
-										<Button type="submit" className="h-12">Tiếp tục</Button>
-									</form>
-								)}
-							</>
-						)}
+						<form onSubmit={handleTopicSubmit} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
+							<Input
+								value={topic}
+								onChange={(e) => setTopic(e.target.value)}
+								placeholder="ví dụ: Lịch sử La Mã, Lập trình React..."
+								className="text-base h-12"
+								autoFocus
+							/>
+							<Button type="submit" className="h-12">Tiếp tục</Button>
+						</form>
 					</CardContent>
 				</Card>
 			</div>
@@ -180,32 +124,28 @@ const ApiKeyGuide = ({
 							<Languages className="w-12 h-12 text-primary" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							{showStep2Title && <TypingEffect text={`Tuyệt vời! Chủ đề của bạn là "${topic}"`} onComplete={() => setShowStep2Desc(true)} />}
+							Tuyệt vời! Chủ đề của bạn là "{topic}"
 						</CardTitle>
-						{showStep2Desc && (
-							<CardDescription className="text-lg mt-2">
-								<TypingEffect text="Bây giờ, hãy chọn ngôn ngữ bạn muốn học." onComplete={() => setShowStep2Input(true)} />
-							</CardDescription>
-						)}
+						<CardDescription className="text-lg mt-2">
+							Bây giờ, hãy chọn ngôn ngữ bạn muốn học.
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
-						{showStep2Input && (
-							<form onSubmit={handleLanguageSubmit} className="flex items-center gap-2 animate-in fade-in duration-500">
-								<Select value={language} onValueChange={setLanguage}>
-									<SelectTrigger className="text-base h-12">
-										<SelectValue placeholder="Chọn một ngôn ngữ" />
-									</SelectTrigger>
-									<SelectContent>
-										{languages.map((lang) => (
-											<SelectItem key={lang.value} value={lang.value}>
-												{lang.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<Button type="submit" className="h-12">Tiếp tục</Button>
-							</form>
-						)}
+						<form onSubmit={handleLanguageSubmit} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
+							<Select value={language} onValueChange={setLanguage}>
+								<SelectTrigger className="text-base h-12">
+									<SelectValue placeholder="Chọn một ngôn ngữ" />
+								</SelectTrigger>
+								<SelectContent>
+									{languages.map((lang) => (
+										<SelectItem key={lang.value} value={lang.value}>
+											{lang.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Button type="submit" className="h-12">Tiếp tục</Button>
+						</form>
 					</CardContent>
 				</Card>
 			</div>
@@ -223,44 +163,42 @@ const ApiKeyGuide = ({
 						<KeyRound className="w-12 h-12 text-primary" />
 					</div>
 					<CardTitle className="text-3xl font-bold text-center">
-						{showStep3Title && <TypingEffect text={"Bước cuối cùng!"} onComplete={() => setShowStep3Desc(true)} />}
+						Bước cuối cùng!
 					</CardTitle>
 					<CardDescription className="text-lg mt-2 text-center">
-						{showStep3Desc && <TypingEffect text="Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google." onComplete={() => setShowStep3Content(true)} />}
+						Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google.
 					</CardDescription>
 				</CardHeader>
-				{showStep3Content && (
-					<CardContent className="p-0 animate-in fade-in duration-500">
-						<ol className="list-decimal list-inside space-y-6">
-							<li className="space-y-2">
-								<div className="flex items-center gap-2">
-									<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
-									<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
-								</div>
-								<p className="ml-10 text-muted-foreground">
-									Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
-								</p>
-								<Button asChild variant="secondary" className="ml-10">
-									<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-										Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
-									</a>
-								</Button>
-							</li>
-							<li className="space-y-2">
-								<div className="flex items-center gap-2">
-									<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
-									<span className="font-semibold">Thêm API Key vào ứng dụng</span>
-								</div>
-								<p className="ml-10 text-muted-foreground">
-									Dán API Key bạn vừa tạo vào ô bên dưới. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
-								</p>
-								<div className="ml-10">
-									<Settings {...settingsProps} scope="learn" onSettingsChanged={handleFinishOnboarding} />
-								</div>
-							</li>
-						</ol>
-					</CardContent>
-				)}
+				<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
+					<ol className="list-decimal list-inside space-y-6">
+						<li className="space-y-2">
+							<div className="flex items-center gap-2">
+								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
+								<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
+							</div>
+							<p className="ml-10 text-muted-foreground">
+								Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
+							</p>
+							<Button asChild variant="secondary" className="ml-10">
+								<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+									Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
+								</a>
+							</Button>
+						</li>
+						<li className="space-y-2">
+							<div className="flex items-center gap-2">
+								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
+								<span className="font-semibold">Thêm API Key vào ứng dụng</span>
+							</div>
+							<p className="ml-10 text-muted-foreground">
+								Dán API Key bạn vừa tạo vào ô bên dưới. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
+							</p>
+							<div className="ml-10">
+								<Settings {...settingsProps} scope="learn" onSettingsChanged={handleFinishOnboarding} />
+							</div>
+						</li>
+					</ol>
+				</CardContent>
 			</Card>
 		</div>
 	);
@@ -1066,7 +1004,6 @@ export default function Home() {
 				greeting: true,
 				search: true,
 				quickLinks: true,
-				learn: true,
 			}
 		);
 	
@@ -1288,8 +1225,7 @@ export default function Home() {
 				visibility.clock === newVisibility.clock &&
 				visibility.greeting === newVisibility.greeting &&
 				visibility.search === newVisibility.search &&
-				visibility.quickLinks === newVisibility.quickLinks &&
-				visibility.learn === newVisibility.learn
+				visibility.quickLinks === newVisibility.quickLinks
 			)
 				return
 
@@ -1562,5 +1498,7 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
 
     
