@@ -23,6 +23,11 @@ export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSche
 export const GenerateFlashcardsOutputSchema = z.array(FlashcardSchema);
 export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
 
+export const GenerateFlashcardsOutputContainerSchema = z.object({
+    cards: GenerateFlashcardsOutputSchema.describe("An array of generated flashcards."),
+});
+
+
 export interface FlashcardSet {
   id: string;
   topic: string;
@@ -49,6 +54,10 @@ export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
 export const GenerateQuizOutputSchema = z.array(QuizQuestionSchema);
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
+
+export const GenerateQuizOutputContainerSchema = z.object({
+    questions: GenerateQuizOutputSchema.describe("An array of generated quiz questions."),
+});
 
 export interface QuizSet {
   id: string;

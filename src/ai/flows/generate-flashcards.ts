@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputSchema, GenerateFlashcardsOutput } from '@/ai/schemas';
+import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema, GenerateFlashcardsOutput } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend({
@@ -32,10 +32,10 @@ ${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back
 ` 
     : '';
 
-  const promptText = `You are a flashcard generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of flashcards:
-${JSON.stringify(GenerateFlashcardsOutputSchema.describe())}
+  const promptText = `You are a flashcard generator. Your response MUST be a JSON object that adheres to the following Zod schema:
+${JSON.stringify(GenerateFlashcardsOutputContainerSchema.describe())}
 
-Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Each flashcard should have a "front" and a "back".
+Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}
 The "front" and "back" fields MUST contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.
@@ -76,10 +76,10 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.
     
     // When using responseMimeType: "application/json", the SDK already parses the JSON.
     const parsedJson = JSON.parse(result.response.text());
-    const validatedOutput = GenerateFlashcardsOutputSchema.parse(parsedJson);
+    const validatedOutput = GenerateFlashcardsOutputContainerSchema.parse(parsedJson);
 
-    console.log(`✅ Generated ${validatedOutput.length} valid flashcards`);
-    return validatedOutput;
+    console.log(`✅ Generated ${validatedOutput.cards.length} valid flashcards`);
+    return validatedOutput.cards;
 
   } catch (error: any) {
     console.error('❌ Flashcard generation error:', error);

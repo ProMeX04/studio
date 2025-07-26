@@ -6,7 +6,7 @@
  */
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateQuizInputSchema, GenerateQuizOutputSchema, GenerateQuizOutput, QuizQuestionSchema } from '@/ai/schemas';
+import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, QuizQuestionSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
@@ -31,10 +31,10 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 `
     : '';
 
-  const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema, containing an array of quiz questions:
-${JSON.stringify(GenerateQuizOutputSchema.describe())}
+  const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema:
+${JSON.stringify(GenerateQuizOutputContainerSchema.describe())}
 
-Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
@@ -83,18 +83,18 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.
 
       // When using responseMimeType: "application/json", the SDK already parses the JSON.
       const parsedJson = JSON.parse(result.response.text());
-      const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
+      const validatedOutput = GenerateQuizOutputContainerSchema.parse(parsedJson);
 
       // Additional validation for answer being in options
-      for (const question of validatedOutput) {
+      for (const question of validatedOutput.questions) {
         if (!question.options.includes(question.answer)) {
           console.warn(`Attempt ${attempts}: AI generated an answer that is not in the options list. Retrying...`);
           throw new AIOperationError('AI generated an answer that is not in the options list.', 'AI_ANSWER_NOT_IN_OPTIONS', true); // Retryable error
         }
       }
 
-      console.log(`✅ Generated ${validatedOutput.length} valid quiz questions`);
-      return validatedOutput;
+      console.log(`✅ Generated ${validatedOutput.questions.length} valid quiz questions`);
+      return validatedOutput.questions;
 
     } catch (error: any) {
       console.error(`❌ Quiz generation attempt ${attempts} failed:`, error);
