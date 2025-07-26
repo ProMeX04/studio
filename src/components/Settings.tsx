@@ -154,6 +154,7 @@ export function Settings(props: SettingsProps) {
 	const isOnboardingScope = scope.startsWith("learn-onboarding");
 	const { toast } = useToast();
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
+	const [isConfirmingTopicChange, setIsConfirmingTopicChange] = useState(false);
 
 	// Local state for learn settings
 	const [topic, setTopic] = useState(scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : "")
@@ -172,7 +173,7 @@ export function Settings(props: SettingsProps) {
 	const learnProps = scope === 'learn' ? (props as LearnSettingsProps) : undefined;
 	const topicChanged = learnProps && learnProps.topic !== topic;
 	const settingsChanged = learnProps && (
-		learnProps.topic !== topic ||
+		topicChanged ||
 		learnProps.language !== language ||
 		learnProps.model !== model ||
 		learnProps.flashcardMax !== flashcardMax ||
@@ -191,6 +192,7 @@ export function Settings(props: SettingsProps) {
 				setFlashcardMax(learnProps.flashcardMax ?? 50)
 				setQuizMax(learnProps.quizMax ?? 50)
 				setLocalApiKeys(learnProps.apiKeys);
+				setIsConfirmingTopicChange(false); // Reset confirmation on open
 			}
 		} else if (isOnboardingScope) {
 			const learnProps = props as LearnOnboardingSettingsProps;
@@ -199,26 +201,37 @@ export function Settings(props: SettingsProps) {
 	}, [props, scope, isSheetOpen, isOnboardingScope])
 
 	const handleSave = () => {
-		if (scope === "learn" && (props as LearnSettingsProps).onSettingsChange) {
-			const learnProps = props as LearnSettingsProps;
-			learnProps.onSettingsChange!({
-				topic,
-				language,
-				model,
-				flashcardMax,
-				quizMax,
-			});
-			if (learnProps.onSettingsChanged) {
-				learnProps.onSettingsChanged();
-			}
-			toast({
-				title: "Đã lưu cài đặt",
-				description: "Các thay đổi của bạn đã được lưu lại.",
-			});
-			// The button will hide itself after saving because `settingsChanged` will become false
+		if (scope !== "learn" || !learnProps?.onSettingsChange) return;
+
+		// If topic changed and we are not yet confirming, start confirmation process
+		if (topicChanged && !isConfirmingTopicChange) {
+			setIsConfirmingTopicChange(true);
+			return;
 		}
+
+		// Proceed with saving
+		learnProps.onSettingsChange({
+			topic,
+			language,
+			model,
+			flashcardMax,
+			quizMax,
+		});
+
+		if (learnProps.onSettingsChanged) {
+			learnProps.onSettingsChanged();
+		}
+		
+		toast({
+			title: "Đã lưu cài đặt",
+			description: "Các thay đổi của bạn đã được lưu lại.",
+		});
+		setIsConfirmingTopicChange(false); // Reset confirmation state after saving
 	}
 	
+	const handleCancelTopicChange = () => {
+		setIsConfirmingTopicChange(false);
+	}
 
 	const handleAddNewApiKey = () => {
 		if (!scope.startsWith("learn")) return;
@@ -454,14 +467,6 @@ export function Settings(props: SettingsProps) {
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder="ví dụ: Lịch sử La Mã"
 					/>
-					{topicChanged && (
-						<Alert variant="destructive" className="mt-2 text-xs p-2">
-  						<AlertTriangle className="h-4 w-4" />
-  						<AlertDescription>
-    						Lưu ý: Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập hiện tại.
-  						</AlertDescription>
-						</Alert>
-					)}
 				</div>
 				<div className="space-y-2">
 					<Label htmlFor="language">Ngôn ngữ</Label>
@@ -495,11 +500,22 @@ export function Settings(props: SettingsProps) {
 					</Select>
 				</div>
 	
-				{settingsChanged && (
+				{settingsChanged && !isConfirmingTopicChange && (
 					<Button onClick={handleSave} className="w-full mt-4">
 						<Save className="mr-2 h-4 w-4" />
 						Lưu thay đổi
 					</Button>
+				)}
+
+				{isConfirmingTopicChange && (
+					<div className="space-y-2 mt-4 rounded-lg border border-destructive p-4">
+						<p className="text-sm text-destructive-foreground font-medium">Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập cũ.</p>
+						<p className="text-sm text-muted-foreground">Bạn có chắc chắn muốn tiếp tục?</p>
+						<div className="flex justify-end gap-2 pt-2">
+							<Button variant="ghost" onClick={handleCancelTopicChange}>Hủy</Button>
+							<Button variant="destructive" onClick={handleSave}>Xác nhận</Button>
+						</div>
+					</div>
 				)}
 
 				<Separator />
@@ -799,5 +815,3 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
-    
