@@ -90,9 +90,6 @@ The Markdown content MUST be valid standard Markdown.
             console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             console.error('❌ Theory chapter generation error:', error);
-            if (error.message.includes('JSON')) {
-                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
-            }
             if (error instanceof z.ZodError) {
               throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
