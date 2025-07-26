@@ -37,11 +37,11 @@ export async function generateTheoryOutline(
 The outline should be structured logically to facilitate learning, starting from a high-level overview and progressively diving into details.
 
 The structure should follow this pattern:
-1.  Start with a general "Overview" or "Introduction".
-2.  Include a "History and Context" chapter if relevant.
+1.  Start with "Tại sao cần học chủ đề này?".
+2.  Include a "Lịch sử và Bối cảnh" chapter if relevant.
 3.  List the core concepts as separate chapter titles.
 4.  Include chapters on practical applications or advanced topics if applicable.
-5.  End with a "Conclusion" or "Summary" chapter.
+5.  End with a "Tổng kết" or "Tóm tắt" chapter.
 
 Generate between 5 and 10 chapter titles. Each title should be on a new line. Do not use numbering or bullet points.`;
 
