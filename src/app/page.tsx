@@ -1218,7 +1218,7 @@ export default function Home() {
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
-		theoryCount: theorySet?.chapters.length ?? 0,
+		theoryCount: theorySet?.chapters?.filter(c => c.content).length ?? 0,
 		theoryMax: theorySet?.outline.length ?? 0,
 		flashcardCount: flashcardSet?.cards.length ?? 0,
 		quizCount: quizSet?.questions.length ?? 0,
