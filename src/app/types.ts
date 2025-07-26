@@ -23,11 +23,3 @@ export interface QuizState {
 export interface FlashcardState {
   understoodIndices: number[];
 }
-
-export interface TypingInputState {
-  [cardIndex: number]: string; // User's text input for each card
-}
-
-export interface TypingState {
-  inputs: TypingInputState;
-}

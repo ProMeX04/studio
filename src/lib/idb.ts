@@ -10,8 +10,6 @@ export type DataKey =
   | 'flashcardState'
   | 'quiz'
   | 'quizState'
-  | 'typing'
-  | 'typingState'
   | 'topic'
   | 'language'
   | 'view'
@@ -20,9 +18,7 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
-  | 'typingMax'
   | 'flashcardIndex'
-  | 'typingIndex'
   | 'apiKeys'
   | 'apiKeyIndex';
 
@@ -64,6 +60,7 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         }
         if (oldVersion < 5) {
             // In v5, we add support for typing mode. No schema changes needed for stores.
+            // This version is now being reverted.
         }
       },
     });

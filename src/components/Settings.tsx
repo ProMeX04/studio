@@ -14,7 +14,6 @@ import {
 	KeyRound,
 	Plus,
 	X,
-	Type
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -79,15 +78,13 @@ interface LearnSettingsProps {
 		language: string
 		flashcardMax: number
 		quizMax: number
-		typingMax: number
 	}) => void
 	onGenerateNew: (topic: string) => void
-	currentView: "flashcards" | "quiz" | "typing"
+	currentView: "flashcards" | "quiz"
 	topic: string
 	language: string
 	flashcardMax: number
 	quizMax: number
-	typingMax: number
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -116,7 +113,6 @@ export function Settings(props: SettingsProps) {
 	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
-	const [typingMax, setTypingMax] = useState(isLearnScope ? (props as LearnSettingsProps).typingMax : 50)
 	
 	// Local state for global settings
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(!isLearnScope ? (props as GlobalSettingsProps).apiKeys : [])
@@ -134,7 +130,6 @@ export function Settings(props: SettingsProps) {
 			setLanguage(learnProps.language)
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
-			setTypingMax(learnProps.typingMax)
 		} else {
 			const globalProps = props as GlobalSettingsProps;
 			setLocalApiKeys(globalProps.apiKeys);
@@ -149,7 +144,6 @@ export function Settings(props: SettingsProps) {
 				language,
 				flashcardMax,
 				quizMax,
-				typingMax,
 			})
 		}
 	}
@@ -232,7 +226,6 @@ export function Settings(props: SettingsProps) {
 		const learnProps = props as LearnSettingsProps
 		const isFlashcardView = learnProps.currentView === "flashcards"
 		const isQuizView = learnProps.currentView === "quiz"
-		const isTypingView = learnProps.currentView === "typing"
 
 		return (
 			<div className="space-y-4">
@@ -272,9 +265,8 @@ export function Settings(props: SettingsProps) {
 					<div className="text-center font-semibold text-foreground">
 						{isFlashcardView
 							? "Cài đặt Flashcard"
-							: isQuizView
-								? "Cài đặt Trắc nghiệm"
-								: "Cài đặt Gõ lại"}
+							: "Cài đặt Trắc nghiệm"
+						}
 					</div>
 
 					{isFlashcardView && (
@@ -324,26 +316,6 @@ export function Settings(props: SettingsProps) {
 						</div>
 					)}
 
-					{isTypingView && (
-						<div className="space-y-4 pt-2">
-							<div className="grid grid-cols-4 items-center gap-4">
-								<Label htmlFor="typingMax" className="text-right">
-									Số lượng tối đa
-								</Label>
-								<Input
-									id="typingMax"
-									type="number"
-									value={typingMax}
-									onChange={(e) =>
-										setTypingMax(parseInt(e.target.value) || 0)
-									}
-									className="col-span-3"
-									placeholder="ví dụ: 50"
-									{...numericInputProps}
-								/>
-							</div>
-						</div>
-					)}
 				</div>
 
 				<div className="flex justify-center pt-2">

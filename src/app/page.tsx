@@ -10,13 +10,11 @@ import { Flashcards } from "@/components/Flashcards"
 import type { CardData, CardSet } from "@/ai/schemas"
 import { Quiz } from "@/components/Quiz"
 import type { QuizSet, QuizQuestion } from "@/ai/schemas"
-import { Typing } from "@/components/Typing"
-import type { QuizState, FlashcardState, TypingState } from "@/app/types"
+import type { QuizState, FlashcardState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
-import { generateTypingContent } from "@/ai/flows/generate-typing-content"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, Type } from "lucide-react"
+import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -35,24 +33,20 @@ import { FlashcardSummary } from "@/components/FlashcardSummary"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
-const TYPING_BATCH_SIZE = 10;
 
 interface LearnProps {
-	view: "flashcards" | "quiz" | "typing"
+	view: "flashcards" | "quiz"
 	isLoading: boolean
 	flashcardSet: CardSet | null
 	quizSet: QuizSet | null
-	typingSet: CardSet | null
 	quizState: QuizState | null
-	typingState: TypingState | null
 	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
-	onTypingStateChange: (newState: TypingState) => void
 	onQuizReset: () => void;
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
-	onViewChange: (view: "flashcards" | "quiz" | "typing") => void
+	onViewChange: (view: "flashcards" | "quiz") => void
 	language: string
 	topic: string
 	showQuizSummary: boolean
@@ -65,8 +59,6 @@ interface LearnProps {
 	settingsProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
-	typingIndex: number;
-	onTypingIndexChange: (index: number) => void;
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
@@ -77,12 +69,9 @@ function Learn({
 	isLoading,
 	flashcardSet,
 	quizSet,
-	typingSet,
 	quizState,
-	typingState,
 	onGenerateNew,
 	onQuizStateChange,
-	onTypingStateChange,
 	onQuizReset,
 	canGenerateMore,
 	flashcardIndex,
@@ -100,29 +89,21 @@ function Learn({
 	settingsProps,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
-	typingIndex,
-	onTypingIndexChange,
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0 
-		: view === "quiz"
-			? quizSet?.questions.length ?? 0
-			: typingSet?.cards.length ?? 0;
+		: quizSet?.questions.length ?? 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
-		: view === "quiz"
-			? currentQuestionIndex
-			: typingIndex;
+		: currentQuestionIndex;
 
 	const totalItems = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0 
-		: view === "quiz"
-			? quizSet?.questions.length ?? 0
-			: typingSet?.cards.length ?? 0;
+		: quizSet?.questions.length ?? 0;
 
 	const hasContent = totalItems > 0;
 
@@ -130,7 +111,6 @@ function Learn({
 		if (currentIndex < totalItems - 1) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex + 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
-			else if (view === 'typing') onTypingIndexChange(typingIndex + 1);
 		}
 	};
 	
@@ -138,7 +118,6 @@ function Learn({
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
-			else if (view === 'typing') onTypingIndexChange(typingIndex - 1);
 		}
 	};
 
@@ -235,7 +214,7 @@ function Learn({
 						topic={topic}
 						isCurrentUnderstood={isCurrentCardUnderstood}
 					/>
-				) : view === "quiz" ? (
+				) : (
 					<Quiz
 						quizSet={quizSet}
 						quizState={quizState}
@@ -248,13 +227,6 @@ function Learn({
 						apiKeyIndex={apiKeyIndex}
 						onApiKeyIndexChange={onApiKeyIndexChange}
 					/>
-				) : (
-					<Typing
-						typingSet={typingSet}
-						typingIndex={typingIndex}
-						typingState={typingState}
-						onTypingStateChange={onTypingStateChange}
-					/>
 				)}
 			</CardContent>
 
@@ -264,13 +236,12 @@ function Learn({
 					<div className="flex items-center justify-between w-full gap-2">
 						<Tabs
 							value={view}
-							onValueChange={(value) => onViewChange(value as "flashcards" | "quiz" | "typing")}
+							onValueChange={(value) => onViewChange(value as "flashcards" | "quiz")}
 							className="w-auto"
 						>
 							<TabsList>
 								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
 								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-								<TabsTrigger value="typing">Gõ lại</TabsTrigger>
 							</TabsList>
 						</Tabs>
 
@@ -286,7 +257,7 @@ function Learn({
 							</Button>
 
 							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : view === 'quiz' ? "Câu hỏi" : "Thẻ"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+								{view === "flashcards" ? "Thẻ" : "Câu hỏi"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
 							</span>
 
 							<Button
@@ -368,21 +339,17 @@ export interface ComponentVisibility {
 }
 
 export default function Home() {
-	const [view, setView] = useState<"flashcards" | "quiz" | "typing">("flashcards")
+	const [view, setView] = useState<"flashcards" | "quiz">("flashcards")
 	const [topic, setTopic] = useState("")
 	const [language, setLanguage] = useState("English")
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
-	const [typingMax, setTypingMax] = useState(50)
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
-	const [isTypingLoading, setIsTypingLoading] = useState(false)
 	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
-	const [typingSet, setTypingSet] = useState<CardSet | null>(null)
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
 	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(null)
-	const [typingState, setTypingState] = useState<TypingState | null>(null)
 	const { toast } = useToast()
 	const [visibility, setVisibility] = useState<ComponentVisibility>({
 		clock: true,
@@ -398,7 +365,6 @@ export default function Home() {
 	const [apiKeyIndex, setApiKeyIndex] = useState(0);
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
-	const [typingIndex, setTypingIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -406,7 +372,6 @@ export default function Home() {
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
 	const isQuizGeneratingRef = useRef(false)
-	const isTypingGeneratingRef = useRef(false)
 	const isMountedRef = useRef(true)
 
 	// Initialize once
@@ -434,7 +399,7 @@ export default function Home() {
 			currentTopic: string,
 			currentLanguage: string,
 			forceNew: boolean = false,
-			genType: "flashcards" | "quiz" | "typing"
+			genType: "flashcards" | "quiz"
 		) => {
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
@@ -456,20 +421,16 @@ export default function Home() {
 			
 			const isGeneratingRef = genType === 'flashcards' 
 				? isFlashcardGeneratingRef 
-				: genType === 'quiz'
-					? isQuizGeneratingRef
-					: isTypingGeneratingRef;
+				: isQuizGeneratingRef;
 
 			const setIsLoading = genType === 'flashcards' 
 				? setIsFlashcardLoading 
-				: genType === 'quiz'
-					? setIsQuizLoading
-					: setIsTypingLoading;
+				: setIsQuizLoading;
 
 			if (isGeneratingRef.current) {
 				toast({
 					title: "Đang tạo...",
-					description: `Một quá trình tạo ${genType === 'flashcards' ? 'flashcard' : genType === 'quiz' ? 'quiz' : 'typing'} khác đang chạy.`,
+					description: `Một quá trình tạo ${genType === 'flashcards' ? 'flashcard' : 'quiz'} khác đang chạy.`,
 				})
 				return
 			}
@@ -535,70 +496,6 @@ export default function Home() {
 							setFlashcardSet({ ...currentSet }) 
 							await db.put("data", {
 								id: "flashcards",
-								topic: currentTopic,
-								data: currentSet,
-							} as any)
-						} else {
-							itemsNeeded = 0;
-						}
-						if(itemsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
-					}
-				}
-
-				if (genType === "typing") {
-					if (forceNew) {
-						setTypingSet(null)
-						setTypingIndex(0)
-						setTypingState(null)
-						await db.delete("data", "typing")
-						await db.delete("data", "typingState")
-					}
-
-					const existingData = (await db.get(
-						"data",
-						"typing"
-					)) as LabeledData<CardSet>
-					const currentSet =
-						!forceNew && existingData && existingData.topic === currentTopic
-							? existingData.data
-							: { id: `idb-typing`, topic: currentTopic, cards: [] }
-
-					if (isMountedRef.current && forceNew) {
-						setTypingSet({ ...currentSet })
-						setTypingState({ inputs: {} });
-					}
-
-					let itemsNeeded = typingMax - currentSet.cards.length
-					if (itemsNeeded <= 0) {
-						setIsLoading(false)
-						isGeneratingRef.current = false
-						return
-					}
-
-					while (itemsNeeded > 0) {
-						const count = Math.min(TYPING_BATCH_SIZE, itemsNeeded)
-						
-						const { result: newCards, newApiKeyIndex } = await generateTypingContent({
-							apiKeys,
-							apiKeyIndex,
-							topic: currentTopic,
-							count,
-							language: currentLanguage,
-							existingCards: currentSet.cards,
-						});
-
-						await handleApiKeyIndexChange(newApiKeyIndex);
-
-						if (
-							Array.isArray(newCards) &&
-							newCards.length > 0 &&
-							isMountedRef.current
-						) {
-							currentSet.cards.push(...newCards)
-							itemsNeeded -= newCards.length
-							setTypingSet({ ...currentSet }) 
-							await db.put("data", {
-								id: "typing",
 								topic: currentTopic,
 								data: currentSet,
 							} as any)
@@ -706,7 +603,7 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, typingMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange]
+		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange]
 	)
 	
 	const loadInitialData = useCallback(async () => {
@@ -727,7 +624,6 @@ export default function Home() {
 			savedLanguageRes,
 			savedFlashcardMaxRes,
 			savedQuizMaxRes,
-			savedTypingMaxRes,
 			savedVisibilityRes,
 			savedBgRes,
 			savedUploadedBgsRes,
@@ -735,8 +631,6 @@ export default function Home() {
 			flashcardStateRes,
 			quizDataRes,
 			quizStateRes,
-			typingDataRes,
-			typingStateRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -745,7 +639,6 @@ export default function Home() {
 			db.get("data", "language"),
 			db.get("data", "flashcardMax"),
 			db.get("data", "quizMax"),
-			db.get("data", "typingMax"),
 			db.get("data", "visibility"),
 			db.get("data", "background"),
 			db.get("data", "uploadedBackgrounds"),
@@ -753,18 +646,15 @@ export default function Home() {
 			db.get("data", "flashcardState"),
 			db.get("data", "quiz"),
 			db.get("data", "quizState"),
-			db.get("data", "typing"),
-			db.get("data", "typingState"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
 		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0;
-		const savedView = (savedViewRes?.data as "flashcards" | "quiz" | "typing") || "flashcards";
+		const savedView = (savedViewRes?.data as "flashcards" | "quiz") || "flashcards";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
 		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
 		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
-		const savedTypingMax = (savedTypingMaxRes?.data as number) || 50;
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
@@ -773,8 +663,6 @@ export default function Home() {
 		const flashcardStateData = flashcardStateRes as AppData;
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
-		const typingData = typingDataRes as LabeledData<CardSet>;
-		const typingStateData = typingStateRes as AppData;
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);
 		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
@@ -786,7 +674,6 @@ export default function Home() {
 		setLanguage(savedLanguage);
 		setFlashcardMax(savedFlashcardMax);
 		setQuizMax(savedQuizMax);
-		setTypingMax(savedTypingMax);
 	
 		setVisibility(
 			savedVisibility ?? {
@@ -806,22 +693,14 @@ export default function Home() {
 		let currentQuiz =
 			quizData && quizData.topic === savedTopic ? quizData.data : null;
 
-		let currentTyping =
-			typingData && typingData.topic === savedTopic ? typingData.data : null;
 	
 		setFlashcardSet(currentFlashcards);
 		setQuizSet(currentQuiz);
-		setTypingSet(currentTyping);
 		
 		const currentFlashcardState = (flashcardData && flashcardData.topic === savedTopic && flashcardStateData)
 			? flashcardStateData.data as FlashcardState
 			: { understoodIndices: [] };
 		setFlashcardState(currentFlashcardState);
-
-		const currentTypingState = (typingData && typingData.topic === savedTopic && typingStateData)
-			? typingStateData.data as TypingState
-			: { inputs: {} };
-		setTypingState(currentTypingState);
 
 		let initialFlashcardIndex = 0;
 		if (currentFlashcards && currentFlashcards.cards.length > 0) {
@@ -834,17 +713,6 @@ export default function Home() {
 		}
 		setFlashcardIndex(initialFlashcardIndex);
 
-		let initialTypingIndex = 0;
-		if (currentTyping && currentTyping.cards.length > 0) {
-			const firstUntypedIndex = currentTyping.cards.findIndex(
-				(_, index) => currentTypingState.inputs[index] === undefined
-			);
-			if (firstUntypedIndex !== -1) {
-				initialTypingIndex = firstUntypedIndex;
-			}
-		}
-		setTypingIndex(initialTypingIndex);
-	
 		let currentQuizState: QuizState = { currentQuestionIndex: 0, answers: {} };
 		if (quizData && quizData.topic === savedTopic && quizStateData) {
 			currentQuizState = quizStateData.data;
@@ -885,14 +753,12 @@ export default function Home() {
 			language: string
 			flashcardMax: number
 			quizMax: number
-			typingMax: number
 		}) => {
 			const {
 				topic: newTopic,
 				language: newLanguage,
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
-				typingMax: newTypingMax
 			} = settings
 			const db = await getDb()
 			
@@ -917,17 +783,12 @@ export default function Home() {
 				setQuizMax(newQuizMax)
 				await db.put("data", { id: "quizMax", data: newQuizMax })
 			}
-			if (typingMax !== newTypingMax) {
-				setTypingMax(newTypingMax)
-				await db.put("data", { id: "typingMax", data: newTypingMax })
-			}
 		},
 		[
 			topic, 
 			language, 
 			flashcardMax, 
-			quizMax, 
-			typingMax
+			quizMax,
 		]
 	)
 
@@ -1004,7 +865,7 @@ export default function Home() {
 	)
 
 	const handleViewChange = useCallback(
-		async (newView: "flashcards" | "quiz" | "typing") => {
+		async (newView: "flashcards" | "quiz") => {
 			if (view === newView) return
 			setView(newView)
 			setShowQuizSummary(false); // Hide summary when switching views
@@ -1026,22 +887,10 @@ export default function Home() {
         }
     }, [quizState]);
 
-	const handleTypingIndexChange = useCallback(async (index: number) => {
-		setTypingIndex(index);
-		const db = await getDb();
-		await db.put("data", { id: "typingIndex", data: index });
-	}, []);
-
 	const handleQuizStateChange = useCallback(async (newState: QuizState) => {
 		setQuizState(newState)
 		const db = await getDb()
 		await db.put("data", { id: "quizState", data: newState })
-	}, [])
-
-	const handleTypingStateChange = useCallback(async (newState: TypingState) => {
-		setTypingState(newState)
-		const db = await getDb()
-		await db.put("data", { id: "typingState", data: newState })
 	}, [])
 
 	const handleQuizReset = useCallback(async () => {
@@ -1100,14 +949,12 @@ export default function Home() {
 		[] 
 	);
 
-	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTypingLoading;
+	const isOverallLoading = isFlashcardLoading || isQuizLoading;
 	const currentCount =
 		view === "flashcards"
 			? flashcardSet?.cards.length ?? 0
-			: view === "quiz"
-				? quizSet?.questions.length ?? 0
-				: typingSet?.cards.length ?? 0;
-	const targetCount = view === "flashcards" ? flashcardMax : view === "quiz" ? quizMax : typingMax;
+			: quizSet?.questions.length ?? 0;
+	const targetCount = view === "flashcards" ? flashcardMax : quizMax;
 
 	const canGenerateMore =
 		currentCount < targetCount && !isOverallLoading
@@ -1115,9 +962,7 @@ export default function Home() {
 	const currentViewIsLoading =
 		view === "flashcards" 
 			? isFlashcardLoading 
-			: view === "quiz"
-				? isQuizLoading
-				: isTypingLoading;
+			: isQuizLoading;
 	
 
 	if (!isMounted) {
@@ -1132,7 +977,6 @@ export default function Home() {
 		language: language,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
-		typingMax: typingMax
 	}
 
 	const globalSettingsProps = {
@@ -1182,12 +1026,9 @@ export default function Home() {
 							isLoading={currentViewIsLoading}
 							flashcardSet={flashcardSet}
 							quizSet={quizSet}
-							typingSet={typingSet}
 							quizState={quizState}
-							typingState={typingState}
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
-							onTypingStateChange={handleTypingStateChange}
 							onQuizReset={handleQuizReset}
 							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
@@ -1205,8 +1046,6 @@ export default function Home() {
 							settingsProps={learnSettingsProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
-							typingIndex={typingIndex}
-							onTypingIndexChange={handleTypingIndexChange}
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
