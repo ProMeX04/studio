@@ -172,9 +172,9 @@ export function Settings(props: SettingsProps) {
 			const globalProps = props as GlobalSettingsProps;
 			const file = e.target.files?.[0]
 			if (file) {
-				const MAX_FILE_SIZE = 2 * 1024 * 1024
+				const MAX_FILE_SIZE = 10 * 1024 * 1024
 				if (file.size > MAX_FILE_SIZE) {
-					alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.")
+					alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 10MB.")
 					return
 				}
 				const reader = new FileReader()
