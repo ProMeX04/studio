@@ -13,7 +13,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, BookOpen, Menu } from "lucide-react"
+import { CheckCircle, BookOpen, Menu, Plus } from "lucide-react"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,7 +112,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 							<BookOpen className="w-16 h-16 text-muted-foreground/50 mb-4" />
 							<h3 className="text-xl font-semibold mb-2">Bắt đầu học ngay!</h3>
 							<p className="text-muted-foreground max-w-sm">
-								Nhập một chủ đề, sau đó nhấn nút <strong>Menu</strong> <Menu className="inline w-4 h-4" /> và chọn <strong>Tạo</strong> để AI tạo dàn bài và nội dung lý thuyết cho bạn.
+								Mở <strong>Cài đặt học tập</strong> <Menu className="inline w-4 h-4" />, sau đó nhấn nút <Plus className="inline w-4 h-4" /> để AI tạo dàn bài và nội dung lý thuyết cho bạn.
 							</p>
 						</div>
 					)}
