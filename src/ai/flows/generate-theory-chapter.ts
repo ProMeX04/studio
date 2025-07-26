@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateTheoryChapterInputSchema, GenerateTheoryChapterOutputSchema, GenerateTheoryChapterOutput } from '@/ai/schemas';
+import { GenerateTheoryChapterInputSchema, GenerateTheoryChapterOutputSchema, GenerateTheoryChapterOutput, GenerateTheoryChapterJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ClientInputSchema = GenerateTheoryChapterInputSchema.extend({
@@ -40,7 +40,7 @@ Language: ${promptInput.language}
 
 Please write the content for this specific chapter. Explain the concepts thoroughly. Use clear headings (starting from h2 or h3), subheadings, bullet points, tables, and code examples where appropriate to structure the information logically.
 
-The entire output must be a single, valid Markdown string.
+The entire output must be a single, valid Markdown string inside a JSON object.
 
 The Markdown content MUST be valid standard Markdown.
 - Use '##' or '###' for headings.
@@ -49,7 +49,9 @@ The Markdown content MUST be valid standard Markdown.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.`;
 
       const generationConfig: GenerationConfig = {
-        responseMimeType: "text/plain",
+        responseMimeType: "application/json",
+        // @ts-ignore - responseSchema is a valid property
+        responseSchema: GenerateTheoryChapterJsonSchema,
       };
 
       const result = await model.generateContent({
@@ -75,7 +77,7 @@ The Markdown content MUST be valid standard Markdown.
         ]
       });
       
-      const parsedJson = { content: result.response.text() };
+      const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateTheoryChapterOutputSchema.parse(parsedJson);
 
       console.log(`✅ Generated content for chapter: "${promptInput.chapterTitle}"`);
@@ -92,6 +94,9 @@ The Markdown content MUST be valid standard Markdown.
             console.error('❌ Theory chapter generation error:', error);
             if (error instanceof z.ZodError) {
               throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+            if (error.message?.includes('JSON')) {
+                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
             throw new AIOperationError('Failed to generate theory chapter from AI.', 'AI_GENERATION_FAILED');
         }

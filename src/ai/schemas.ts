@@ -82,6 +82,31 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
+export const GenerateTheoryOutlineJsonSchema: Schema = {
+    type: "OBJECT",
+    properties: {
+        outline: {
+            type: "ARRAY",
+            description: "A structured outline of topics to cover, as an array of strings.",
+            items: {
+                type: "STRING"
+            }
+        }
+    },
+    required: ["outline"]
+};
+
+export const GenerateTheoryChapterJsonSchema: Schema = {
+    type: "OBJECT",
+    properties: {
+        content: {
+            type: "STRING",
+            description: "The detailed content for the chapter in Markdown format."
+        }
+    },
+    required: ["content"]
+};
+
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 

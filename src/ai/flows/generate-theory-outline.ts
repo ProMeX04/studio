@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateTheoryOutlineInputSchema, GenerateTheoryOutlineOutputSchema, GenerateTheoryOutlineOutput } from '@/ai/schemas';
+import { GenerateTheoryOutlineInputSchema, GenerateTheoryOutlineOutputSchema, GenerateTheoryOutlineOutput, GenerateTheoryOutlineJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ClientInputSchema = GenerateTheoryOutlineInputSchema.extend({
@@ -43,10 +43,12 @@ The structure should follow this pattern:
 4.  Include chapters on practical applications or advanced topics if applicable.
 5.  End with a "Tổng kết" or "Tóm tắt" chapter.
 
-Generate between 5 and 10 chapter titles. Each title should be on a new line. Do not use numbering or bullet points.`;
+Generate between 5 and 10 chapter titles. The output should be a JSON object with an "outline" key, which is an array of strings (the chapter titles).`;
 
       const generationConfig: GenerationConfig = {
-        responseMimeType: "text/plain",
+        responseMimeType: "application/json",
+        // @ts-ignore - responseSchema is a valid property
+        responseSchema: GenerateTheoryOutlineJsonSchema,
       };
 
       const result = await model.generateContent({
@@ -72,8 +74,7 @@ Generate between 5 and 10 chapter titles. Each title should be on a new line. Do
         ]
       });
       
-      const outlineArray = result.response.text().split('\n').filter(line => line.trim() !== '');
-      const parsedJson = { outline: outlineArray };
+      const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateTheoryOutlineOutputSchema.parse(parsedJson);
 
       console.log(`✅ Generated theory outline with ${validatedOutput.outline.length} chapters.`);
@@ -90,6 +91,9 @@ Generate between 5 and 10 chapter titles. Each title should be on a new line. Do
             console.error('❌ Theory outline generation error:', error);
             if (error instanceof z.ZodError) {
               throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            }
+             if (error.message?.includes('JSON')) {
+                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
             }
             throw new AIOperationError('Failed to generate theory outline from AI.', 'AI_GENERATION_FAILED');
         }
