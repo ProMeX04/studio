@@ -31,7 +31,7 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 `
     : '';
 
-  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.

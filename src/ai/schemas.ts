@@ -48,7 +48,7 @@ export const GenerateQuizJsonSchema: Schema = {
                     },
                     options: {
                         type: "ARRAY",
-                        description: "A list of 4 possible answers.",
+                        description: "A list of 2 to 4 possible answers.",
                         items: {
                             type: "STRING"
                         }
@@ -116,7 +116,7 @@ export interface FlashcardSet {
 // Quiz
 export const QuizQuestionSchema = z.object({
     question: z.string().describe('The question text.'),
-    options: z.array(z.string()).describe('A list of possible answers.'),
+    options: z.array(z.string()).min(2).max(4).describe('A list of 2 to 4 possible answers.'),
     answer: z.string().describe('The correct answer.'),
     explanation: z.string().describe('A brief explanation for the correct answer.'),
 });
