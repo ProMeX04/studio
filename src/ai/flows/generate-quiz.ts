@@ -39,6 +39,8 @@ Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.t
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
 
+**Critically important**: The value for the "answer" field for each question object MUST be an exact, verbatim copy of one of the strings from the "options" array for that same question.
+
 The content for "question", "options", and "explanation" fields MUST be valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.
 - Use triple backticks with a language identifier for multi-line code blocks.
