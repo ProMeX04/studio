@@ -1,13 +1,10 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Textarea } from './ui/textarea';
-import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import type { FlashcardSet } from '@/ai/schemas';
 import type { TypingState } from '@/app/types';
 
@@ -18,32 +15,53 @@ interface TypingProps {
     onTypingStateChange: (newState: TypingState) => void;
 }
 
-const getDiff = (original: string, comparison: string) => {
+const TypingResultDisplay = ({ original, userInput }: { original: string; userInput: string }) => {
     const originalChars = original.split('');
-    const comparisonChars = comparison.split('');
-    let result = [];
-    const maxLength = Math.max(originalChars.length, comparisonChars.length);
+    const inputChars = userInput.split('');
 
-    for (let i = 0; i < maxLength; i++) {
-        const originalChar = originalChars[i];
-        const comparisonChar = comparisonChars[i];
-
-        if (originalChar !== undefined && originalChar === comparisonChar) {
-            result.push(<span key={`correct-${i}`} className="text-green-400">{originalChar}</span>);
-        } else {
-            if (originalChar !== undefined && comparisonChar !== undefined) {
-                 result.push(<span key={`incorrect-${i}`} className="text-red-400 bg-red-400/20">{originalChar}</span>);
-            } else if (originalChar !== undefined) {
-                 result.push(<span key={`missing-${i}`} className="text-red-400 bg-red-400/20">{originalChar}</span>);
-            }
-            if (comparisonChar !== undefined && originalChar === undefined) {
-                 result.push(<span key={`extra-${i}`} className="text-yellow-400 bg-yellow-400/20">{comparisonChar}</span>);
+    const renderedChars = originalChars.map((char, index) => {
+        let className = 'text-muted-foreground/50'; // Default: untyped
+        if (index < inputChars.length) {
+            if (inputChars[index] === char) {
+                className = 'text-green-400'; // Correct
+            } else {
+                className = 'text-red-400 bg-red-500/20'; // Incorrect
             }
         }
-    }
+        
+        // Handle whitespace for proper rendering
+        if (char === ' ') {
+            return <span key={index} className={cn('whitespace-pre-wrap', className)}>{char}</span>;
+        }
+        return <span key={index} className={className}>{char}</span>;
+    });
 
-    return <>{result}</>;
+    const extraChars = inputChars.length > originalChars.length 
+        ? inputChars.slice(originalChars.length).map((char, index) => (
+            <span key={`extra-${index}`} className="text-yellow-400 bg-yellow-500/20">
+                {char === ' ' ? '\u00A0' : char}
+            </span>
+        )) 
+        : [];
+        
+    const caretPosition = Math.min(inputChars.length, originalChars.length);
+
+    return (
+        <div className="relative p-4 rounded-md bg-secondary text-2xl font-mono tracking-wider leading-relaxed break-words">
+            <span 
+                className="absolute border-l-2 border-primary animate-pulse"
+                style={{ 
+                    left: `${caretPosition * 0.6 + 1}em`, // font-mono approx 0.6em width + padding
+                    top: '1rem',
+                    bottom: '1rem',
+                 }}
+            />
+            {renderedChars}
+            {extraChars.length > 0 && <>{extraChars}</>}
+        </div>
+    );
 };
+
 
 export function Typing({
     typingSet,
@@ -53,81 +71,42 @@ export function Typing({
 }: TypingProps) {
     const currentCard = typingSet?.cards[typingIndex];
     const userInput = typingState?.inputs[typingIndex] ?? "";
-    const [isSubmitted, setIsSubmitted] = useState(false);
+    const sourceText = currentCard?.front ?? "";
 
-    // Reset submission state when the card changes
+    // Reset input when card changes
     useEffect(() => {
-        setIsSubmitted(!!typingState?.inputs.hasOwnProperty(typingIndex));
-    }, [typingIndex, typingState]);
+        // This component doesn't reset the input itself,
+        // it relies on the parent passing a fresh state or different index.
+    }, [typingIndex]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        if (!typingState) return;
+        if (!typingState || !currentCard) return;
         const newInputs = { ...typingState.inputs, [typingIndex]: e.target.value };
         onTypingStateChange({ ...typingState, inputs: newInputs });
     };
 
-    const handleSubmit = () => {
-        if (userInput.trim() !== '') {
-            setIsSubmitted(true);
-        }
-    };
-    
-    const handleRetry = () => {
-        if (!typingState) return;
-        const newInputs = { ...typingState.inputs };
-        delete newInputs[typingIndex];
-        onTypingStateChange({ ...typingState, inputs: newInputs });
-        setIsSubmitted(false);
-    };
-
-    // For typing practice, we compare the input against the 'front' of the card.
-    const sourceText = currentCard?.front ?? "";
-    const isCorrect = currentCard && userInput.trim() === sourceText.trim();
-
     return (
         <div className="h-full flex flex-col items-center justify-center bg-transparent shadow-none border-none p-4">
             {currentCard ? (
-                <Card className="w-full max-w-3xl bg-background/80 backdrop-blur-sm">
+                <Card className="w-full max-w-4xl bg-background/80 backdrop-blur-sm relative">
+                    {/* The Textarea is visually hidden but focused to capture input */}
+                    <Textarea
+                        value={userInput}
+                        onChange={handleInputChange}
+                        className="absolute inset-0 opacity-0 cursor-text z-10"
+                        placeholder="Bắt đầu gõ..."
+                        autoFocus
+                    />
                     <CardHeader>
                         <CardTitle className="text-xl text-muted-foreground text-center">
-                            Gõ lại nội dung sau:
+                            Gõ lại nội dung sau đây:
                         </CardTitle>
-                        <div className="p-4 rounded-md bg-secondary text-center text-2xl font-semibold">
-                            {/* We display the text to be typed */}
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{sourceText}</ReactMarkdown>
-                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Textarea
-                            value={userInput}
-                            onChange={handleInputChange}
-                            placeholder="Nhập lại văn bản ở trên vào đây..."
-                            className="min-h-[150px] text-lg"
-                            disabled={isSubmitted}
-                        />
-                        {isSubmitted && (
-                             <div className="p-4 rounded-md border">
-                                <h4 className="font-semibold mb-2">Kết quả:</h4>
-                                {isCorrect ? (
-                                    <p className="text-green-500 font-bold">Chính xác! Bạn đã gõ đúng.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <p className="text-red-500 font-bold">Chưa chính xác. Dưới đây là so sánh:</p>
-                                        <div className="p-2 rounded-md bg-secondary font-mono text-sm whitespace-pre-wrap break-words">
-                                            {/* We compare the user input with the source text */}
-                                            {getDiff(sourceText, userInput)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                    <CardContent className="space-y-4 cursor-text" onClick={() => document.querySelector('textarea')?.focus()}>
+                        <TypingResultDisplay original={sourceText} userInput={userInput} />
                     </CardContent>
-                    <CardFooter>
-                        {isSubmitted ? (
-                             <Button onClick={handleRetry} className="w-full">Thử lại</Button>
-                        ) : (
-                            <Button onClick={handleSubmit} disabled={!userInput.trim()} className="w-full">Kiểm tra</Button>
-                        )}
+                     <CardFooter className="text-xs text-muted-foreground justify-center">
+                        Nhấp vào đây hoặc bắt đầu gõ để luyện tập.
                     </CardFooter>
                 </Card>
             ) : (
