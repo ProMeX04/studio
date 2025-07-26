@@ -24,8 +24,7 @@ export type DataKey =
   | 'flashcardIndex'
   | 'theoryChapterIndex'
   | 'apiKeys'
-  | 'apiKeyIndex'
-  | 'hasCompletedOnboarding';
+  | 'apiKeyIndex';
 
 export type LabeledData<T> = {
   id: string;

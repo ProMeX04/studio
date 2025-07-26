@@ -104,9 +104,6 @@ interface LearnSettingsProps {
 	isFlashcardLoading: boolean;
 	isQuizLoading: boolean;
 	apiKeys: string[];
-	isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-	tourStep: number;
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -132,10 +129,8 @@ export function Settings(props: SettingsProps) {
 	const { scope } = props;
 	const isLearnScope = scope === "learn";
 	const { toast } = useToast();
+	const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-	// Use controlled state for Sheet component if in learn scope
-    const isOpen = isLearnScope ? (props as LearnSettingsProps).isOpen : undefined;
-    const onOpenChange = isLearnScope ? (props as LearnSettingsProps).onOpenChange : undefined;
 
 	// Local state for learn settings
 	const [topic, setTopic] = useState(isLearnScope ? (props as LearnSettingsProps).topic : "")
@@ -155,7 +150,7 @@ export function Settings(props: SettingsProps) {
 	useEffect(() => {
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
-			if(learnProps.isOpen) {
+			if(isSheetOpen) {
 				setTopic(learnProps.topic)
 				setLanguage(learnProps.language)
 				setModel(learnProps.model)
@@ -164,7 +159,7 @@ export function Settings(props: SettingsProps) {
 				setLocalApiKeys(learnProps.apiKeys);
 			}
 		}
-	}, [props, isLearnScope])
+	}, [props, isLearnScope, isSheetOpen])
 
 	const handleLocalSettingsSave = () => {
 		if (isLearnScope) {
@@ -207,9 +202,6 @@ export function Settings(props: SettingsProps) {
 			const learnProps = props as LearnSettingsProps;
 			// Note: We don't save here anymore, user should save manually
 			learnProps.onGenerateType(type);
-			if (learnProps.tourStep === 3) {
-                learnProps.onOpenChange(false); // Close sheet after generation starts in tour
-            }
 		}
 	};
 	
@@ -217,14 +209,14 @@ export function Settings(props: SettingsProps) {
 		if (!isLearnScope) {
 			const globalProps = props as GlobalSettingsProps;
 			globalProps.onClearAllData()
-			if(onOpenChange) onOpenChange(false);
+			setIsSheetOpen(false);
 		}
 	}
 
 	const handleClearLearningData = () => {
 		if (isLearnScope) {
 			(props as LearnSettingsProps).onClearLearningData();
-			if(onOpenChange) onOpenChange(false);
+			setIsSheetOpen(false);
 		}
 	};
 
@@ -345,9 +337,9 @@ export function Settings(props: SettingsProps) {
 				<Separator />
 
 				<div className="space-y-2">
-					<Label htmlFor="topic-input-for-tour">Chủ đề</Label>
+					<Label htmlFor="topic">Chủ đề</Label>
 					<Input
-						id="topic-input-for-tour"
+						id="topic"
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder="ví dụ: Lịch sử La Mã"
@@ -599,12 +591,11 @@ export function Settings(props: SettingsProps) {
 
 	return (
 		<Sheet
-			open={isOpen}
-			onOpenChange={onOpenChange}
+			open={isSheetOpen}
+			onOpenChange={setIsSheetOpen}
 		>
 			<SheetTrigger asChild>
 				<Button 
-					id={isLearnScope ? "learn-settings-button-for-tour" : undefined}
 					variant={isLearnScope ? "outline" : "ghost"} 
 					size="icon" 
 					className={cn(isLearnScope && "h-9 w-9")}>
