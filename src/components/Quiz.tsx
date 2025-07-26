@@ -315,7 +315,7 @@ export function Quiz({
 											getOptionClass(option)
 										)}
 									>
-										<div className="flex-1 flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0 break-words">
+										<div className="flex-1 flex items-center gap-4 prose dark:prose-invert max-w-none prose-p:my-0 break-words text-xl">
 											<RadioGroupItem
 												value={option}
 												id={`option-${index}`}
@@ -360,7 +360,7 @@ export function Quiz({
 												<AlertTitle>
 													Giải thích chi tiết
 												</AlertTitle>
-												<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base break-words">
+												<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-lg break-words">
 													<MarkdownRenderer>
 														{
 															currentAnswerState
@@ -378,18 +378,18 @@ export function Quiz({
 						{isAnswered && (
 							<Alert
 								className={cn(
-									"backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-base",
+									"backdrop-blur prose dark:prose-invert max-w-none prose-p:my-1 text-lg",
 									selectedAnswer === currentQuestion.answer
 										? "bg-success/20"
 										: "bg-destructive/20"
 								)}
 							>
-								<AlertTitle className="font-bold text-base !my-0">
+								<AlertTitle className="font-bold text-lg !my-0">
 									{selectedAnswer === currentQuestion.answer
 										? "Chính xác!"
 										: "Không chính xác."}
 								</AlertTitle>
-								<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-base break-words">
+								<AlertDescription className="prose dark:prose-invert max-w-none prose-p:my-0 text-lg break-words">
 									<MarkdownRenderer>
 										{currentQuestion.explanation}
 									</MarkdownRenderer>

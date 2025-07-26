@@ -32,7 +32,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			background: "hsl(var(--muted))",
 			padding: "1rem",
             borderRadius: "0.5rem",
-            fontSize: "14px",
+            fontSize: "16px",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
 		},
@@ -40,7 +40,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			...vscDarkPlus['code[class*="language-"]'],
 			background: "transparent",
 			padding: "0",
-            fontSize: "14px",
+            fontSize: "16px",
 		},
 	}
 
@@ -77,7 +77,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, topic, chapterIndex }: TheoryProps) {
+export function Theory({ theorySet, chapterIndex }: TheoryProps) {
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
 
@@ -88,7 +88,7 @@ export function Theory({ theorySet, topic, chapterIndex }: TheoryProps) {
 					{hasContent ? (
 						<div className="w-full max-w-5xl mx-auto">
 							<h1 className="text-4xl font-bold mt-4 mb-8 text-center">{currentChapter.title}</h1>
-							<div className="prose dark:prose-invert max-w-none">
+							<div className="prose dark:prose-invert max-w-none text-lg">
 								{currentChapter.content ? (
 									<MarkdownRenderer>{currentChapter.content}</MarkdownRenderer>
 								) : (

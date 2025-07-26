@@ -51,6 +51,9 @@ body {
 	body {
 		@apply bg-background text-foreground;
 	}
+	.prose {
+		@apply text-lg;
+	}
 	.prose code::before,
 	.prose code::after {
 		content: "";

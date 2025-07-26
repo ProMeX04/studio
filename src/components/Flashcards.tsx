@@ -115,14 +115,14 @@ function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: b
 			>
 				{/* Front of the card */}
 				<div className="flashcard-front absolute w-full h-full backface-hidden flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm overflow-y-auto">
-					<div className="text-2xl font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
+					<div className="text-3xl font-semibold prose dark:prose-invert max-w-none prose-p:my-0">
 						<MarkdownRenderer>{card.front}</MarkdownRenderer>
 					</div>
 					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
 				</div>
 				{/* Back of the card */}
 				<div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm overflow-y-auto">
-					<div className="text-xl prose dark:prose-invert max-w-none prose-p:my-0">
+					<div className="text-2xl prose dark:prose-invert max-w-none prose-p:my-0">
 						<MarkdownRenderer>{card.back}</MarkdownRenderer>
 					</div>
 					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
