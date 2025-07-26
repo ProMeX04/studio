@@ -67,7 +67,7 @@ export function Typing({
 }: TypingProps) {
     const currentCard = typingSet?.cards[typingIndex];
     const userInput = typingState?.inputs[typingIndex] ?? "";
-    const sourceText = currentCard?.front ?? "";
+    const sourceText = currentCard?.back ?? "";
 
     // Reset input when card changes
     useEffect(() => {
