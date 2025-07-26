@@ -33,6 +33,8 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			padding: "1rem",
             borderRadius: "0.5rem",
             fontSize: "14px",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
 		},
 		'code[class*="language-"]': {
 			...vscDarkPlus['code[class*="language-"]'],
@@ -47,7 +49,6 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 			remarkPlugins={[remarkGfm, remarkMath]}
 			rehypePlugins={[rehypeKatex]}
 			components={{
-				p: ({ ...props }) => <p {...props} className="leading-7 [&:not(:first-child)]:mt-6" />,
 				pre: ({ ...props }) => <div {...props} className="w-full overflow-x-auto my-4" />,
 				code({ node, inline, className, children, ...props }: any) {
 					const match = /language-(\w+)/.exec(className || "")
@@ -69,14 +70,6 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 						</code>
 					)
 				},
-				h1: ({...props}) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
-                h2: ({...props}) => <h2 className="text-3xl font-semibold mt-8 mb-4" {...props} />,
-                h3: ({...props}) => <h3 className="text-2xl font-semibold mt-6 mb-3" {...props} />,
-                ul: ({...props}) => <ul className="list-disc pl-6 my-4" {...props} />,
-                ol: ({...props}) => <ol className="list-decimal pl-6 my-4" {...props} />,
-                li: ({...props}) => <li className="my-2" {...props} />,
-                a: ({...props}) => <a className="text-primary hover:underline" {...props} />,
-                blockquote: ({...props}) => <blockquote className="mt-6 border-l-2 pl-6 italic" {...props} />,
 			}}
 		>
 			{children}
