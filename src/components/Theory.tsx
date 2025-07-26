@@ -84,12 +84,12 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 	const hasContent = !!currentChapter;
 
 	return (
-		<ScrollArea className="h-full pr-4">
-			<div className="h-full flex flex-col bg-transparent shadow-none border-none">
-				<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
-					{hasContent ? (
-						<div className="w-full max-w-5xl mx-auto relative">
-							<h1 className="text-4xl font-bold mt-4 mb-8 text-center">{currentChapter.title}</h1>
+		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
+			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
+				{hasContent ? (
+					<ScrollArea className="h-full w-full pr-4">
+						<div className="w-full max-w-5xl mx-auto relative pt-4">
+							<h1 className="text-4xl font-bold mb-8 text-center">{currentChapter.title}</h1>
 							{isCurrentUnderstood && <CheckCircle className="absolute top-0 right-0 text-success w-6 h-6" />}
 							<div className="prose dark:prose-invert max-w-none text-xl">
 								{currentChapter.content ? (
@@ -107,23 +107,23 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 								)}
 							</div>
 						</div>
-					) : (
-						<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
-							<CardHeader>
-								<div className="mx-auto bg-primary/10 p-4 rounded-full">
-									<BookOpen className="w-12 h-12 text-primary" />
-								</div>
-								<CardTitle className="mt-4 text-2xl">Xây dựng nền tảng kiến thức</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<p className="text-muted-foreground">
-									Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Lý thuyết để AI tạo dàn bài và nội dung cho bạn.
-								</p>
-							</CardContent>
-						</Card>
-					)}
-				</div>
+					</ScrollArea>
+				) : (
+					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
+						<CardHeader>
+							<div className="mx-auto bg-primary/10 p-4 rounded-full">
+								<BookOpen className="w-12 h-12 text-primary" />
+							</div>
+							<CardTitle className="mt-4 text-2xl">Xây dựng nền tảng kiến thức</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-muted-foreground">
+								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Lý thuyết để AI tạo dàn bài và nội dung cho bạn.
+							</p>
+						</CardContent>
+					</Card>
+				)}
 			</div>
-		</ScrollArea>
+		</div>
 	);
 }
