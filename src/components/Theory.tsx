@@ -85,7 +85,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 }
 
 export function Theory({ theorySet, topic }: TheoryProps) {
-	const hasContent = theorySet && (theorySet.outline.length > 0 || theorySet.chapters.length > 0);
+	const hasContent = theorySet && ((theorySet.outline?.length ?? 0) > 0 || (theorySet.chapters?.length ?? 0) > 0);
 
 	return (
 		<ScrollArea className="h-full pr-4">
