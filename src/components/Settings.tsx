@@ -15,6 +15,7 @@ import {
 	Plus,
 	X,
 	Loader,
+	ExternalLink,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -383,6 +384,20 @@ export function Settings(props: SettingsProps) {
 							<KeyRound className="w-4 h-4" />
 							<span>Quản lý Gemini API Keys</span>
 						</Label>
+						<p className="text-sm text-muted-foreground">
+							Ứng dụng này sử dụng Google Gemini để tạo nội dung. Bạn cần cung cấp API Key (miễn phí) của riêng bạn.
+							<a
+								href="https://aistudio.google.com/app/apikey"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-primary hover:underline inline-flex items-center gap-1"
+							>
+								Nhận API Key miễn phí tại đây <ExternalLink className="w-3 h-3" />
+							</a>
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Mẹo: Thêm nhiều API Key sẽ giúp tăng tốc độ tạo nội dung do vượt qua giới hạn sử dụng của Google.
+						</p>
 
 						<div className="flex gap-2">
 							<Input
@@ -649,3 +664,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
