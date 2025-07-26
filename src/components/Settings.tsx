@@ -161,16 +161,22 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleAddNewApiKey = () => {
-        if (newApiKey.trim()) {
-            if (!localApiKeys.includes(newApiKey.trim())) {
-                setLocalApiKeys([...localApiKeys, newApiKey.trim()]);
-            }
-            setNewApiKey("");
-        }
+		if (isLearnScope) return;
+		if (newApiKey.trim()) {
+			if (!localApiKeys.includes(newApiKey.trim())) {
+				const newKeys = [...localApiKeys, newApiKey.trim()];
+				setLocalApiKeys(newKeys);
+				(props as GlobalSettingsProps).onApiKeysChange(newKeys);
+			}
+			setNewApiKey("");
+		}
     };
 
     const handleRemoveApiKey = (keyToRemove: string) => {
-        setLocalApiKeys(localApiKeys.filter(key => key !== keyToRemove));
+		if (isLearnScope) return;
+        const newKeys = localApiKeys.filter(key => key !== keyToRemove);
+		setLocalApiKeys(newKeys);
+		(props as GlobalSettingsProps).onApiKeysChange(newKeys);
     };
 
 	const handleApiKeysSave = () => {
@@ -434,10 +440,6 @@ export function Settings(props: SettingsProps) {
 							)}
 						</div>
 						
-						<div className="flex justify-end pt-2">
-							<Button onClick={handleApiKeysSave}>Lưu danh sách Keys</Button>
-						</div>
-						
 						<p className="text-xs text-muted-foreground pl-1">
 							Các khóa API được lưu trữ an toàn trong trình duyệt và được sử dụng luân phiên.
 						</p>
@@ -664,5 +666,7 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
 
     
