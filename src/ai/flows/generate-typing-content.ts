@@ -43,16 +43,12 @@ export async function generateTypingContent(
       ` 
         : '';
 
-      const promptText = `You are a content generator for a typing practice app. Generate a set of ${promptInput.count} new, unique items for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "cards" array in the JSON object. 
-      Each item should be a short, interesting definition, a fact, or a small code snippet related to the topic.
-      - The "front" field should be a short title or hint for the content.
-      - The "back" field should be the actual text content for the user to type. This content should be between 100 and 400 characters.
-      ${existingCardsPrompt}
-      The "front" and "back" fields MUST contain valid standard Markdown.
-      - Use standard backticks (\`) for inline code blocks.
-      - Use triple backticks with a language identifier for multi-line code blocks.
-      - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-      `;
+      const promptText = `You are a code snippet generator for a typing practice app. Generate a set of ${promptInput.count} new, unique code snippets for the topic: "${promptInput.topic}" in the programming language that best fits the topic. If no programming language is obvious, use JavaScript. Populate the "cards" array in the JSON object.
+- The "front" field should be a short title describing the code snippet (e.g., "JavaScript: Factorial Function").
+- The "back" field should be the actual code snippet for the user to type. This content should be between 100 and 400 characters and must be valid Markdown code block format.
+${existingCardsPrompt}
+The "back" field must be formatted as a valid Markdown code block, for example: \`\`\`javascript\nconsole.log("Hello, World!");\n\`\`\`
+The "front" field MUST be plain text.`;
 
       const generationConfig: GenerationConfig = {
         responseMimeType: "application/json",
