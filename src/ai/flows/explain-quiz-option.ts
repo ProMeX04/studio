@@ -95,13 +95,16 @@ export async function explainQuizOption(
         return { result: validatedOutput, newApiKeyIndex: currentKeyIndex };
 
     } catch (error: any) {
-        const isQuotaError = error.message?.includes('quota');
-        console.warn(`API Key at index ${currentKeyIndex} failed.`, error.message);
+        const errorMessage = error.message || '';
+        const isQuotaError = errorMessage.includes('429');
+        const isBadApiKeyError = errorMessage.includes('400');
 
-        if (isQuotaError && i < apiKeys.length - 1) {
-            // Move to the next key if it's a quota error and not the last key
+        console.warn(`API Key at index ${currentKeyIndex} failed. Reason: ${errorMessage}`);
+
+        if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
+            // Move to the next key if it's a known, recoverable error and not the last key
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-            console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
+            console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             // For other errors or if all keys have been tried for quota
             console.error('❌ AI Explanation Error:', error);

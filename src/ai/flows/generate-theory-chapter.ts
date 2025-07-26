@@ -85,12 +85,15 @@ The Markdown content MUST be valid standard Markdown.
       return { result: validatedOutput, newApiKeyIndex: currentKeyIndex };
 
     } catch (error: any) {
-        const isQuotaError = error.message?.includes('quota');
-        console.warn(`API Key at index ${currentKeyIndex} failed.`, error.message);
+        const errorMessage = error.message || '';
+        const isQuotaError = errorMessage.includes('429');
+        const isBadApiKeyError = errorMessage.includes('400');
         
-        if (isQuotaError && i < apiKeys.length - 1) {
+        console.warn(`API Key at index ${currentKeyIndex} failed. Reason: ${errorMessage}`);
+        
+        if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-            console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
+            console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             console.error('❌ Theory chapter generation error:', error);
             if (error instanceof z.ZodError) {
