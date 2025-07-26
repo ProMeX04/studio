@@ -58,7 +58,7 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
 type ViewType = "flashcards" | "quiz" | "theory";
@@ -154,7 +154,6 @@ export function Settings(props: SettingsProps) {
 	const isOnboardingScope = scope.startsWith("learn-onboarding");
 	const { toast } = useToast();
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
-	const [isTopicChangeAlertOpen, setIsTopicChangeAlertOpen] = useState(false);
 
 	// Local state for learn settings
 	const [topic, setTopic] = useState(scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : "")
@@ -169,6 +168,8 @@ export function Settings(props: SettingsProps) {
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const topicChanged = scope === "learn" && (props as LearnSettingsProps).topic !== topic;
+
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
@@ -188,7 +189,7 @@ export function Settings(props: SettingsProps) {
 		}
 	}, [props, scope, isSheetOpen, isOnboardingScope])
 
-	const handleConfirmSave = () => {
+	const handleSave = () => {
 		if (scope === "learn" && (props as LearnSettingsProps).onSettingsChange) {
 			const learnProps = props as LearnSettingsProps;
 			learnProps.onSettingsChange!({
@@ -209,16 +210,6 @@ export function Settings(props: SettingsProps) {
 		}
 	}
 	
-	const handleSaveAttempt = () => {
-		if (scope === 'learn') {
-			const learnProps = props as LearnSettingsProps;
-			if (learnProps.topic !== topic) {
-				setIsTopicChangeAlertOpen(true);
-			} else {
-				handleConfirmSave();
-			}
-		}
-	}
 
 	const handleAddNewApiKey = () => {
 		if (!scope.startsWith("learn")) return;
@@ -454,6 +445,14 @@ export function Settings(props: SettingsProps) {
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder="ví dụ: Lịch sử La Mã"
 					/>
+					{topicChanged && (
+						<Alert variant="destructive" className="mt-2 text-xs p-2">
+  						<AlertTriangle className="h-4 w-4" />
+  						<AlertDescription>
+    						Lưu ý: Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập hiện tại.
+  						</AlertDescription>
+						</Alert>
+					)}
 				</div>
 				<div className="space-y-2">
 					<Label htmlFor="language">Ngôn ngữ</Label>
@@ -739,31 +738,10 @@ export function Settings(props: SettingsProps) {
 									</AlertDialogContent>
 								</AlertDialog>
 							</div>
-							<AlertDialog open={isTopicChangeAlertOpen} onOpenChange={setIsTopicChangeAlertOpen}>
-								<Button onClick={handleSaveAttempt}>
-									<Save className="mr-2 h-4 w-4" />
-									Lưu thay đổi
-								</Button>
-								<AlertDialogContent>
-									<AlertDialogHeader>
-										<AlertDialogTitle>
-											<div className="flex items-center gap-2">
-												<AlertTriangle className="text-destructive" />
-												<span>Xác nhận thay đổi chủ đề?</span>
-											</div>
-										</AlertDialogTitle>
-										<AlertDialogDescription>
-											Việc thay đổi chủ đề sẽ xóa vĩnh viễn tất cả dữ liệu học tập hiện tại (Lý thuyết, Flashcard, Trắc nghiệm). Bạn có chắc chắn muốn tiếp tục?
-										</AlertDialogDescription>
-									</AlertDialogHeader>
-									<AlertDialogFooter>
-										<AlertDialogCancel>Hủy</AlertDialogCancel>
-										<AlertDialogAction onClick={handleConfirmSave}>
-											Vâng, thay đổi chủ đề
-										</AlertDialogAction>
-									</AlertDialogFooter>
-								</AlertDialogContent>
-							</AlertDialog>
+							<Button onClick={handleSave}>
+								<Save className="mr-2 h-4 w-4" />
+								Lưu thay đổi
+							</Button>
 						</div>
 					) : (
 						<AlertDialog>
@@ -809,3 +787,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
