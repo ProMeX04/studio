@@ -25,6 +25,6 @@ export interface FlashcardState {
 }
 
 export interface TheoryState {
-  // Used to track which accordion items are open
-  openChapters: string[];
+  // Now tracks the current page index for paginated view
+  currentChapterIndex: number;
 }

@@ -65,6 +65,8 @@ interface LearnProps {
 	settingsProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
+	theoryChapterIndex: number;
+	onTheoryChapterIndexChange: (index: number) => void;
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
@@ -96,6 +98,8 @@ function Learn({
 	settingsProps,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
+	theoryChapterIndex,
+	onTheoryChapterIndexChange,
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
@@ -104,28 +108,27 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: theorySet?.chapters?.length ?? 0;
+		: theorySet?.chapters?.filter(c => c.content).length ?? 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
-		: currentQuestionIndex;
+		: view === "quiz"
+		? currentQuestionIndex
+		: theoryChapterIndex;
 
 	const totalItems = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0 
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: view === 'theory' 
-		? theorySet?.outline?.length ?? 0
-		: 0;
+		: theorySet?.outline?.length ?? 0;
 
-	const hasContent = view === 'theory' 
-		? (theorySet?.outline?.length ?? 0) > 0
-		: totalItems > 0;
+	const hasContent = totalItems > 0;
 
 	const handleNext = () => {
 		if (currentIndex < totalItems - 1) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex + 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
+			else if (view === 'theory') onTheoryChapterIndexChange(theoryChapterIndex + 1);
 		}
 	};
 	
@@ -133,6 +136,7 @@ function Learn({
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
+			else if (view === 'theory') onTheoryChapterIndexChange(theoryChapterIndex - 1);
 		}
 	};
 
@@ -175,7 +179,7 @@ function Learn({
     const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === 'flashcards';
 
 	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary;
-	const isNavDisabled = view === 'theory' || isSummaryActive;
+	const isNavDisabled = isSummaryActive;
 
 	const handleToggleUnderstood = () => {
 		if (!flashcardState || !flashcardSet) return;
@@ -244,7 +248,7 @@ function Learn({
 						onApiKeyIndexChange={onApiKeyIndexChange}
 					/>
 				) : (
-					<Theory theorySet={theorySet} topic={topic} />
+					<Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} />
 				)}
 			</CardContent>
 
@@ -276,7 +280,7 @@ function Learn({
 							</Button>
 
 							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {view === 'theory' ? currentCount : hasContent ? currentIndex + 1 : 0} / {totalItems}
+								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
 							</span>
 
 							<Button
@@ -389,6 +393,7 @@ export default function Home() {
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+	const [theoryChapterIndex, setTheoryChapterIndex] = useState(0);
 
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
@@ -600,7 +605,9 @@ export default function Home() {
 				if (genType === "theory") {
 					if (forceNew) {
 						setTheorySet(null);
+						setTheoryChapterIndex(0);
 						await db.delete("data", "theory");
+						await db.delete("data", "theoryChapterIndex");
 					}
 			
 					// Step 1: Generate Outline
@@ -626,6 +633,7 @@ export default function Home() {
 					
 					if (isMountedRef.current) {
 						setTheorySet(newTheorySet);
+						setTheoryChapterIndex(0);
 					}
 					await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
 			
@@ -721,6 +729,7 @@ export default function Home() {
 			quizDataRes,
 			quizStateRes,
 			theoryDataRes,
+			theoryChapterIndexRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -737,6 +746,7 @@ export default function Home() {
 			db.get("data", "quiz"),
 			db.get("data", "quizState"),
 			db.get("data", "theory"),
+			db.get("data", "theoryChapterIndex"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
@@ -755,6 +765,7 @@ export default function Home() {
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
 		const theoryData = theoryDataRes as LabeledData<TheorySet>;
+		const theoryChapterIndexData = theoryChapterIndexRes as AppData;
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);
 		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
@@ -824,6 +835,12 @@ export default function Home() {
 		}
 		setQuizState(currentQuizState);
 		setCurrentQuestionIndex(currentQuizState.currentQuestionIndex);
+
+		const currentTheoryChapterIndex = (theoryData && theoryData.topic === savedTopic && theoryChapterIndexData)
+			? theoryChapterIndexData.data as number
+			: 0;
+		setTheoryChapterIndex(currentTheoryChapterIndex);
+
 	}, []);
 	
 
@@ -1047,6 +1064,15 @@ export default function Home() {
 		[] 
 	);
 
+	const handleTheoryChapterIndexChange = useCallback(
+		async (index: number) => {
+			setTheoryChapterIndex(index);
+			const db = await getDb();
+			await db.put("data", { id: "theoryChapterIndex", data: index });
+		},
+		[] 
+	);
+
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
 	const currentCount =
 		view === "flashcards"
@@ -1155,6 +1181,8 @@ export default function Home() {
 							settingsProps={learnSettingsProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
+							theoryChapterIndex={theoryChapterIndex}
+							onTheoryChapterIndexChange={handleTheoryChapterIndexChange}
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}

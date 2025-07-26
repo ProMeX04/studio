@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 6; // Incremented version
+const DB_VERSION = 7; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -21,6 +21,7 @@ export type DataKey =
   | 'flashcardMax'
   | 'quizMax'
   | 'flashcardIndex'
+  | 'theoryChapterIndex'
   | 'apiKeys'
   | 'apiKeyIndex';
 
@@ -53,8 +54,12 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-        // No specific migration logic needed for v6 as we are just changing data structure
-        // The loading logic in page.tsx will handle cases where old data format exists.
+        // Migration logic for version 7
+        if (oldVersion < 7) {
+          // The key 'theoryState' might now be obsolete if we just store an index.
+          // Let's add 'theoryChapterIndex' for the new paginated view.
+          // No need to create indexes if we are always getting by key.
+        }
       },
     });
   }
