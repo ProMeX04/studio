@@ -133,6 +133,26 @@ export function Typing({
         onTypingStateChange({ ...typingState, inputs: newInputs });
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = e.currentTarget.selectionStart;
+            const end = e.currentTarget.selectionEnd;
+
+            // set new value
+            const newValue = userInput.substring(0, start) + '\t' + userInput.substring(end);
+            if (!typingState || !currentCard) return;
+            const newInputs = { ...typingState.inputs, [typingIndex]: newValue };
+            onTypingStateChange({ ...typingState, inputs: newInputs });
+
+            // put caret at right position again
+            // this is needed to avoid the cursor jumping to the end
+            setTimeout(() => {
+                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1;
+            }, 0);
+        }
+    }
+
     return (
         <div className="h-full flex flex-col items-center justify-center bg-transparent shadow-none border-none p-4">
             {currentCard ? (
@@ -141,6 +161,7 @@ export function Typing({
                     <Textarea
                         value={userInput}
                         onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
                         className="absolute inset-0 opacity-0 cursor-text z-10"
                         placeholder="Bắt đầu gõ..."
                         autoFocus
