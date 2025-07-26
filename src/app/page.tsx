@@ -17,9 +17,9 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Settings } from "@/components/Settings"
+import { Settings, languages } from "@/components/Settings"
 import {
 	getDb,
 	LabeledData,
@@ -36,6 +36,7 @@ import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
@@ -73,15 +74,18 @@ const TypingEffect = ({ text, onComplete }: { text: string; onComplete?: () => v
 
 const ApiKeyGuide = ({ 
 	settingsProps, 
-	onTopicSet, 
-	initialTopic 
+	onOnboardingComplete,
+	initialTopic,
+	initialLanguage,
 }: { 
 	settingsProps: any; 
-	onTopicSet: (topic: string) => void;
+	onOnboardingComplete: (topic: string, language: string) => void;
 	initialTopic: string;
+	initialLanguage: string;
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
+	const [language, setLanguage] = useState(initialLanguage);
 
 	// State to control sequential typing effect
 	const [showStep1Title, setShowStep1Title] = useState(true);
@@ -90,18 +94,36 @@ const ApiKeyGuide = ({
 	
 	const [showStep2Title, setShowStep2Title] = useState(false);
 	const [showStep2Desc, setShowStep2Desc] = useState(false);
-	const [showStep2Content, setShowStep2Content] = useState(false);
+	const [showStep2Input, setShowStep2Input] = useState(false);
+
+	const [showStep3Title, setShowStep3Title] = useState(false);
+	const [showStep3Desc, setShowStep3Desc] = useState(false);
+	const [showStep3Content, setShowStep3Content] = useState(false);
 
 
 	const handleTopicSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (topic.trim()) {
-			onTopicSet(topic.trim());
 			setOnboardingStep(2);
-			// Start typing effect for step 2
 			setTimeout(() => setShowStep2Title(true), 200);
 		}
 	};
+
+	const handleLanguageSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		setOnboardingStep(3);
+		setTimeout(() => setShowStep3Title(true), 200);
+	};
+
+	const handleBack = () => {
+		if (onboardingStep > 1) {
+			setOnboardingStep(onboardingStep - 1);
+		}
+	}
+
+	const handleFinishOnboarding = () => {
+		onOnboardingComplete(topic, language);
+	}
 
 	if (onboardingStep === 1) {
 		return (
@@ -112,7 +134,7 @@ const ApiKeyGuide = ({
 							<Sparkles className="w-12 h-12 text-primary" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							<TypingEffect text="Chào mừng bạn đến với AI New Tab!" onComplete={() => setShowStep1Desc(true)} />
+							{showStep1Title && <TypingEffect text="Chào mừng bạn đến với AI New Tab!" onComplete={() => setShowStep1Desc(true)} />}
 						</CardTitle>
 						{showStep1Desc && (
 							<CardDescription className="text-lg mt-2">
@@ -146,24 +168,68 @@ const ApiKeyGuide = ({
 		);
 	}
 
+	if (onboardingStep === 2) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6">
+						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+						</Button>
+						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+							<Languages className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							{showStep2Title && <TypingEffect text={`Tuyệt vời! Chủ đề của bạn là "${topic}"`} onComplete={() => setShowStep2Desc(true)} />}
+						</CardTitle>
+						{showStep2Desc && (
+							<CardDescription className="text-lg mt-2">
+								<TypingEffect text="Bây giờ, hãy chọn ngôn ngữ bạn muốn học." onComplete={() => setShowStep2Input(true)} />
+							</CardDescription>
+						)}
+					</CardHeader>
+					<CardContent className="p-0">
+						{showStep2Input && (
+							<form onSubmit={handleLanguageSubmit} className="flex items-center gap-2 animate-in fade-in duration-500">
+								<Select value={language} onValueChange={setLanguage}>
+									<SelectTrigger className="text-base h-12">
+										<SelectValue placeholder="Chọn một ngôn ngữ" />
+									</SelectTrigger>
+									<SelectContent>
+										{languages.map((lang) => (
+											<SelectItem key={lang.value} value={lang.value}>
+												{lang.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Button type="submit" className="h-12">Tiếp tục</Button>
+							</form>
+						)}
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
 	return (
 		<div className="w-full h-full flex flex-col items-center justify-center p-4">
 			<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 				<CardHeader className="p-0 mb-6">
-					<Button variant="ghost" className="absolute top-4 left-4" onClick={() => setOnboardingStep(1)}>
+					<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
 						<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
 					</Button>
 					<div className="flex items-center justify-center gap-4 mb-4 pt-8">
 						<KeyRound className="w-12 h-12 text-primary" />
 					</div>
 					<CardTitle className="text-3xl font-bold text-center">
-						{showStep2Title && <TypingEffect text={`Tuyệt vời! Chủ đề của bạn là "${topic}"`} onComplete={() => setShowStep2Desc(true)} />}
+						{showStep3Title && <TypingEffect text={"Bước cuối cùng!"} onComplete={() => setShowStep3Desc(true)} />}
 					</CardTitle>
 					<CardDescription className="text-lg mt-2 text-center">
-						{showStep2Desc && <TypingEffect text="Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google." onComplete={() => setShowStep2Content(true)} />}
+						{showStep3Desc && <TypingEffect text="Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google." onComplete={() => setShowStep3Content(true)} />}
 					</CardDescription>
 				</CardHeader>
-				{showStep2Content && (
+				{showStep3Content && (
 					<CardContent className="p-0 animate-in fade-in duration-500">
 						<ol className="list-decimal list-inside space-y-6">
 							<li className="space-y-2">
@@ -186,10 +252,10 @@ const ApiKeyGuide = ({
 									<span className="font-semibold">Thêm API Key vào ứng dụng</span>
 								</div>
 								<p className="ml-10 text-muted-foreground">
-									Mở phần cài đặt học tập và dán API Key bạn vừa tạo vào. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
+									Dán API Key bạn vừa tạo vào ô bên dưới. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
 								</p>
 								<div className="ml-10">
-									<Settings {...settingsProps} scope="learn" />
+									<Settings {...settingsProps} scope="learn" onSettingsChanged={handleFinishOnboarding} />
 								</div>
 							</li>
 						</ol>
@@ -237,7 +303,7 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
-	onTopicSet: (topic: string) => void;
+	onOnboardingComplete: (topic: string, language: string) => void;
 }
 
 function Learn({
@@ -276,7 +342,7 @@ function Learn({
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
-	onTopicSet,
+	onOnboardingComplete,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -399,7 +465,12 @@ function Learn({
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
 	if (!apiKeys || apiKeys.length === 0) {
-		return <ApiKeyGuide settingsProps={settingsProps} onTopicSet={onTopicSet} initialTopic={topic} />;
+		return <ApiKeyGuide 
+			settingsProps={settingsProps} 
+			onOnboardingComplete={onOnboardingComplete} 
+			initialTopic={topic}
+			initialLanguage={language}
+		/>;
 	}
 
 	return (
@@ -1344,11 +1415,13 @@ export default function Home() {
 		[] 
 	);
 
-	const handleTopicSetOnboarding = useCallback(
-		async (newTopic: string) => {
-			setTopic(newTopic);
+	const handleOnboardingComplete = useCallback(
+		async (finalTopic: string, finalLanguage: string) => {
+			setTopic(finalTopic);
+			setLanguage(finalLanguage);
 			const db = await getDb();
-			await db.put("data", { id: "topic", data: newTopic });
+			await db.put("data", { id: "topic", data: finalTopic });
+			await db.put("data", { id: "language", data: finalLanguage });
 			await handleClearAllData(true);
 		},
 		[handleClearAllData]
@@ -1481,7 +1554,7 @@ export default function Home() {
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
-							onTopicSet={handleTopicSetOnboarding}
+							onOnboardingComplete={handleOnboardingComplete}
 						/>
 					</div>
 				</div>
@@ -1489,3 +1562,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    

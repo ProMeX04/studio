@@ -80,35 +80,36 @@ interface GlobalSettingsProps {
 
 interface LearnSettingsProps {
 	scope: "learn";
-	onSettingsChange: (settings: {
+	onSettingsChange?: (settings: {
 		topic: string
 		language: string
 		model: string
 		flashcardMax: number
 		quizMax: number
 	}) => void
-	onGenerateType: (type: ViewType) => void;
-	onClearLearningData: () => void;
+	onGenerateType?: (type: ViewType) => void;
+	onClearLearningData?: () => void;
 	onApiKeysChange: (apiKeys: string[]) => void;
-	currentView: ViewType
-	topic: string
-	language: string
-	model: string
-	flashcardMax: number
-	quizMax: number
-	theoryCount: number;
-	theoryMax: number;
-	flashcardCount: number;
-	quizCount: number;
-	isTheoryLoading: boolean;
-	isFlashcardLoading: boolean;
-	isQuizLoading: boolean;
+	onSettingsChanged?: () => void; // For onboarding
+	currentView?: ViewType
+	topic?: string
+	language?: string
+	model?: string
+	flashcardMax?: number
+	quizMax?: number
+	theoryCount?: number;
+	theoryMax?: number;
+	flashcardCount?: number;
+	quizCount?: number;
+	isTheoryLoading?: boolean;
+	isFlashcardLoading?: boolean;
+	isQuizLoading?: boolean;
 	apiKeys: string[];
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
 
-const languages = [
+export const languages = [
 	{ value: "Vietnamese", label: "Tiếng Việt" },
 	{ value: "English", label: "English" },
 	{ value: "Spanish", label: "Español" },
@@ -133,11 +134,11 @@ export function Settings(props: SettingsProps) {
 
 
 	// Local state for learn settings
-	const [topic, setTopic] = useState(isLearnScope ? (props as LearnSettingsProps).topic : "")
-	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
-	const [model, setModel] = useState(isLearnScope ? (props as LearnSettingsProps).model : "gemini-1.5-flash-latest")
-	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
-	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
+	const [topic, setTopic] = useState(isLearnScope ? (props as LearnSettingsProps).topic ?? "" : "")
+	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language ?? "Vietnamese" : "Vietnamese")
+	const [model, setModel] = useState(isLearnScope ? (props as LearnSettingsProps).model ?? "gemini-1.5-flash-latest" : "gemini-1.5-flash-latest")
+	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax ?? 50 : 50)
+	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax ?? 50 : 50)
 	
 	// Local state for API keys (now managed in learn settings)
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(isLearnScope ? (props as LearnSettingsProps).apiKeys : [])
@@ -151,26 +152,29 @@ export function Settings(props: SettingsProps) {
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
 			if(isSheetOpen) {
-				setTopic(learnProps.topic)
-				setLanguage(learnProps.language)
-				setModel(learnProps.model)
-				setFlashcardMax(learnProps.flashcardMax)
-				setQuizMax(learnProps.quizMax)
+				setTopic(learnProps.topic ?? "")
+				setLanguage(learnProps.language ?? "Vietnamese")
+				setModel(learnProps.model ?? "gemini-1.5-flash-latest")
+				setFlashcardMax(learnProps.flashcardMax ?? 50)
+				setQuizMax(learnProps.quizMax ?? 50)
 				setLocalApiKeys(learnProps.apiKeys);
 			}
 		}
 	}, [props, isLearnScope, isSheetOpen])
 
 	const handleLocalSettingsSave = () => {
-		if (isLearnScope) {
+		if (isLearnScope && (props as LearnSettingsProps).onSettingsChange) {
 			const learnProps = props as LearnSettingsProps;
-			learnProps.onSettingsChange({
+			learnProps.onSettingsChange!({
 				topic,
 				language,
 				model,
 				flashcardMax,
 				quizMax,
 			});
+			if (learnProps.onSettingsChanged) {
+				learnProps.onSettingsChanged();
+			}
 			toast({
 				title: "Đã lưu cài đặt",
 				description: "Các thay đổi của bạn đã được lưu lại.",
@@ -200,8 +204,9 @@ export function Settings(props: SettingsProps) {
 	const handleGenerateType = (type: ViewType) => {
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
-			// Note: We don't save here anymore, user should save manually
-			learnProps.onGenerateType(type);
+			if (learnProps.onGenerateType) {
+				learnProps.onGenerateType(type);
+			}
 		}
 	};
 	
@@ -215,8 +220,11 @@ export function Settings(props: SettingsProps) {
 
 	const handleClearLearningData = () => {
 		if (isLearnScope) {
-			(props as LearnSettingsProps).onClearLearningData();
-			setIsSheetOpen(false);
+			const learnProps = props as LearnSettingsProps;
+			if (learnProps.onClearLearningData) {
+				learnProps.onClearLearningData();
+				setIsSheetOpen(false);
+			}
 		}
 	};
 
@@ -259,6 +267,7 @@ export function Settings(props: SettingsProps) {
 	const renderLearnSettings = () => {
 		if (!isLearnScope) return null;
 		const learnProps = props as LearnSettingsProps;
+		const isForOnboarding = !learnProps.onSettingsChange;
 
 		return (
 			<div className="space-y-4">
@@ -332,116 +341,125 @@ export function Settings(props: SettingsProps) {
 							<p className="text-xs text-muted-foreground text-center p-2">Chưa có API key nào.</p>
 						)}
 					</div>
-				</div>
-
-				<Separator />
-
-				<div className="space-y-2">
-					<Label htmlFor="topic">Chủ đề</Label>
-					<Input
-						id="topic"
-						value={topic}
-						onChange={(e) => setTopic(e.target.value)}
-						placeholder="ví dụ: Lịch sử La Mã"
-					/>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="language">Ngôn ngữ</Label>
-					<Select value={language} onValueChange={setLanguage}>
-						<SelectTrigger>
-							<SelectValue placeholder="Chọn một ngôn ngữ" />
-						</SelectTrigger>
-						<SelectContent>
-							{languages.map((lang) => (
-								<SelectItem key={lang.value} value={lang.value}>
-									{lang.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div className="space-y-2">
-					<Label htmlFor="model">Model</Label>
-					<Select value={model} onValueChange={setModel}>
-						<SelectTrigger>
-							<SelectValue placeholder="Chọn một model AI" />
-						</SelectTrigger>
-						<SelectContent>
-							{models.map((m) => (
-								<SelectItem key={m.value} value={m.value}>
-									{m.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-	
-				<Separator />
-	
-				<div className="space-y-4">
-					<Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>
 					
-					{/* Theory Progress */}
-					<div className="space-y-2">
-						<div className="flex justify-between items-center text-sm">
-							<Label htmlFor="theory-progress">Lý thuyết</Label>
-							<span className="text-muted-foreground">{learnProps.theoryCount} / {learnProps.theoryMax > 0 ? learnProps.theoryMax : '?'}</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<Progress value={learnProps.theoryMax > 0 ? (learnProps.theoryCount / learnProps.theoryMax) * 100 : 0} id="theory-progress" />
-							<Button size="icon" variant="outline" onClick={() => handleGenerateType('theory')} disabled={learnProps.isTheoryLoading}>
-								{learnProps.isTheoryLoading ? <Loader className="animate-spin" /> : <Plus />}
-							</Button>
-						</div>
-					</div>
-	
-					{/* Flashcard Progress */}
-					<div className="space-y-2">
-						<div className="flex justify-between items-center text-sm">
-							<Label htmlFor="flashcard-progress">Flashcards</Label>
-							<span className="text-muted-foreground">{learnProps.flashcardCount} / {flashcardMax}</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<Progress value={(learnProps.flashcardCount / flashcardMax) * 100} id="flashcard-progress" />
-							<Button size="icon" variant="outline" onClick={() => handleGenerateType('flashcards')} disabled={learnProps.flashcardCount >= flashcardMax || learnProps.isFlashcardLoading}>
-								{learnProps.isFlashcardLoading ? <Loader className="animate-spin" /> : <Plus />}
-							</Button>
-						</div>
-						<Input
-							id="flashcardMax"
-							type="number"
-							value={flashcardMax}
-							onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
-							className="mt-2"
-							placeholder="Số lượng tối đa, ví dụ: 50"
-							{...numericInputProps}
-						/>
-					</div>
-	
-					{/* Quiz Progress */}
-					<div className="space-y-2">
-						<div className="flex justify-between items-center text-sm">
-							<Label htmlFor="quiz-progress">Trắc nghiệm</Label>
-							<span className="text-muted-foreground">{learnProps.quizCount} / {quizMax}</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<Progress value={(learnProps.quizCount / quizMax) * 100} id="quiz-progress" />
-							<Button size="icon" variant="outline" onClick={() => handleGenerateType('quiz')} disabled={learnProps.quizCount >= quizMax || learnProps.isQuizLoading}>
-								{learnProps.isQuizLoading ? <Loader className="animate-spin" /> : <Plus />}
-							</Button>
-						</div>
-						<Input
-							id="quizMax"
-							type="number"
-							value={quizMax}
-							onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
-							className="mt-2"
-							placeholder="Số lượng tối đa, ví dụ: 50"
-							{...numericInputProps}
-						/>
-					</div>
+					{isForOnboarding && (
+						<Button onClick={learnProps.onSettingsChanged} disabled={localApiKeys.length === 0} className="w-full mt-4">
+							Hoàn tất & Bắt đầu học
+						</Button>
+					)}
 				</div>
+
+				{!isForOnboarding && (
+					<>
+						<Separator />
+						<div className="space-y-2">
+							<Label htmlFor="topic">Chủ đề</Label>
+							<Input
+								id="topic"
+								value={topic}
+								onChange={(e) => setTopic(e.target.value)}
+								placeholder="ví dụ: Lịch sử La Mã"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="language">Ngôn ngữ</Label>
+							<Select value={language} onValueChange={setLanguage}>
+								<SelectTrigger>
+									<SelectValue placeholder="Chọn một ngôn ngữ" />
+								</SelectTrigger>
+								<SelectContent>
+									{languages.map((lang) => (
+										<SelectItem key={lang.value} value={lang.value}>
+											{lang.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="model">Model</Label>
+							<Select value={model} onValueChange={setModel}>
+								<SelectTrigger>
+									<SelectValue placeholder="Chọn một model AI" />
+								</SelectTrigger>
+								<SelectContent>
+									{models.map((m) => (
+										<SelectItem key={m.value} value={m.value}>
+											{m.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+			
+						<Separator />
+			
+						<div className="space-y-4">
+							<Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>
+							
+							{/* Theory Progress */}
+							<div className="space-y-2">
+								<div className="flex justify-between items-center text-sm">
+									<Label htmlFor="theory-progress">Lý thuyết</Label>
+									<span className="text-muted-foreground">{learnProps.theoryCount} / {learnProps.theoryMax! > 0 ? learnProps.theoryMax : '?'}</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Progress value={learnProps.theoryMax! > 0 ? (learnProps.theoryCount! / learnProps.theoryMax!) * 100 : 0} id="theory-progress" />
+									<Button size="icon" variant="outline" onClick={() => handleGenerateType('theory')} disabled={learnProps.isTheoryLoading}>
+										{learnProps.isTheoryLoading ? <Loader className="animate-spin" /> : <Plus />}
+									</Button>
+								</div>
+							</div>
+			
+							{/* Flashcard Progress */}
+							<div className="space-y-2">
+								<div className="flex justify-between items-center text-sm">
+									<Label htmlFor="flashcard-progress">Flashcards</Label>
+									<span className="text-muted-foreground">{learnProps.flashcardCount} / {flashcardMax}</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Progress value={(learnProps.flashcardCount! / flashcardMax) * 100} id="flashcard-progress" />
+									<Button size="icon" variant="outline" onClick={() => handleGenerateType('flashcards')} disabled={learnProps.flashcardCount! >= flashcardMax || learnProps.isFlashcardLoading}>
+										{learnProps.isFlashcardLoading ? <Loader className="animate-spin" /> : <Plus />}
+									</Button>
+								</div>
+								<Input
+									id="flashcardMax"
+									type="number"
+									value={flashcardMax}
+									onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
+									className="mt-2"
+									placeholder="Số lượng tối đa, ví dụ: 50"
+									{...numericInputProps}
+								/>
+							</div>
+			
+							{/* Quiz Progress */}
+							<div className="space-y-2">
+								<div className="flex justify-between items-center text-sm">
+									<Label htmlFor="quiz-progress">Trắc nghiệm</Label>
+									<span className="text-muted-foreground">{learnProps.quizCount} / {quizMax}</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Progress value={(learnProps.quizCount! / quizMax) * 100} id="quiz-progress" />
+									<Button size="icon" variant="outline" onClick={() => handleGenerateType('quiz')} disabled={learnProps.quizCount! >= quizMax || learnProps.isQuizLoading}>
+										{learnProps.isQuizLoading ? <Loader className="animate-spin" /> : <Plus />}
+									</Button>
+								</div>
+								<Input
+									id="quizMax"
+									type="number"
+									value={quizMax}
+									onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
+									className="mt-2"
+									placeholder="Số lượng tối đa, ví dụ: 50"
+									{...numericInputProps}
+								/>
+							</div>
+						</div>
+					</>
+				)}
 			</div>
 		)
 	}
@@ -588,6 +606,12 @@ export function Settings(props: SettingsProps) {
 			</div>
 		)
 	}
+	
+	const isForOnboarding = isLearnScope && !(props as LearnSettingsProps).onSettingsChange;
+
+	if (isForOnboarding) {
+		return renderLearnSettings();
+	}
 
 	return (
 		<Sheet
@@ -702,3 +726,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
