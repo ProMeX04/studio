@@ -102,7 +102,7 @@ const TypingResultDisplay = ({ original, userInput }: { original: string; userIn
              <Syntax
                 language={language}
                 style={codeStyle}
-                Renderer={CustomRenderer}
+                renderer={CustomRenderer}
             >
                 {originalCode}
             </Syntax>
