@@ -6,7 +6,7 @@
  */
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, QuizQuestionSchema } from '@/ai/schemas';
+import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, QuizQuestionSchema, zodToJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
@@ -31,10 +31,7 @@ ${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 `
     : '';
 
-  const promptText = `You are a quiz generator. Your response MUST be a JSON object that adheres to the following Zod schema:
-${JSON.stringify(GenerateQuizOutputContainerSchema.describe())}
-
-Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
+  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have exactly 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
@@ -46,12 +43,12 @@ The content for "question", "options", and "explanation" fields MUST be valid st
 - Use triple backticks with a language identifier for multi-line code blocks.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 ${existingQuestionsPrompt}
-
-The JSON output must be correctly escaped to be RFC 8259 compliant.
 `;
   
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
+    // @ts-ignore - responseSchema is a valid property
+    responseSchema: zodToJsonSchema(GenerateQuizOutputContainerSchema),
   };
   
   let attempts = 0;
@@ -83,7 +80,6 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.
         ]
       });
 
-      // When using responseMimeType: "application/json", the SDK already parses the JSON.
       const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateQuizOutputContainerSchema.parse(parsedJson);
 

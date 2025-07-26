@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema, GenerateFlashcardsOutput } from '@/ai/schemas';
+import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema, GenerateFlashcardsOutput, zodToJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend({
@@ -32,22 +32,19 @@ ${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back
 ` 
     : '';
 
-  const promptText = `You are a flashcard generator. Your response MUST be a JSON object that adheres to the following Zod schema:
-${JSON.stringify(GenerateFlashcardsOutputContainerSchema.describe())}
-
-Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" and a "back".
+  const promptText = `You are a flashcard generator. Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}
 The "front" and "back" fields MUST contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.
 - Use triple backticks with a language identifier for multi-line code blocks.
 - Use bolding for keywords.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
-
-The JSON output must be correctly escaped to be RFC 8259 compliant.
 `;
 
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
+    // @ts-ignore - responseSchema is a valid property
+    responseSchema: zodToJsonSchema(GenerateFlashcardsOutputContainerSchema),
   };
 
   try {
@@ -74,7 +71,6 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.
       ]
     });
     
-    // When using responseMimeType: "application/json", the SDK already parses the JSON.
     const parsedJson = JSON.parse(result.response.text());
     const validatedOutput = GenerateFlashcardsOutputContainerSchema.parse(parsedJson);
 

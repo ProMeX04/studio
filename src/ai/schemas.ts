@@ -5,6 +5,43 @@
 
 import {z} from 'zod';
 
+// Helper to convert Zod schema to a basic JSON Schema representation
+// for Google AI's responseSchema field.
+export function zodToJsonSchema(schema: z.ZodType<any, any, any>): object {
+    if (schema instanceof z.ZodObject) {
+      const properties: { [key: string]: object } = {};
+      const required: string[] = [];
+      const shape = schema.shape;
+      for (const key in shape) {
+        if (Object.prototype.hasOwnProperty.call(shape, key)) {
+          properties[key] = zodToJsonSchema(shape[key] as z.ZodType<any, any, any>);
+          if (!shape[key].isOptional()) {
+            required.push(key);
+          }
+        }
+      }
+      return {
+        type: 'object',
+        properties,
+        ...(required.length > 0 && { required }),
+      };
+    } else if (schema instanceof z.ZodArray) {
+      return {
+        type: 'array',
+        items: zodToJsonSchema(schema.element),
+      };
+    } else if (schema instanceof z.ZodString) {
+      return { type: 'string', ...(schema.description && { description: schema.description }) };
+    } else if (schema instanceof z.ZodNumber) {
+      return { type: 'number', ...(schema.description && { description: schema.description }) };
+    } else if (schema instanceof z.ZodBoolean) {
+        return { type: 'boolean', ...(schema.description && { description: schema.description }) };
+    }
+    // Fallback for other types
+    return {};
+}
+
+
 // Flashcards
 export const FlashcardSchema = z.object({
     front: z.string().describe('The front side of the flashcard.'),

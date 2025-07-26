@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptionOutputSchema } from '@/ai/schemas';
+import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptionOutputSchema, zodToJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
@@ -22,12 +22,8 @@ export async function explainQuizOption(input: ExplainQuizOptionClientInput): Pr
 
   const genAI = new GoogleGenerativeAI(input.apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-
-  const explanationOnlySchema = ExplainQuizOptionOutputSchema.pick({ explanation: true });
   
-  const promptText = `You are a helpful quiz tutor. Your response MUST be a JSON object that adheres to the following Zod schema:
-${JSON.stringify(explanationOnlySchema.describe())}
-
+  const promptText = `You are a helpful quiz tutor.
 ${input.selectedOption === input.correctAnswer 
     ? `The user has chosen the CORRECT answer and wants a more detailed explanation.
 
@@ -49,13 +45,12 @@ Please explain specifically why "${input.selectedOption}" is not the correct ans
 The "explanation" field must be valid standard Markdown:
 - Use backticks (\`) for inline code.
 - Use triple backticks (\`\`\`) for code blocks.
-- Use bolding for keywords.
-- Use standard LaTeX syntax for math ($...$ or $$...$$).
-
-The JSON output must be correctly escaped to be RFC 8259 compliant.`;
+- Use standard LaTeX syntax for math ($...$ or $$...$$).`;
 
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
+    // @ts-ignore - responseSchema is a valid property
+    responseSchema: zodToJsonSchema(ExplainQuizOptionOutputSchema),
   };
 
   try {
@@ -82,13 +77,10 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.`;
       ]
     });
     
-    // When using responseMimeType: "application/json", the SDK already parses the JSON.
     const parsedJson = JSON.parse(result.response.text());
-    const validatedOutput = explanationOnlySchema.parse(parsedJson);
+    const validatedOutput = ExplainQuizOptionOutputSchema.parse(parsedJson);
 
-    return {
-        explanation: validatedOutput.explanation,
-    };
+    return validatedOutput;
 
   } catch (error: any) {
     console.error('❌ AI Explanation Error:', error);
