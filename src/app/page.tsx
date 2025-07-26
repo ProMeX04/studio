@@ -646,7 +646,10 @@ export default function Home() {
 					const theoryData = (await db.get("data", "theory")) as LabeledData<TheorySet>;
 					const shouldForceNew = forceNew || !theoryData || theoryData.topic !== currentTopic;
 			
+					let currentTheorySet: TheorySet;
+			
 					if (shouldForceNew) {
+						// This block runs when starting a new topic or forcing a reset.
 						setTheorySet(null);
 						setTheoryChapterIndex(0);
 						setTheoryState(null);
@@ -655,7 +658,6 @@ export default function Home() {
 						await db.delete("data", "theoryState");
 						await db.delete("data", "theoryChapterIndex");
 					
-						// Step 1: Generate Outline
 						const { result: outlineResult, newApiKeyIndex: outlineKeyIndex } = await generateTheoryOutline({
 							apiKeys,
 							apiKeyIndex,
@@ -668,8 +670,7 @@ export default function Home() {
 							throw new Error("Failed to generate a valid theory outline.");
 						}
 				
-						// Initialize TheorySet with outline
-						const newTheorySet: TheorySet = {
+						currentTheorySet = {
 							id: 'idb-theory',
 							topic: currentTopic,
 							outline: outlineResult.outline,
@@ -677,46 +678,50 @@ export default function Home() {
 						};
 						
 						if (isMountedRef.current) {
-							setTheorySet(newTheorySet);
+							setTheorySet(currentTheorySet);
 							setTheoryState({ understoodIndices: [] });
 							setTheoryChapterIndex(0);
 						}
-						await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any);
-				
-						// Step 2: Generate content for each chapter sequentially
-						let currentKeyIndex = outlineKeyIndex;
-						for (let i = 0; i < newTheorySet.outline.length; i++) {
-							if (!isMountedRef.current) break; // Exit if component is unmounted
-							const chapterTitle = newTheorySet.outline[i];
-							
-							const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
-								apiKeys,
-								apiKeyIndex: currentKeyIndex,
-								topic: currentTopic,
-								chapterTitle,
-								language: currentLanguage,
-							});
-							
-							currentKeyIndex = chapterKeyIndex;
-							await handleApiKeyIndexChange(chapterKeyIndex);
-				
-							if (chapterResult?.content && isMountedRef.current) {
-								// Update the specific chapter in the set
-								const updatedChapters = newTheorySet.chapters.map((chap, index) => 
-									index === i ? { ...chap, content: chapterResult.content } : chap
-								);
-								newTheorySet.chapters = updatedChapters;
-				
-								setTheorySet({ ...newTheorySet }); // Update UI
-								await db.put("data", { id: "theory", topic: currentTopic, data: newTheorySet } as any); // Update DB
-							}
-							// Optional delay between chapter generations to avoid hitting rate limits
-							await new Promise(resolve => setTimeout(resolve, 500)); 
-						}
+						await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet } as any);
 					} else {
-						// Logic for when theory data already exists and we're not forcing new
-						// (Currently, this means do nothing, but could be extended to add more chapters)
-						console.log("Theory data already exists for this topic. No new generation needed.");
+						// This block runs when continuing an existing topic.
+						currentTheorySet = theoryData.data;
+					}
+			
+					// Now, generate content for chapters that are missing it.
+					const chaptersToGenerate = currentTheorySet.chapters.map((ch, idx) => ({ ...ch, originalIndex: idx })).filter(ch => !ch.content);
+			
+					if (chaptersToGenerate.length === 0) {
+						console.log("All theory chapters already have content.");
+						setIsLoading(false);
+						isGeneratingRef.current = false;
+						return;
+					}
+			
+					let currentKeyIndex = apiKeyIndex;
+					for (const chapter of chaptersToGenerate) {
+						if (!isMountedRef.current) break;
+			
+						const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
+							apiKeys,
+							apiKeyIndex: currentKeyIndex,
+							topic: currentTopic,
+							chapterTitle: chapter.title,
+							language: currentLanguage,
+						});
+						
+						currentKeyIndex = chapterKeyIndex;
+						await handleApiKeyIndexChange(chapterKeyIndex);
+			
+						if (chapterResult?.content && isMountedRef.current) {
+							const updatedChapters = [...currentTheorySet.chapters];
+							updatedChapters[chapter.originalIndex] = { ...chapter, content: chapterResult.content };
+							currentTheorySet.chapters = updatedChapters;
+			
+							setTheorySet({ ...currentTheorySet });
+							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet } as any);
+						}
+						await new Promise(resolve => setTimeout(resolve, 500));
 					}
 				}
 
@@ -966,6 +971,8 @@ export default function Home() {
 			if (topicChanged) {
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
+				// Since topic changed, clear old learning data
+				await handleClearAllData(true);
 			}
 			if (language !== newLanguage) {
 				setLanguage(newLanguage)
@@ -988,16 +995,16 @@ export default function Home() {
 			language, 
 			flashcardMax, 
 			quizMax,
+			handleClearAllData
 		]
 	)
 
 	const onGenerateType = useCallback(
 		(genType: ViewType) => {
-			const isTheoryAndHasContent = genType === 'theory' && theorySet?.chapters && theorySet.chapters.length > 0;
-			const forceNew = isTheoryAndHasContent;
+			const forceNew = false; // Never force new from settings buttons
 			handleGenerate(topic, language, forceNew, genType);
 		}, 
-		[handleGenerate, topic, language, theorySet]
+		[handleGenerate, topic, language]
 	);
 
 
@@ -1163,10 +1170,11 @@ export default function Home() {
 	}, [toast]);
 
 	const onGenerateNew = useCallback(() => {
-		const isTheoryAndHasContent = view === 'theory' && theorySet?.chapters && theorySet.chapters.length > 0;
-		const forceNew = isTheoryAndHasContent || view !== 'theory';
+		// When clicking the main '+' button, we don't force a new generation.
+		// It will continue generating based on the current state.
+		const forceNew = false;
 		handleGenerate(topic, language, forceNew, view)
-	}, [handleGenerate, topic, language, view, theorySet])
+	}, [handleGenerate, topic, language, view])
 
 	const handleFlashcardIndexChange = useCallback(
 		async (index: number) => {
@@ -1226,7 +1234,7 @@ export default function Home() {
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		theoryCount: theorySet?.chapters?.filter(c => c.content).length ?? 0,
-		theoryMax: theorySet?.outline.length ?? 0,
+		theoryMax: theorySet?.outline?.length ?? 0,
 		flashcardCount: flashcardSet?.cards.length ?? 0,
 		quizCount: quizSet?.questions.length ?? 0,
 		isTheoryLoading,
@@ -1319,3 +1327,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+
