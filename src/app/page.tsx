@@ -58,16 +58,10 @@ const ApiKeyGuide = ({
 	const [topic, setTopic] = useState(initialTopic);
 	const [language, setLanguage] = useState(initialLanguage);
 
-	const handleTopicSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		if (topic.trim()) {
-			setOnboardingStep(2);
-		}
-	};
-
-	const handleLanguageSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		setOnboardingStep(3);
+	const handleNextStep = (e?: React.FormEvent) => {
+		e?.preventDefault();
+		if (onboardingStep === 1 && !topic.trim()) return;
+		setOnboardingStep(onboardingStep + 1);
 	};
 
 	const handleBack = () => {
@@ -75,7 +69,7 @@ const ApiKeyGuide = ({
 			setOnboardingStep(onboardingStep - 1);
 		}
 	}
-
+	
 	const handleFinishOnboarding = () => {
 		onOnboardingComplete(topic, language);
 	}
@@ -96,7 +90,7 @@ const ApiKeyGuide = ({
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
-						<form onSubmit={handleTopicSubmit} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
+						<form onSubmit={handleNextStep} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
 							<Input
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
@@ -131,7 +125,7 @@ const ApiKeyGuide = ({
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
-						<form onSubmit={handleLanguageSubmit} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
+						<form onSubmit={handleNextStep} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
 							<Select value={language} onValueChange={setLanguage}>
 								<SelectTrigger className="text-base h-12">
 									<SelectValue placeholder="Chọn một ngôn ngữ" />
@@ -152,56 +146,100 @@ const ApiKeyGuide = ({
 		);
 	}
 
-	return (
-		<div className="w-full h-full flex flex-col items-center justify-center p-4">
-			<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
-				<CardHeader className="p-0 mb-6">
-					<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
-						<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
-					</Button>
-					<div className="flex items-center justify-center gap-4 mb-4 pt-8">
-						<KeyRound className="w-12 h-12 text-primary" />
-					</div>
-					<CardTitle className="text-3xl font-bold text-center">
-						Bước cuối cùng!
-					</CardTitle>
-					<CardDescription className="text-lg mt-2 text-center">
-						Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
-					<ol className="list-decimal list-inside space-y-6">
-						<li className="space-y-2">
-							<div className="flex items-center gap-2">
-								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
-								<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
-							</div>
-							<p className="ml-10 text-muted-foreground">
-								Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
+	if (onboardingStep === 3) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6 text-center">
+						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+						</Button>
+						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+							<KeyRound className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							Chỉ còn một bước nhỏ!
+						</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
+						<div className="bg-secondary/30 p-4 rounded-lg space-y-2">
+							<h4 className="font-semibold text-lg">API Key là gì?</h4>
+							<p className="text-muted-foreground">
+								Nó giống như một chiếc chìa khóa cho phép ứng dụng này truy cập vào khả năng của Google Gemini AI để tạo nội dung học tập cho bạn. Việc sử dụng key của riêng bạn là hoàn toàn miễn phí trong giới hạn cho phép của Google.
 							</p>
-							<Button asChild variant="secondary" className="ml-10">
-								<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-									Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
-								</a>
-							</Button>
-						</li>
-						<li className="space-y-2">
-							<div className="flex items-center gap-2">
-								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
-								<span className="font-semibold">Thêm API Key vào ứng dụng</span>
-							</div>
-							<p className="ml-10 text-muted-foreground">
-								Dán API Key bạn vừa tạo vào ô bên dưới. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
-							</p>
-							<div className="ml-10">
-								<Settings {...settingsProps} scope="learn" onSettingsChanged={handleFinishOnboarding} />
-							</div>
-						</li>
-					</ol>
-				</CardContent>
-			</Card>
-		</div>
-	);
+						</div>
+					</CardContent>
+					<CardFooter className="p-0 mt-6 flex flex-col gap-2">
+						<Button asChild className="w-full h-12">
+							<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+								Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
+							</a>
+						</Button>
+						<Button onClick={() => handleNextStep()} variant="outline" className="w-full h-12">Tôi đã có key</Button>
+					</CardFooter>
+				</Card>
+			</div>
+		);
+	}
+
+	if (onboardingStep === 4) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6 text-center">
+						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+						</Button>
+						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+							<KeyRound className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							Thêm API Key của bạn
+						</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							Dán API Key bạn vừa tạo vào ô bên dưới. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
+						<Settings {...settingsProps} scope="learn-onboarding" onSettingsChanged={handleNextStep} />
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+	
+	if (onboardingStep === 5) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6 text-center">
+						<div className="flex items-center justify-center gap-4 mb-4">
+							<CheckCircle className="w-12 h-12 text-success" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							Hoàn tất!
+						</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							Mọi thứ đã sẵn sàng. Hãy bắt đầu tạo nội dung đầu tiên cho chủ đề "{topic}".
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
+						<Settings {...settingsProps} scope="learn-onboarding-generate" />
+					</CardContent>
+					<CardFooter className="p-0 mt-6">
+						<Button onClick={handleFinishOnboarding} className="w-full h-12">
+							Bắt đầu học
+						</Button>
+					</CardFooter>
+				</Card>
+			</div>
+		);
+	}
+
+	return null;
 };
 
 
