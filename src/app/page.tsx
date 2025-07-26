@@ -492,8 +492,8 @@ export default function Home() {
 						setIndexFn(0)
 						setStateFn(null)
 						if (genType === 'flashcards') setShowFlashcardSummary(false);
-						await db.delete("data", stateKey)
-						await db.delete("data", `${stateKey}State` as any)
+						await db.delete("data", stateKey as DataKey)
+						await db.delete("data", `${stateKey}State` as DataKey)
 					}
 
 					const existingData = (await db.get(
@@ -517,19 +517,19 @@ export default function Home() {
 						return
 					}
 
+					const batchSize = genType === 'flashcards' ? FLASHCARD_BATCH_SIZE : TYPING_BATCH_SIZE;
+
 					while (itemsNeeded > 0) {
-						const count = Math.min(FLASHCARD_BATCH_SIZE, itemsNeeded)
+						const count = Math.min(batchSize, itemsNeeded)
 						
-						const { result: newCards, newApiKeyIndex } = await safeAICall(() =>
-							generateFlashcards({
-								apiKeys,
-								apiKeyIndex,
-								topic: currentTopic,
-								count,
-								language: currentLanguage,
-								existingCards: currentSet.cards,
-							})
-						)
+						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
+							apiKeys,
+							apiKeyIndex,
+							topic: currentTopic,
+							count,
+							language: currentLanguage,
+							existingCards: currentSet.cards,
+						});
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
 
@@ -587,16 +587,14 @@ export default function Home() {
 					while (quizNeeded > 0) {
 						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
 
-						const { result: newQuestions, newApiKeyIndex } = await safeAICall(() =>
-							generateQuiz({
+						const { result: newQuestions, newApiKeyIndex } = await generateQuiz({
 								apiKeys,
 								apiKeyIndex,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
 								existingQuestions: currentQuiz.questions,
-							})
-						)
+						});
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
 
@@ -1163,5 +1161,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    

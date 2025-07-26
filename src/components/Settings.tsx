@@ -657,5 +657,3 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
-    

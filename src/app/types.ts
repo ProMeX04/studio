@@ -31,5 +31,3 @@ export interface TypingInputState {
 export interface TypingState {
   inputs: TypingInputState;
 }
-
-    

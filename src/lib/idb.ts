@@ -101,5 +101,3 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
-
-    
