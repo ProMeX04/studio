@@ -86,7 +86,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 	return (
 		<ScrollArea className="h-full pr-4">
 			<div className="h-full flex flex-col bg-transparent shadow-none border-none">
-				<div className="flex-grow flex items-start justify-center overflow-y-auto pb-4">
+				<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
 					{hasContent ? (
 						<div className="w-full max-w-5xl mx-auto relative">
 							<h1 className="text-4xl font-bold mt-4 mb-8 text-center">{currentChapter.title}</h1>
@@ -108,7 +108,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 							</div>
 						</div>
 					) : (
-						<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm mt-20">
+						<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
 							<CardHeader>
 								<div className="mx-auto bg-primary/10 p-4 rounded-full">
 									<BookOpen className="w-12 h-12 text-primary" />
