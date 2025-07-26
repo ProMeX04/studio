@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
@@ -117,6 +117,7 @@ export function Typing({
     typingState,
     onTypingStateChange,
 }: TypingProps) {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const currentCard = typingSet?.cards[typingIndex];
     const userInput = typingState?.inputs[typingIndex] ?? "";
     const sourceText = currentCard?.back ?? "";
@@ -136,8 +137,11 @@ export function Typing({
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Tab') {
             e.preventDefault();
-            const start = e.currentTarget.selectionStart;
-            const end = e.currentTarget.selectionEnd;
+            const textarea = textareaRef.current;
+            if (!textarea) return;
+
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
 
             // set new value
             const newValue = userInput.substring(0, start) + '\t' + userInput.substring(end);
@@ -148,7 +152,9 @@ export function Typing({
             // put caret at right position again
             // this is needed to avoid the cursor jumping to the end
             setTimeout(() => {
-                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1;
+                if(textareaRef.current){
+                    textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1;
+                }
             }, 0);
         }
     }
@@ -159,6 +165,7 @@ export function Typing({
                 <Card className="w-full max-w-4xl bg-background/80 backdrop-blur-sm relative">
                     {/* The Textarea is visually hidden but focused to capture input */}
                     <Textarea
+                        ref={textareaRef}
                         value={userInput}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
@@ -171,7 +178,7 @@ export function Typing({
                             {currentCard.front}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4 cursor-text" onClick={() => document.querySelector('textarea')?.focus()}>
+                    <CardContent className="space-y-4 cursor-text" onClick={() => textareaRef.current?.focus()}>
                         <TypingResultDisplay original={sourceText} userInput={userInput} />
                     </CardContent>
                      <CardFooter className="text-xs text-muted-foreground justify-center">
