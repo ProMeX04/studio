@@ -82,7 +82,8 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.
       });
 
       // When using responseMimeType: "application/json", the SDK already parses the JSON.
-      const validatedOutput = GenerateQuizOutputSchema.parse(result.response.text());
+      const parsedJson = JSON.parse(result.response.text());
+      const validatedOutput = GenerateQuizOutputSchema.parse(parsedJson);
 
       // Additional validation for answer being in options
       for (const question of validatedOutput) {

@@ -83,7 +83,8 @@ The JSON output must be correctly escaped to be RFC 8259 compliant.`;
     });
     
     // When using responseMimeType: "application/json", the SDK already parses the JSON.
-    const validatedOutput = explanationOnlySchema.parse(result.response.text());
+    const parsedJson = JSON.parse(result.response.text());
+    const validatedOutput = explanationOnlySchema.parse(parsedJson);
 
     return {
         explanation: validatedOutput.explanation,
