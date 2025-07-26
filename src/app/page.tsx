@@ -294,8 +294,7 @@ function Learn({
 
 			{/* Unified Toolbar */}
 			<div className="flex justify-center pb-2">
-				<div className="inline-flex items-center justify-center bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-lg">
-					<div className="flex items-center justify-between w-full gap-2">
+				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
 							onValueChange={(value) => onViewChange(value as ViewType)}
@@ -386,7 +385,6 @@ function Learn({
 							<Settings {...settingsProps} scope="learn" />
 
 						</div>
-					</div>
 				</div>
 			</div>
 		</Card>
