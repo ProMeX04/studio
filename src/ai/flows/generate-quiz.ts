@@ -83,21 +83,22 @@ ${existingQuestionsPrompt}
       const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateQuizOutputContainerSchema.parse(parsedJson);
 
-      // Additional validation for answer being in options
-      for (const question of validatedOutput.questions) {
-        if (!question.options.includes(question.answer)) {
-          console.warn(`Attempt ${attempts}: AI generated an answer that is not in the options list. Retrying...`);
-          throw new AIOperationError('AI generated an answer that is not in the options list.', 'AI_ANSWER_NOT_IN_OPTIONS', true); // Retryable error
+      // Filter out invalid questions instead of throwing an error.
+      const validQuestions = validatedOutput.questions.filter(question => {
+        const isValid = question.options.includes(question.answer);
+        if (!isValid) {
+          console.warn('AI generated an invalid question (answer not in options), filtering it out:', question);
         }
-      }
+        return isValid;
+      });
 
-      console.log(`✅ Generated ${validatedOutput.questions.length} valid quiz questions`);
-      return validatedOutput.questions;
+      console.log(`✅ Generated ${validQuestions.length} valid quiz questions (filtered from ${validatedOutput.questions.length}).`);
+      return validQuestions;
 
     } catch (error: any) {
       console.error(`❌ Quiz generation attempt ${attempts} failed:`, error);
       
-      const isRetryableError = error instanceof AIOperationError && error.code === 'AI_ANSWER_NOT_IN_OPTIONS';
+      const isRetryableError = error instanceof AIOperationError && error.isRetryable;
 
       if (isRetryableError && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retrying
