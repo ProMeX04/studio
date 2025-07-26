@@ -56,7 +56,7 @@ const ApiKeyGuide = ({
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
-	const [language, setLanguage] = useState(initialLanguage);
+	const [language, setLanguage] = useState(initialLanguage || "Vietnamese");
 
 	const handleNextStep = (e?: React.FormEvent) => {
 		e?.preventDefault();
@@ -120,8 +120,9 @@ const ApiKeyGuide = ({
 						<CardTitle className="text-3xl font-bold">
 							Tuyệt vời! Chủ đề của bạn là "{topic}"
 						</CardTitle>
-						<CardDescription className="text-lg mt-2">
-							Bây giờ, hãy chọn ngôn ngữ bạn muốn học.
+						<CardDescription className="text-lg mt-2 space-y-1">
+							<p>Bây giờ, hãy chọn ngôn ngữ đầu ra.</p>
+							<p className="text-sm text-muted-foreground">Đây là ngôn ngữ mà AI sẽ sử dụng để tạo nội dung học tập cho bạn.</p>
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
@@ -642,7 +643,7 @@ export interface ComponentVisibility {
 export default function Home() {
 	const [view, setView] = useState<ViewType>("theory")
 	const [topic, setTopic] = useState("")
-	const [language, setLanguage] = useState("English")
+	const [language, setLanguage] = useState("Vietnamese")
 	const [model, setModel] = useState("gemini-1.5-flash-latest");
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
@@ -1598,6 +1599,7 @@ export default function Home() {
     
 
     
+
 
 
 
