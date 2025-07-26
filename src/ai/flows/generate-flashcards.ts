@@ -19,7 +19,7 @@ type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInpu
 export async function generateFlashcards(
   input: GenerateFlashcardsClientInput
 ): Promise<{ result: GenerateCardsOutput; newApiKeyIndex: number }> {
-  const { apiKeys, apiKeyIndex, ...promptInput } = input;
+  const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
   
   if (!apiKeys || apiKeys.length === 0) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -35,7 +35,7 @@ export async function generateFlashcards(
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: modelName });
 
       const existingCardsPrompt = promptInput.existingCards && promptInput.existingCards.length > 0 
         ? `

@@ -14,6 +14,7 @@ export type DataKey =
   | 'theoryState'
   | 'topic'
   | 'language'
+  | 'model'
   | 'view'
   | 'visibility'
   | 'background'

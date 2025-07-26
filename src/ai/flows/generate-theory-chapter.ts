@@ -19,7 +19,7 @@ type ClientInput = z.infer<typeof ClientInputSchema>;
 export async function generateTheoryChapter(
   input: ClientInput
 ): Promise<{ result: GenerateTheoryChapterOutput; newApiKeyIndex: number }> {
-  const { apiKeys, apiKeyIndex, ...promptInput } = input;
+  const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
   
   if (!apiKeys || apiKeys.length === 0) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -35,7 +35,7 @@ export async function generateTheoryChapter(
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: modelName });
 
       const promptText = `You are a professional educator and expert on the given topic. Your task is to write a detailed, well-structured, and in-depth chapter for a larger document.
 

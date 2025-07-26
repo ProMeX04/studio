@@ -17,7 +17,7 @@ type ClientInput = z.infer<typeof ClientInputSchema>;
 export async function generateTheoryOutline(
   input: ClientInput
 ): Promise<{ result: GenerateTheoryOutlineOutput; newApiKeyIndex: number }> {
-  const { apiKeys, apiKeyIndex, ...promptInput } = input;
+  const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
   
   if (!apiKeys || apiKeys.length === 0) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -33,7 +33,7 @@ export async function generateTheoryOutline(
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: modelName });
 
       const promptText = `You are a professional educator. Your task is to generate a comprehensive learning outline for the topic: "${promptInput.topic}" in the language: ${promptInput.language}.
 

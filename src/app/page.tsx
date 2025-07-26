@@ -47,7 +47,6 @@ interface LearnProps {
 	quizSet: QuizSet | null
 	theorySet: TheorySet | null
 	quizState: QuizState | null
-	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
 	onQuizReset: () => void;
 	canGenerateMore: boolean
@@ -56,6 +55,7 @@ interface LearnProps {
 	onViewChange: (view: ViewType) => void
 	language: string
 	topic: string
+	model: string
 	showQuizSummary: boolean
 	setShowQuizSummary: (show: boolean) => void;
 	showFlashcardSummary: boolean;
@@ -85,7 +85,6 @@ function Learn({
 	quizSet,
 	theorySet,
 	quizState,
-	onGenerateNew,
 	onQuizStateChange,
 	onQuizReset,
 	canGenerateMore,
@@ -94,6 +93,7 @@ function Learn({
 	onViewChange,
 	language,
 	topic,
+	model,
 	showQuizSummary,
 	setShowQuizSummary,
 	showFlashcardSummary,
@@ -281,6 +281,7 @@ function Learn({
 						onQuizStateChange={onQuizStateChange}
 						language={language}
 						topic={topic}
+						model={model}
 						currentQuestionIndex={currentQuestionIndex}
 						onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
 						apiKeys={apiKeys}
@@ -389,6 +390,7 @@ export default function Home() {
 	const [view, setView] = useState<ViewType>("theory")
 	const [topic, setTopic] = useState("")
 	const [language, setLanguage] = useState("English")
+	const [model, setModel] = useState("gemini-1.5-flash-latest");
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
@@ -451,6 +453,7 @@ export default function Home() {
 		async (
 			currentTopic: string,
 			currentLanguage: string,
+			currentModel: string,
 			forceNew: boolean = false,
 			genType: "flashcards" | "quiz" | "theory"
 		) => {
@@ -538,6 +541,7 @@ export default function Home() {
 							topic: currentTopic,
 							count,
 							language: currentLanguage,
+							model: currentModel,
 							existingCards: currentSet.cards,
 						});
 
@@ -603,6 +607,7 @@ export default function Home() {
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
+								model: currentModel,
 								existingQuestions: currentQuiz.questions,
 						});
 
@@ -649,6 +654,7 @@ export default function Home() {
 							apiKeyIndex,
 							topic: currentTopic,
 							language: currentLanguage,
+							model: currentModel,
 						});
 						await handleApiKeyIndexChange(outlineKeyIndex);
 				
@@ -694,6 +700,7 @@ export default function Home() {
 							topic: currentTopic,
 							chapterTitle: chapter.title,
 							language: currentLanguage,
+							model: currentModel,
 						});
 						
 						currentKeyIndex = chapterKeyIndex;
@@ -752,6 +759,7 @@ export default function Home() {
 			savedViewRes,
 			savedTopicRes,
 			savedLanguageRes,
+			savedModelRes,
 			savedFlashcardMaxRes,
 			savedQuizMaxRes,
 			savedVisibilityRes,
@@ -769,6 +777,7 @@ export default function Home() {
 			db.get("data", "view"),
 			db.get("data", "topic"),
 			db.get("data", "language"),
+			db.get("data", "model"),
 			db.get("data", "flashcardMax"),
 			db.get("data", "quizMax"),
 			db.get("data", "visibility"),
@@ -787,6 +796,7 @@ export default function Home() {
 		const savedView = (savedViewRes?.data as ViewType) || "theory";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
+		const savedModel = (savedModelRes?.data as string) || "gemini-1.5-flash-latest";
 		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
 		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
@@ -808,6 +818,7 @@ export default function Home() {
 		setView(savedView);
 		setTopic(savedTopic);
 		setLanguage(savedLanguage);
+		setModel(savedModel);
 		setFlashcardMax(savedFlashcardMax);
 		setQuizMax(savedQuizMax);
 	
@@ -900,7 +911,7 @@ export default function Home() {
 		// Full reset also clears topic, settings, etc.
 		if (!isLearningReset) {
 			keysToDelete.push(
-				'topic', 'language', 'view', 'visibility', 
+				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
 				'flashcardMax', 'quizMax'
 			);
@@ -931,12 +942,14 @@ export default function Home() {
 		async (settings: {
 			topic: string
 			language: string
+			model: string
 			flashcardMax: number
 			quizMax: number
 		}) => {
 			const {
 				topic: newTopic,
 				language: newLanguage,
+				model: newModel,
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
 			} = settings
@@ -954,6 +967,10 @@ export default function Home() {
 				setLanguage(newLanguage)
 				await db.put("data", { id: "language", data: newLanguage })
 			}
+			if (model !== newModel) {
+				setModel(newModel)
+				await db.put("data", { id: "model", data: newModel })
+			}
 			if (flashcardMax !== newFlashcardMax) {
 				setFlashcardMax(newFlashcardMax)
 				await db.put("data", {
@@ -968,7 +985,8 @@ export default function Home() {
 		},
 		[
 			topic, 
-			language, 
+			language,
+			model,
 			flashcardMax, 
 			quizMax,
 			handleClearAllData
@@ -978,9 +996,9 @@ export default function Home() {
 	const onGenerateType = useCallback(
 		(genType: ViewType) => {
 			const forceNew = false; // Never force new from settings buttons
-			handleGenerate(topic, language, forceNew, genType);
+			handleGenerate(topic, language, model, forceNew, genType);
 		}, 
-		[handleGenerate, topic, language]
+		[handleGenerate, topic, language, model]
 	);
 
 
@@ -1142,13 +1160,6 @@ export default function Home() {
 		});
 	}, [toast]);
 
-	const onGenerateNew = useCallback(() => {
-		// When clicking the main '+' button, we don't force a new generation.
-		// It will continue generating based on the current state.
-		const forceNew = false;
-		handleGenerate(topic, language, forceNew, view)
-	}, [handleGenerate, topic, language, view])
-
 	const handleFlashcardIndexChange = useCallback(
 		async (index: number) => {
 			setFlashcardIndex(index);
@@ -1204,6 +1215,7 @@ export default function Home() {
 		currentView: view,
 		topic: topic,
 		language: language,
+		model: model,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		theoryCount: theorySet?.chapters?.filter(c => c.content).length ?? 0,
@@ -1264,7 +1276,6 @@ export default function Home() {
 							quizSet={quizSet}
 							theorySet={theorySet}
 							quizState={quizState}
-							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
 							canGenerateMore={canGenerateMore}
@@ -1273,6 +1284,7 @@ export default function Home() {
 							onViewChange={handleViewChange}
 							language={language}
 							topic={topic}
+							model={model}
 							showQuizSummary={showQuizSummary}
 							setShowQuizSummary={setShowQuizSummary}
 							showFlashcardSummary={showFlashcardSummary}

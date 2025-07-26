@@ -19,7 +19,7 @@ type ExplainQuizOptionClientInput = z.infer<typeof ExplainQuizOptionClientInputS
 export async function explainQuizOption(
     input: ExplainQuizOptionClientInput
 ): Promise<{ result: ExplainQuizOptionOutput; newApiKeyIndex: number }> {
-  const { apiKeys, apiKeyIndex, ...promptInput } = input;
+  const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
 
   if (!apiKeys || apiKeys.length === 0) {
       throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -34,7 +34,7 @@ export async function explainQuizOption(
     
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: modelName });
         
         const promptText = `You are a helpful quiz tutor.
       ${promptInput.selectedOption === promptInput.correctAnswer 

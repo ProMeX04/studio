@@ -48,6 +48,7 @@ interface QuizProps {
 	onQuizStateChange: (newState: QuizState) => void
 	language: string
 	topic: string;
+	model: string;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
 	apiKeys: string[];
@@ -116,6 +117,7 @@ export function Quiz({
 	onQuizStateChange,
 	language,
 	topic,
+	model,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
 	apiKeys,
@@ -207,6 +209,7 @@ export function Quiz({
 					selectedOption: option,
 					correctAnswer: currentQuestion.answer,
 					language: language,
+					model: model,
 				});
 
 				onApiKeyIndexChange(newApiKeyIndex);
@@ -257,6 +260,7 @@ export function Quiz({
 			currentQuestionIndex,
 			visibleExplanations,
 			language,
+			model,
 			toast,
 			onQuizStateChange,
 			apiKeys,

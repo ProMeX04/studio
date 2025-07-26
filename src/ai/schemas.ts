@@ -95,6 +95,7 @@ export const GenerateCardsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate content.'),
   count: z.number().describe('The number of items to generate.'),
   language: z.string().describe('The language for the content.'),
+  model: z.string().describe('The Generative AI model to use.'),
   existingCards: z.array(CardSchema).optional().describe('An array of existing items to avoid duplication.'),
 });
 export type GenerateCardsInput = z.infer<typeof GenerateCardsInputSchema>;
@@ -127,6 +128,7 @@ export const GenerateQuizInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a quiz.'),
   count: z.number().describe('The number of questions to generate.'),
   language: z.string().describe('The language for the quiz.'),
+  model: z.string().describe('The Generative AI model to use.'),
   existingQuestions: z.array(QuizQuestionSchema).optional().describe('An array of existing questions to avoid duplication.'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
@@ -152,6 +154,7 @@ export const ExplainQuizOptionInputSchema = z.object({
   selectedOption: z.string().describe('The answer option the user wants an explanation for.'),
   correctAnswer: z.string().describe('The correct answer to the question.'),
   language: z.string().describe('The language for the explanation.'),
+  model: z.string().describe('The Generative AI model to use.'),
 });
 export type ExplainQuizOptionInput = z.infer<typeof ExplainQuizOptionInputSchema>;
 
@@ -165,6 +168,7 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 export const GenerateTheoryOutlineInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a theory document outline.'),
   language: z.string().describe('The language for the theory document.'),
+  model: z.string().describe('The Generative AI model to use.'),
 });
 export type GenerateTheoryOutlineInput = z.infer<typeof GenerateTheoryOutlineInputSchema>;
 
@@ -177,6 +181,7 @@ export const GenerateTheoryChapterInputSchema = z.object({
   topic: z.string().describe('The overall topic of the document.'),
   chapterTitle: z.string().describe('The title of the specific chapter to generate content for.'),
   language: z.string().describe('The language for the chapter content.'),
+  model: z.string().describe('The Generative AI model to use.'),
 });
 export type GenerateTheoryChapterInput = z.infer<typeof GenerateTheoryChapterInputSchema>;
 

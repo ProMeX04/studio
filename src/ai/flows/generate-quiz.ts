@@ -18,7 +18,7 @@ type GenerateQuizClientInput = z.infer<typeof GenerateQuizClientInputSchema>;
 export async function generateQuiz(
   input: GenerateQuizClientInput
 ): Promise<{ result: GenerateQuizOutput; newApiKeyIndex: number }> {
-  const { apiKeys, apiKeyIndex, ...promptInput } = input;
+  const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
 
   if (!apiKeys || apiKeys.length === 0) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
@@ -32,7 +32,7 @@ export async function generateQuiz(
     const apiKey = apiKeys[currentKeyIndex];
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: modelName });
 
       const existingQuestionsPrompt = promptInput.existingQuestions && promptInput.existingQuestions.length > 0
         ? `

@@ -83,6 +83,7 @@ interface LearnSettingsProps {
 	onSettingsChange: (settings: {
 		topic: string
 		language: string
+		model: string
 		flashcardMax: number
 		quizMax: number
 	}) => void
@@ -91,6 +92,7 @@ interface LearnSettingsProps {
 	currentView: ViewType
 	topic: string
 	language: string
+	model: string
 	flashcardMax: number
 	quizMax: number
 	theoryCount: number;
@@ -114,6 +116,11 @@ const languages = [
 	{ value: "Korean", label: "한국어" },
 ]
 
+const models = [
+    { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh)" },
+    { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh)" },
+]
+
 const MAX_UPLOADED_IMAGES = 6
 
 export function Settings(props: SettingsProps) {
@@ -126,6 +133,7 @@ export function Settings(props: SettingsProps) {
 	// Local state for learn settings
 	const [topic, setTopic] = useState(isLearnScope ? (props as LearnSettingsProps).topic : "")
 	const [language, setLanguage] = useState(isLearnScope ? (props as LearnSettingsProps).language : "Vietnamese")
+	const [model, setModel] = useState(isLearnScope ? (props as LearnSettingsProps).model : "gemini-1.5-flash-latest")
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
 	
@@ -143,6 +151,7 @@ export function Settings(props: SettingsProps) {
 			const learnProps = props as LearnSettingsProps;
 			setTopic(learnProps.topic)
 			setLanguage(learnProps.language)
+			setModel(learnProps.model)
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
 		} else {
@@ -157,6 +166,7 @@ export function Settings(props: SettingsProps) {
 			learnProps.onSettingsChange({
 				topic,
 				language,
+				model,
 				flashcardMax,
 				quizMax,
 			})
@@ -181,13 +191,6 @@ export function Settings(props: SettingsProps) {
 		setLocalApiKeys(newKeys);
 		(props as GlobalSettingsProps).onApiKeysChange(newKeys);
     };
-
-	const handleApiKeysSave = () => {
-		if (!isLearnScope) {
-			const globalProps = props as GlobalSettingsProps;
-			globalProps.onApiKeysChange(localApiKeys);
-		}
-	};
 
 	const handleGenerateType = (type: ViewType) => {
 		if (isLearnScope) {
@@ -274,6 +277,22 @@ export function Settings(props: SettingsProps) {
 							{languages.map((lang) => (
 								<SelectItem key={lang.value} value={lang.value}>
 									{lang.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				<div className="space-y-2">
+					<Label htmlFor="model">Model</Label>
+					<Select value={model} onValueChange={setModel}>
+						<SelectTrigger>
+							<SelectValue placeholder="Chọn một model AI" />
+						</SelectTrigger>
+						<SelectContent>
+							{models.map((m) => (
+								<SelectItem key={m.value} value={m.value}>
+									{m.label}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -606,8 +625,6 @@ export function Settings(props: SettingsProps) {
 					// Save settings when closing the sheet
 					if(isLearnScope) {
 						handleLocalSettingsSave();
-					} else {
-						handleApiKeysSave();
 					}
 				}
 				setIsOpen(open)
@@ -681,7 +698,3 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
-    
-
-    
