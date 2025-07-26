@@ -689,7 +689,7 @@ export default function Home() {
 	const [view, setView] = useState<ViewType>("theory")
 	const [topic, setTopic] = useState("")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-1.5-flash-latest");
+	const [model, setModel] = useState("gemini-2.5-flash-lite");
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
@@ -1099,7 +1099,7 @@ export default function Home() {
 		const savedView = (savedViewRes?.data as ViewType) || "theory";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
-		const savedModel = (savedModelRes?.data as string) || "gemini-1.5-flash-latest";
+		const savedModel = (savedModelRes?.data as string) || "gemini-2.5-flash-lite";
 		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
 		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
