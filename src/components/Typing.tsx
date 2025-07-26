@@ -31,8 +31,10 @@ const getDiff = (original: string, comparison: string) => {
         if (originalChar !== undefined && originalChar === comparisonChar) {
             result.push(<span key={`correct-${i}`} className="text-green-400">{originalChar}</span>);
         } else {
-            if (originalChar !== undefined) {
-                result.push(<span key={`incorrect-${i}`} className="text-red-400 bg-red-400/20">{originalChar}</span>);
+            if (originalChar !== undefined && comparisonChar !== undefined) {
+                 result.push(<span key={`incorrect-${i}`} className="text-red-400 bg-red-400/20">{originalChar}</span>);
+            } else if (originalChar !== undefined) {
+                 result.push(<span key={`missing-${i}`} className="text-red-400 bg-red-400/20">{originalChar}</span>);
             }
             if (comparisonChar !== undefined && originalChar === undefined) {
                  result.push(<span key={`extra-${i}`} className="text-yellow-400 bg-yellow-400/20">{comparisonChar}</span>);
@@ -78,7 +80,9 @@ export function Typing({
         setIsSubmitted(false);
     };
 
-    const isCorrect = currentCard && userInput.trim() === currentCard.back.trim();
+    // For typing practice, we compare the input against the 'front' of the card.
+    const sourceText = currentCard?.front ?? "";
+    const isCorrect = currentCard && userInput.trim() === sourceText.trim();
 
     return (
         <div className="h-full flex flex-col items-center justify-center bg-transparent shadow-none border-none p-4">
@@ -89,14 +93,15 @@ export function Typing({
                             Gõ lại nội dung sau:
                         </CardTitle>
                         <div className="p-4 rounded-md bg-secondary text-center text-2xl font-semibold">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentCard.front}</ReactMarkdown>
+                            {/* We display the text to be typed */}
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{sourceText}</ReactMarkdown>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Textarea
                             value={userInput}
                             onChange={handleInputChange}
-                            placeholder="Nhập nội dung mặt sau của thẻ vào đây..."
+                            placeholder="Nhập lại văn bản ở trên vào đây..."
                             className="min-h-[150px] text-lg"
                             disabled={isSubmitted}
                         />
@@ -109,7 +114,8 @@ export function Typing({
                                     <div className="space-y-2">
                                         <p className="text-red-500 font-bold">Chưa chính xác. Dưới đây là so sánh:</p>
                                         <div className="p-2 rounded-md bg-secondary font-mono text-sm whitespace-pre-wrap break-words">
-                                            {getDiff(currentCard.back, userInput)}
+                                            {/* We compare the user input with the source text */}
+                                            {getDiff(sourceText, userInput)}
                                         </div>
                                     </div>
                                 )}
