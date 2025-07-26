@@ -85,7 +85,7 @@ export const ExplainQuizOptionJsonSchema: Schema = {
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
-// Flashcards
+// Flashcards / Typing
 export const FlashcardSchema = z.object({
     front: z.string().describe('The front side of the flashcard.'),
     back: z.string().describe('The back side of the flashcard.'),
@@ -160,3 +160,5 @@ export const ExplainQuizOptionOutputSchema = z.object({
     explanation: z.string().describe('The detailed explanation for the selected option.'),
 });
 export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
+
+    

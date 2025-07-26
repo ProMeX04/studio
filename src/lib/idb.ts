@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 4; // Incremented version
+const DB_VERSION = 5; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -10,6 +10,8 @@ export type DataKey =
   | 'flashcardState'
   | 'quiz'
   | 'quizState'
+  | 'typing'
+  | 'typingState'
   | 'topic'
   | 'language'
   | 'view'
@@ -18,7 +20,9 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardMax'
   | 'quizMax'
+  | 'typingMax'
   | 'flashcardIndex'
+  | 'typingIndex'
   | 'apiKeys'
   | 'apiKeyIndex';
 
@@ -58,6 +62,9 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
             // In v4, we are migrating 'apiKey' to 'apiKeys'.
             // This logic is handled in page.tsx's loadInitialData to ensure it runs once.
         }
+        if (oldVersion < 5) {
+            // In v5, we add support for typing mode. No schema changes needed for stores.
+        }
       },
     });
   }
@@ -94,3 +101,5 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
+
+    
