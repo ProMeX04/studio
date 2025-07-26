@@ -739,83 +739,86 @@ export function Settings(props: SettingsProps) {
 					</div>
 				</div>
 
-				<SheetFooter className="mt-auto pt-4 border-t space-y-2">
-					{isLearnScope && isConfirmingTopicChange && (
-						<div className="space-y-2 rounded-lg border border-destructive p-4">
-							<p className="text-sm text-destructive-foreground font-medium">Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập cũ.</p>
-							<p className="text-sm text-muted-foreground">Bạn có chắc chắn muốn tiếp tục?</p>
-							<div className="flex justify-end gap-2 pt-2">
-								<Button variant="ghost" onClick={handleCancelTopicChange}>Hủy</Button>
-								<Button variant="destructive" onClick={handleSave}>Xác nhận</Button>
-							</div>
-						</div>
-					)}
+				<SheetFooter className="mt-auto pt-4 border-t">
 					{isLearnScope ? (
-						<div className="w-full flex justify-between items-center">
-							<div className="flex gap-2">
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<Button variant="outline" size="sm">
-											<Trash2 className="mr-2 h-4 w-4" />
-											Xóa DL
+						<>
+							{isConfirmingTopicChange ? (
+								<div className="space-y-2 rounded-lg border border-destructive p-4">
+									<p className="text-sm text-destructive-foreground font-medium">Thay đổi chủ đề sẽ xóa tất cả dữ liệu học tập cũ.</p>
+									<p className="text-sm text-muted-foreground">Bạn có chắc chắn muốn tiếp tục?</p>
+									<div className="flex justify-end gap-2 pt-2">
+										<Button variant="ghost" onClick={handleCancelTopicChange}>Hủy</Button>
+										<Button variant="destructive" onClick={handleSave}>Xác nhận</Button>
+									</div>
+								</div>
+							) : (
+								<div className="w-full flex justify-between items-center">
+									<div className="flex gap-2">
+										<AlertDialog>
+											<AlertDialogTrigger asChild>
+												<Button variant="outline" size="sm">
+													<Trash2 className="mr-2 h-4 w-4" />
+													Xóa DL
+												</Button>
+											</AlertDialogTrigger>
+											<AlertDialogContent>
+												<AlertDialogHeader>
+													<AlertDialogTitle>
+														<div className="flex items-center gap-2">
+															<AlertTriangle className="text-destructive" />
+															<span>Bạn có chắc chắn không?</span>
+														</div>
+													</AlertDialogTitle>
+													<AlertDialogDescription>
+														Hành động này sẽ xóa vĩnh viễn tất cả flashcard, bài trắc nghiệm và lý thuyết của chủ đề hiện tại. Hành động này không thể hoàn tác.
+													</AlertDialogDescription>
+												</AlertDialogHeader>
+												<AlertDialogFooter>
+													<AlertDialogCancel>Hủy</AlertDialogCancel>
+													<AlertDialogAction onClick={handleClearLearningData}>
+														Vâng, xóa dữ liệu
+													</AlertDialogAction>
+												</AlertDialogFooter>
+											</AlertDialogContent>
+										</AlertDialog>
+										<AlertDialog>
+											<AlertDialogTrigger asChild>
+												<Button variant="outline" size="sm">
+													<RefreshCw className="mr-2 h-4 w-4" />
+													H.dẫn
+												</Button>
+											</AlertDialogTrigger>
+											<AlertDialogContent>
+												<AlertDialogHeader>
+													<AlertDialogTitle>
+														<div className="flex items-center gap-2">
+															<AlertTriangle className="text-destructive" />
+															<span>Chạy lại hướng dẫn ban đầu?</span>
+														</div>
+													</AlertDialogTitle>
+													<AlertDialogDescription>
+														Hành động này sẽ xóa cờ đánh dấu bạn đã hoàn thành hướng dẫn và tải lại trang để bắt đầu lại. Dữ liệu học tập sẽ không bị ảnh hưởng.
+													</AlertDialogDescription>
+												</AlertDialogHeader>
+												<AlertDialogFooter>
+													<AlertDialogCancel>Hủy</AlertDialogCancel>
+													<AlertDialogAction onClick={handleResetOnboarding}>
+														Ok, chạy lại
+													</AlertDialogAction>
+												</AlertDialogFooter>
+											</AlertDialogContent>
+										</AlertDialog>
+									</div>
+									
+									{settingsChanged && (
+										<Button onClick={handleSave}>
+											<Save className="mr-2 h-4 w-4" />
+											Lưu thay đổi
 										</Button>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>
-												<div className="flex items-center gap-2">
-													<AlertTriangle className="text-destructive" />
-													<span>Bạn có chắc chắn không?</span>
-												</div>
-											</AlertDialogTitle>
-											<AlertDialogDescription>
-												Hành động này sẽ xóa vĩnh viễn tất cả flashcard, bài trắc nghiệm và lý thuyết của chủ đề hiện tại. Hành động này không thể hoàn tác.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Hủy</AlertDialogCancel>
-											<AlertDialogAction onClick={handleClearLearningData}>
-												Vâng, xóa dữ liệu
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<Button variant="outline" size="sm">
-											<RefreshCw className="mr-2 h-4 w-4" />
-											H.dẫn
-										</Button>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>
-												<div className="flex items-center gap-2">
-													<AlertTriangle className="text-destructive" />
-													<span>Chạy lại hướng dẫn ban đầu?</span>
-												</div>
-											</AlertDialogTitle>
-											<AlertDialogDescription>
-												Hành động này sẽ xóa cờ đánh dấu bạn đã hoàn thành hướng dẫn và tải lại trang để bắt đầu lại. Dữ liệu học tập sẽ không bị ảnh hưởng.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Hủy</AlertDialogCancel>
-											<AlertDialogAction onClick={handleResetOnboarding}>
-												Ok, chạy lại
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
-							</div>
-							
-							{settingsChanged && !isConfirmingTopicChange && (
-								<Button onClick={handleSave}>
-									<Save className="mr-2 h-4 w-4" />
-									Lưu thay đổi
-								</Button>
+									)}
+								</div>
 							)}
-						</div>
+						</>
 					) : (
 						<AlertDialog>
 							<AlertDialogTrigger asChild>
