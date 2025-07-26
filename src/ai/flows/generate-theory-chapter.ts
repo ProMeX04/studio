@@ -1,4 +1,6 @@
 
+'use server';
+
 /**
  * @fileOverview Flow to generate content for a specific chapter of a theory document.
  */
@@ -46,7 +48,8 @@ The Markdown content MUST be valid standard Markdown.
 - Use '##' or '###' for headings.
 - Use standard backticks (\`) for inline code blocks.
 - Use triple backticks with a language identifier for multi-line code blocks (e.g., \`\`\`javascript).
-- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.`;
+- For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+- CRITICAL: Do NOT wrap the entire response in a markdown code block (\`\`\`...\`\`\`). The response should be raw markdown text.`;
 
       const generationConfig: GenerationConfig = {
         responseMimeType: "text/plain",
