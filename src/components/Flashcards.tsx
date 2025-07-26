@@ -19,6 +19,8 @@ import {
 	Loader,
 	Droplets,
 	CheckCircle,
+	BookOpen,
+	Menu,
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -153,12 +155,12 @@ export function Flashcards({
 						isUnderstood={isCurrentUnderstood}
 					/>
 				) : (
-					<div className="text-center h-48 flex flex-col items-center justify-center">
-						<div className="text-center flex flex-col items-center justify-center">
-							<p className="text-muted-foreground mb-4">
-								Chưa có flashcard nào.
-							</p>
-						</div>
+					<div className="text-center h-48 flex flex-col items-center justify-center p-4">
+						<BookOpen className="w-16 h-16 text-muted-foreground/50 mb-4" />
+						<h3 className="text-xl font-semibold mb-2">Bắt đầu học ngay!</h3>
+						<p className="text-muted-foreground max-w-sm">
+							Nhập một chủ đề, sau đó nhấn nút <strong>Menu</strong> <Menu className="inline w-4 h-4" /> và chọn <strong>Tạo</strong> để AI tạo flashcard cho bạn.
+						</p>
 					</div>
 				)}
 			</div>

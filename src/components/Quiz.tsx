@@ -20,6 +20,8 @@ import {
 	HelpCircle,
 	Loader,
 	Plus,
+	BookOpen,
+	Menu,
 } from "lucide-react"
 import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
 import { useToast } from "@/hooks/use-toast"
@@ -392,12 +394,12 @@ export function Quiz({
 						)}
 					</div>
 				) : (
-					<div className="text-center h-64 flex flex-col items-center justify-center">
-						<div className="text-center flex flex-col items-center justify-center">
-								<p className="text-muted-foreground mb-4">
-									Chưa có câu hỏi trắc nghiệm nào.
-								</p>
-							</div>
+					<div className="text-center h-64 flex flex-col items-center justify-center p-4">
+						<BookOpen className="w-16 h-16 text-muted-foreground/50 mb-4" />
+						<h3 className="text-xl font-semibold mb-2">Bắt đầu kiểm tra kiến thức!</h3>
+						<p className="text-muted-foreground max-w-sm">
+							Nhập một chủ đề, sau đó nhấn nút <strong>Menu</strong> <Menu className="inline w-4 h-4" /> và chọn <strong>Tạo</strong> để AI tạo bài trắc nghiệm cho bạn.
+						</p>
 					</div>
 				)}
 			</div>
