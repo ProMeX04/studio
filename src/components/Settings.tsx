@@ -19,6 +19,7 @@ import {
 	HelpCircle,
 	Menu,
 	Save,
+	BrainCircuit,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -85,10 +86,10 @@ interface LearnSettingsProps {
 	onSettingsChange?: (settings: {
 		topic: string
 		language: string
-		model: string
 		flashcardMax: number
 		quizMax: number
 	}) => void
+	onModelChange: (model: string) => void;
 	onGenerateType?: (type: ViewType) => void;
 	onClearLearningData?: () => void;
 	onApiKeysChange: (apiKeys: string[]) => void;
@@ -141,7 +142,7 @@ export const languages = [
 	{ value: "Korean", label: "한국어" },
 ]
 
-const models = [
+export const models = [
     { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh, mặc định)" },
     { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ hơn)" },
 ]
@@ -159,7 +160,6 @@ export function Settings(props: SettingsProps) {
 	// Local state for learn settings
 	const [topic, setTopic] = useState(scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : "")
 	const [language, setLanguage] = useState(scope === "learn" ? (props as LearnSettingsProps).language ?? "Vietnamese" : "Vietnamese")
-	const [model, setModel] = useState(scope === "learn" ? (props as LearnSettingsProps).model ?? "gemini-1.5-flash-latest" : "gemini-1.5-flash-latest")
 	const [flashcardMax, setFlashcardMax] = useState(scope === "learn" ? (props as LearnSettingsProps).flashcardMax ?? 50 : 50)
 	const [quizMax, setQuizMax] = useState(scope === "learn" ? (props as LearnSettingsProps).quizMax ?? 50 : 50)
 	
@@ -175,7 +175,6 @@ export function Settings(props: SettingsProps) {
 	const settingsChanged = learnProps && (
 		topicChanged ||
 		learnProps.language !== language ||
-		learnProps.model !== model ||
 		learnProps.flashcardMax !== flashcardMax ||
 		learnProps.quizMax !== quizMax
 	);
@@ -188,7 +187,6 @@ export function Settings(props: SettingsProps) {
 			if(isSheetOpen) {
 				setTopic(learnProps.topic ?? "")
 				setLanguage(learnProps.language ?? "Vietnamese")
-				setModel(learnProps.model ?? "gemini-1.5-flash-latest")
 				setFlashcardMax(learnProps.flashcardMax ?? 50)
 				setQuizMax(learnProps.quizMax ?? 50)
 				setLocalApiKeys(learnProps.apiKeys);
@@ -213,7 +211,6 @@ export function Settings(props: SettingsProps) {
 		learnProps.onSettingsChange({
 			topic,
 			language,
-			model,
 			flashcardMax,
 			quizMax,
 		});
@@ -447,7 +444,7 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderLearnSettings = () => {
-		if (scope !== "learn") return null;
+		if (scope !== "learn" || !learnProps) return null;
 
 		return (
 			<div className="space-y-4">
@@ -459,6 +456,31 @@ export function Settings(props: SettingsProps) {
 					{renderApiKeyManagement()}
 				</div>
 				<Separator />
+				<div className="space-y-2">
+					<Label className="font-medium text-foreground flex items-center gap-2">
+						<BrainCircuit className="w-4 h-4" />
+						<span>Cài đặt AI</span>
+					</Label>
+					<Select value={learnProps.model} onValueChange={learnProps.onModelChange}>
+						<SelectTrigger>
+							<SelectValue placeholder="Chọn một model AI" />
+						</SelectTrigger>
+						<SelectContent>
+							{models.map((m) => (
+								<SelectItem key={m.value} value={m.value}>
+									{m.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<Separator />
+				<div className="space-y-2">
+					<Label className="font-medium text-foreground flex items-center gap-2">
+						<BookOpen className="w-4 h-4" />
+						<span>Cài đặt nội dung</span>
+					</Label>
+				</div>
 				<div className="space-y-2">
 					<Label htmlFor="topic">Chủ đề</Label>
 					<Input
@@ -478,22 +500,6 @@ export function Settings(props: SettingsProps) {
 							{languages.map((lang) => (
 								<SelectItem key={lang.value} value={lang.value}>
 									{lang.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div className="space-y-2">
-					<Label htmlFor="model">Model</Label>
-					<Select value={model} onValueChange={setModel}>
-						<SelectTrigger>
-							<SelectValue placeholder="Chọn một model AI" />
-						</SelectTrigger>
-						<SelectContent>
-							{models.map((m) => (
-								<SelectItem key={m.value} value={m.value}>
-									{m.label}
 								</SelectItem>
 							))}
 						</SelectContent>

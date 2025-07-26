@@ -17,9 +17,9 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Settings, languages } from "@/components/Settings"
+import { Settings, languages, models } from "@/components/Settings"
 import {
 	getDb,
 	LabeledData,
@@ -48,15 +48,18 @@ const ApiKeyGuide = ({
 	onOnboardingComplete,
 	initialTopic,
 	initialLanguage,
+	initialModel,
 }: { 
 	settingsProps: any; 
-	onOnboardingComplete: (topic: string, language: string) => void;
+	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	initialTopic: string;
 	initialLanguage: string;
+	initialModel: string;
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
 	const [language, setLanguage] = useState(initialLanguage || "Vietnamese");
+	const [model, setModel] = useState(initialModel);
 
 	const handleNextStep = (e?: React.FormEvent) => {
 		e?.preventDefault();
@@ -71,7 +74,7 @@ const ApiKeyGuide = ({
 	}
 	
 	const handleFinishOnboarding = () => {
-		onOnboardingComplete(topic, language);
+		onOnboardingComplete(topic, language, model);
 	}
 
 	if (onboardingStep === 1) {
@@ -215,6 +218,47 @@ const ApiKeyGuide = ({
 	if (onboardingStep === 5) {
 		return (
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6">
+						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+						</Button>
+						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+							<BrainCircuit className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							Chọn Model AI
+						</CardTitle>
+						<CardDescription className="text-lg mt-2 space-y-1">
+							<p>Chọn model AI bạn muốn sử dụng.</p>
+							<p className="text-sm text-muted-foreground">Gemini 1.5 Flash nhanh và hiệu quả, trong khi 1.5 Pro mạnh mẽ hơn.</p>
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0">
+						<form onSubmit={handleNextStep} className="flex items-center gap-2 animate-in fade-in duration-500 delay-300">
+							<Select value={model} onValueChange={setModel}>
+								<SelectTrigger className="text-base h-12">
+									<SelectValue placeholder="Chọn một model" />
+								</SelectTrigger>
+								<SelectContent>
+									{models.map((m) => (
+										<SelectItem key={m.value} value={m.value}>
+											{m.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Button type="submit" className="h-12">Tiếp tục</Button>
+						</form>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	if (onboardingStep === 6) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
 				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 					<CardHeader className="p-0 mb-6 text-center">
 						<Button variant="ghost" className="absolute top-4 left-4" onClick={handleBack}>
@@ -246,7 +290,7 @@ const ApiKeyGuide = ({
 		);
 	}
 	
-	if (onboardingStep === 6) {
+	if (onboardingStep === 7) {
 		return (
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
 				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
@@ -318,7 +362,7 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
-	onOnboardingComplete: (topic: string, language: string) => void;
+	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	hasCompletedOnboarding: boolean;
 }
 
@@ -487,6 +531,7 @@ function Learn({
 			onOnboardingComplete={onOnboardingComplete} 
 			initialTopic={topic}
 			initialLanguage={language}
+			initialModel={model}
 		/>;
 	}
 
@@ -1210,14 +1255,12 @@ export default function Home() {
 		async (settings: {
 			topic: string
 			language: string
-			model: string
 			flashcardMax: number
 			quizMax: number
 		}) => {
 			const {
 				topic: newTopic,
 				language: newLanguage,
-				model: newModel,
 				flashcardMax: newFlashcardMax,
 				quizMax: newQuizMax,
 			} = settings
@@ -1235,10 +1278,6 @@ export default function Home() {
 				setLanguage(newLanguage)
 				await db.put("data", { id: "language", data: newLanguage })
 			}
-			if (model !== newModel) {
-				setModel(newModel)
-				await db.put("data", { id: "model", data: newModel })
-			}
 			if (flashcardMax !== newFlashcardMax) {
 				setFlashcardMax(newFlashcardMax)
 				await db.put("data", {
@@ -1254,7 +1293,6 @@ export default function Home() {
 		[
 			topic, 
 			language,
-			model,
 			flashcardMax, 
 			quizMax,
 			handleClearAllData,
@@ -1296,6 +1334,14 @@ export default function Home() {
 		},
 		[apiKeyIndex]
 	);
+
+	const handleModelChange = useCallback(async (newModel: string) => {
+		if (model === newModel) return;
+		setModel(newModel);
+		const db = await getDb();
+		await db.put("data", { id: "model", data: newModel });
+	}, [model]);
+
 
 	const handleUploadedBackgroundsChange = useCallback(
 		async (newUploadedBgs: string[]) => {
@@ -1445,13 +1491,15 @@ export default function Home() {
 	);
 
 	const handleOnboardingComplete = useCallback(
-		async (finalTopic: string, finalLanguage: string) => {
+		async (finalTopic: string, finalLanguage: string, finalModel: string) => {
 			setTopic(finalTopic);
 			setLanguage(finalLanguage);
+			setModel(finalModel);
 			setHasCompletedOnboarding(true);
 			const db = await getDb();
 			await db.put("data", { id: "topic", data: finalTopic });
 			await db.put("data", { id: "language", data: finalLanguage });
+			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 			await handleClearAllData(true);
 		},
@@ -1496,6 +1544,7 @@ export default function Home() {
 		topic: topic,
 		language: language,
 		model: model,
+		onModelChange: handleModelChange,
 		flashcardMax: flashcardMax,
 		quizMax: quizMax,
 		theoryCount: theorySet?.chapters?.filter(c => c.content).length ?? 0,
@@ -1599,6 +1648,7 @@ export default function Home() {
     
 
     
+
 
 
 
