@@ -17,8 +17,8 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
 	getDb,
@@ -42,21 +42,55 @@ type ViewType = "flashcards" | "quiz" | "theory";
 
 const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
 	<div className="w-full h-full flex flex-col items-center justify-center p-4">
-		<Card className="max-w-md text-center p-8 bg-background/80 backdrop-blur-sm">
-			<CardContent className="p-0 flex flex-col items-center">
-				<KeyRound className="h-12 w-12 text-primary mb-4" />
-				<h2 className="text-2xl font-bold mb-2">Cần có Gemini API Key</h2>
-				<p className="text-muted-foreground mb-6">
-					Để tạo nội dung học tập, bạn cần cung cấp một API Key (miễn phí) từ Google AI Studio.
-				</p>
-				<div className="flex flex-col sm:flex-row gap-4 justify-center">
-					<Settings {...settingsProps} scope="learn" />
-					<Button asChild variant="secondary">
-						<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-							Lấy API Key <ExternalLink className="ml-2 h-4 w-4" />
-						</a>
-					</Button>
+		<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm">
+			<CardHeader className="p-0 mb-6">
+				<div className="flex items-center gap-4 mb-2">
+					<Sparkles className="w-10 h-10 text-primary" />
+					<CardTitle className="text-3xl font-bold">Chào mừng bạn đến với AI New Tab!</CardTitle>
 				</div>
+				<CardDescription className="text-lg">
+					Một trang tab mới được hỗ trợ bởi AI, giúp bạn học bất cứ chủ đề nào bạn muốn.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="p-0">
+				<h3 className="text-xl font-semibold mb-4">Các bước để bắt đầu</h3>
+				<ol className="list-decimal list-inside space-y-6">
+					<li className="space-y-2">
+						<div className="flex items-center gap-2">
+							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
+							<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
+						</div>
+						<p className="ml-10 text-muted-foreground">
+							Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
+						</p>
+						<Button asChild variant="secondary" className="ml-10">
+							<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+								Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
+							</a>
+						</Button>
+					</li>
+					<li className="space-y-2">
+						<div className="flex items-center gap-2">
+							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
+							<span className="font-semibold">Thêm API Key vào ứng dụng</span>
+						</div>
+						<p className="ml-10 text-muted-foreground">
+							Mở phần cài đặt học tập và dán API Key bạn vừa tạo vào. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
+						</p>
+						<div className="ml-10">
+							<Settings {...settingsProps} scope="learn" />
+						</div>
+					</li>
+					<li className="space-y-2">
+						<div className="flex items-center gap-2">
+							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">3</div>
+							<span className="font-semibold">Nhập chủ đề và bắt đầu học</span>
+						</div>
+						<p className="ml-10 text-muted-foreground">
+							Nhập một chủ đề bạn muốn học (ví dụ: "Lịch sử La Mã"), sau đó tạo lý thuyết, flashcard hoặc bài trắc nghiệm.
+						</p>
+					</li>
+				</ol>
 			</CardContent>
 		</Card>
 	</div>
