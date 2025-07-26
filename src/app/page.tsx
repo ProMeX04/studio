@@ -35,11 +35,41 @@ import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
 
 type ViewType = "flashcards" | "quiz" | "theory";
+
+const TypingEffect = ({ text, onComplete }: { text: string; onComplete?: () => void }) => {
+	const [typedText, setTypedText] = useState('');
+	const [isTyping, setIsTyping] = useState(true);
+  
+	useEffect(() => {
+	  setTypedText('');
+	  setIsTyping(true);
+	}, [text]);
+  
+	useEffect(() => {
+	  if (isTyping && typedText.length < text.length) {
+		const timeoutId = setTimeout(() => {
+		  setTypedText(text.slice(0, typedText.length + 1));
+		}, 30);
+		return () => clearTimeout(timeoutId);
+	  } else if (typedText.length === text.length && text.length > 0) {
+		setIsTyping(false);
+		onComplete?.();
+	  }
+	}, [text, typedText, isTyping, onComplete]);
+  
+	return (
+	  <>
+		{typedText}
+		<span className={cn('ml-1 h-full w-0.5 bg-current inline-block', isTyping ? 'animate-pulse' : 'hidden')} />
+	  </>
+	);
+  };
 
 const ApiKeyGuide = ({ 
 	settingsProps, 
@@ -52,6 +82,7 @@ const ApiKeyGuide = ({
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
+	const [showStep1Input, setShowStep1Input] = useState(false);
 
 	const handleTopicSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -69,23 +100,29 @@ const ApiKeyGuide = ({
 						<div className="flex items-center justify-center gap-4 mb-4">
 							<Sparkles className="w-12 h-12 text-primary" />
 						</div>
-						<CardTitle className="text-3xl font-bold">Chào mừng bạn đến với AI New Tab!</CardTitle>
+						<CardTitle className="text-3xl font-bold">
+							<TypingEffect text="Chào mừng bạn đến với AI New Tab!" />
+						</CardTitle>
 						<CardDescription className="text-lg mt-2">
 							Một trang tab mới được hỗ trợ bởi AI, giúp bạn học bất cứ chủ đề nào bạn muốn.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0">
-						<h3 className="text-xl font-semibold mb-4">Để bắt đầu, bạn muốn học về chủ đề gì?</h3>
-						<form onSubmit={handleTopicSubmit} className="flex items-center gap-2">
-							<Input
-								value={topic}
-								onChange={(e) => setTopic(e.target.value)}
-								placeholder="ví dụ: Lịch sử La Mã, Lập trình React..."
-								className="text-base h-12"
-								autoFocus
-							/>
-							<Button type="submit" className="h-12">Tiếp tục</Button>
-						</form>
+						<h3 className="text-xl font-semibold mb-4">
+							<TypingEffect text="Để bắt đầu, bạn muốn học về chủ đề gì?" onComplete={() => setShowStep1Input(true)} />
+						</h3>
+						{showStep1Input && (
+							<form onSubmit={handleTopicSubmit} className="flex items-center gap-2 animate-in fade-in duration-500">
+								<Input
+									value={topic}
+									onChange={(e) => setTopic(e.target.value)}
+									placeholder="ví dụ: Lịch sử La Mã, Lập trình React..."
+									className="text-base h-12"
+									autoFocus
+								/>
+								<Button type="submit" className="h-12">Tiếp tục</Button>
+							</form>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -94,7 +131,7 @@ const ApiKeyGuide = ({
 
 	return (
 		<div className="w-full h-full flex flex-col items-center justify-center p-4">
-			<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm">
+			<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 				<CardHeader className="p-0 mb-6">
 					<Button variant="ghost" className="absolute top-4 left-4" onClick={() => setOnboardingStep(1)}>
 						<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
@@ -102,9 +139,11 @@ const ApiKeyGuide = ({
 					<div className="flex items-center justify-center gap-4 mb-4 pt-8">
 						<KeyRound className="w-12 h-12 text-primary" />
 					</div>
-					<CardTitle className="text-3xl font-bold text-center">Tuyệt vời! Chủ đề của bạn là "{topic}"</CardTitle>
+					<CardTitle className="text-3xl font-bold text-center">
+						<TypingEffect text={`Tuyệt vời! Chủ đề của bạn là "${topic}"`} />
+					</CardTitle>
 					<CardDescription className="text-lg mt-2 text-center">
-						Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google.
+						<TypingEffect text="Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google." />
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="p-0">
