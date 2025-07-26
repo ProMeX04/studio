@@ -7,6 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card'
 import { cn } from '@/lib/utils';
 import type { CardSet } from '@/ai/schemas';
 import type { TypingState } from '@/app/types';
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Syntax: any = SyntaxHighlighter
 
 interface TypingProps {
     typingSet: CardSet | null;
@@ -15,45 +20,92 @@ interface TypingProps {
     onTypingStateChange: (newState: TypingState) => void;
 }
 
+const parseCodeBlock = (markdown: string): { language: string, code: string } => {
+    const match = markdown.match(/^```(\w+)?\n([\s\S]+)```$/);
+    if (match) {
+        return {
+            language: match[1] || 'text',
+            code: match[2].trim(),
+        };
+    }
+    return { language: 'text', code: markdown };
+};
+
 const TypingResultDisplay = ({ original, userInput }: { original: string; userInput: string }) => {
-    const originalChars = original.split('');
+    const { language, code: originalCode } = useMemo(() => parseCodeBlock(original), [original]);
+    
+    const originalChars = originalCode.split('');
     const inputChars = userInput.split('');
 
     const caretPosition = inputChars.length;
+    
+    const codeStyle = {
+        ...vscDarkPlus,
+        'pre[class*="language-"]': {
+            ...vscDarkPlus['pre[class*="language-"]'],
+            background: "transparent",
+            padding: "0",
+            margin: "0",
+            fontSize: "1.5rem", // 24px
+            lineHeight: "1.75rem", // 28px
+            letterSpacing: "0.05em",
+            wordBreak: "break-word",
+            whiteSpace: 'pre-wrap',
+        },
+        'code[class*="language-"]': {
+            ...vscDarkPlus['code[class*="language-"]'],
+            background: "transparent",
+            padding: "0",
+            fontFamily: "inherit",
+        },
+    };
 
-    const renderedChars = originalChars.map((char, index) => {
-        let className = 'text-muted-foreground/50'; // Default: untyped
-        if (index < inputChars.length) {
-            if (inputChars[index] === char) {
-                className = 'text-green-400'; // Correct
-            } else {
-                className = 'text-red-400 bg-red-500/20'; // Incorrect
+    const CustomRenderer = ({ rows, stylesheet, useInlineStyles }: any) => {
+        const renderedChars = originalChars.map((char, index) => {
+            let className = 'text-muted-foreground/50'; // Default: untyped
+            if (index < inputChars.length) {
+                if (inputChars[index] === char) {
+                    className = 'text-green-400'; // Correct
+                } else {
+                    className = 'text-red-400 bg-red-500/20'; // Incorrect
+                }
             }
-        }
-        
-        // Handle whitespace for proper rendering
-        if (char === ' ') {
-            return <span key={index} className={cn('whitespace-pre-wrap', className)}>{char}</span>;
-        }
-        return <span key={index} className={className}>{char}</span>;
-    });
+            return (
+                <span key={index} className={cn(className, 'char-span')}>
+                    {char === '\n' ? ' \n' : char}
+                </span>
+            );
+        });
 
-    const extraChars = inputChars.length > originalChars.length 
-        ? inputChars.slice(originalChars.length).map((char, index) => (
-            <span key={`extra-${index}`} className="text-yellow-400 bg-yellow-500/20">
-                {char === ' ' ? '\u00A0' : char}
-            </span>
-        )) 
-        : [];
+        const extraChars = inputChars.length > originalChars.length
+            ? inputChars.slice(originalChars.length).map((char, index) => (
+                <span key={`extra-${index}`} className="text-yellow-400 bg-yellow-500/20">
+                    {char === ' ' ? '\u00A0' : char}
+                </span>
+            ))
+            : [];
+
+        const caret = <span className="border-l-2 border-primary animate-pulse" />;
         
-    const caret = <span className="border-l-2 border-primary animate-pulse" />;
+        return (
+            <span className="relative">
+                {renderedChars.slice(0, caretPosition)}
+                {caret}
+                {renderedChars.slice(caretPosition)}
+                {extraChars}
+            </span>
+        );
+    };
 
     return (
         <div className="relative p-4 rounded-md bg-secondary text-2xl font-mono tracking-wider leading-relaxed break-words">
-            {renderedChars.slice(0, caretPosition)}
-            {caret}
-            {renderedChars.slice(caretPosition)}
-            {extraChars.length > 0 && <>{extraChars}</>}
+             <Syntax
+                language={language}
+                style={codeStyle}
+                Renderer={CustomRenderer}
+            >
+                {originalCode}
+            </Syntax>
         </div>
     );
 };
