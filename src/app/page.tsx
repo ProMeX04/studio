@@ -367,20 +367,6 @@ function Learn({
 									<Award className="w-4 h-4" />
 								</Button>
 							)}
-
-							<Button
-								onClick={onGenerateNew}
-								disabled={isLoading || !canGenerateMore || isSummaryActive}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								{isLoading ? (
-									<Loader className="animate-spin w-4 h-4" />
-								) : (
-									<Plus className="w-4 h-4" />
-								)}
-							</Button>
 							
 							<Settings {...settingsProps} scope="learn" />
 
@@ -1327,5 +1313,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-
