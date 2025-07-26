@@ -18,6 +18,7 @@ import {
 	ExternalLink,
 	HelpCircle,
 	Menu,
+	Save,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -168,7 +169,11 @@ export function Settings(props: SettingsProps) {
 				model,
 				flashcardMax,
 				quizMax,
-			})
+			});
+			toast({
+				title: "Đã lưu cài đặt",
+				description: "Các thay đổi của bạn đã được lưu lại.",
+			});
 		}
 	}
 
@@ -194,9 +199,8 @@ export function Settings(props: SettingsProps) {
 	const handleGenerateType = (type: ViewType) => {
 		if (isLearnScope) {
 			const learnProps = props as LearnSettingsProps;
-			handleLocalSettingsSave(); // Save settings first
+			// Note: We don't save here anymore, user should save manually
 			learnProps.onGenerateType(type);
-			// Keep the sheet open
 		}
 	};
 	
@@ -437,38 +441,6 @@ export function Settings(props: SettingsProps) {
 						/>
 					</div>
 				</div>
-	
-				<Separator />
-	
-				<div className="flex justify-center pt-2">
-					<AlertDialog>
-						<AlertDialogTrigger asChild>
-							<Button variant="destructive">
-								<Trash2 className="mr-2 h-4 w-4" />
-								Xóa dữ liệu học tập
-							</Button>
-						</AlertDialogTrigger>
-						<AlertDialogContent>
-							<AlertDialogHeader>
-								<AlertDialogTitle>
-									<div className="flex items-center gap-2">
-										<AlertTriangle className="text-destructive" />
-										<span>Bạn có chắc chắn không?</span>
-									</div>
-								</AlertDialogTitle>
-								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả flashcard, bài trắc nghiệm và lý thuyết của chủ đề hiện tại. Hành động này không thể hoàn tác.
-								</AlertDialogDescription>
-							</AlertDialogHeader>
-							<AlertDialogFooter>
-								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction onClick={handleClearLearningData}>
-									Vâng, xóa dữ liệu
-								</AlertDialogAction>
-							</AlertDialogFooter>
-						</AlertDialogContent>
-					</AlertDialog>
-				</div>
 			</div>
 		)
 	}
@@ -478,7 +450,7 @@ export function Settings(props: SettingsProps) {
 		if (isLearnScope) return null;
 		const globalProps = props as GlobalSettingsProps;
 		return (
-			<>
+			<div className="space-y-4">
 				<div className="space-y-4">
 					<Label className="font-medium text-foreground">
 						Hình nền
@@ -612,22 +584,14 @@ export function Settings(props: SettingsProps) {
 						</div>
 					</div>
 				</div>
-			</>
+			</div>
 		)
 	}
 
 	return (
 		<Sheet
 			open={isOpen}
-			onOpenChange={(open) => {
-				if (!open) {
-					// Save settings when closing the sheet
-					if(isLearnScope) {
-						handleLocalSettingsSave();
-					}
-				}
-				setIsOpen(open)
-			}}
+			onOpenChange={setIsOpen}
 		>
 			<SheetTrigger asChild>
 				<Button variant={isLearnScope ? "outline" : "ghost"} size="icon" className={cn(isLearnScope && "h-9 w-9")}>
@@ -637,7 +601,7 @@ export function Settings(props: SettingsProps) {
 			</SheetTrigger>
 			<SheetContent
 				side="right"
-				className="max-h-[100vh] w-[400px] sm:max-w-[540px] overflow-y-auto"
+				className="flex flex-col max-h-[100vh] w-[400px] sm:max-w-[540px]"
 			>
 				<SheetHeader>
 					<SheetTitle>
@@ -647,13 +611,50 @@ export function Settings(props: SettingsProps) {
 						</div>
 					</SheetTitle>
 				</SheetHeader>
-				<div className="grid gap-6 py-4">
-					<Separator />
-					{isLearnScope ? renderLearnSettings() : renderGlobalSettings()}
+
+				<div className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6">
+					<div className="grid gap-6 py-4">
+						<Separator />
+						{isLearnScope ? renderLearnSettings() : renderGlobalSettings()}
+					</div>
 				</div>
 
-				{!isLearnScope && (
-					<SheetFooter>
+				<SheetFooter className="mt-auto pt-4 border-t">
+					{isLearnScope ? (
+						<div className="w-full flex justify-between">
+							<AlertDialog>
+								<AlertDialogTrigger asChild>
+									<Button variant="destructive">
+										<Trash2 className="mr-2 h-4 w-4" />
+										Xóa dữ liệu
+									</Button>
+								</AlertDialogTrigger>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>
+											<div className="flex items-center gap-2">
+												<AlertTriangle className="text-destructive" />
+												<span>Bạn có chắc chắn không?</span>
+											</div>
+										</AlertDialogTitle>
+										<AlertDialogDescription>
+											Hành động này sẽ xóa vĩnh viễn tất cả flashcard, bài trắc nghiệm và lý thuyết của chủ đề hiện tại. Hành động này không thể hoàn tác.
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>Hủy</AlertDialogCancel>
+										<AlertDialogAction onClick={handleClearLearningData}>
+											Vâng, xóa dữ liệu
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
+							<Button onClick={handleLocalSettingsSave}>
+								<Save className="mr-2 h-4 w-4" />
+								Lưu thay đổi
+							</Button>
+						</div>
+					) : (
 						<AlertDialog>
 							<AlertDialogTrigger asChild>
 								<Button variant="destructive">
@@ -691,11 +692,9 @@ export function Settings(props: SettingsProps) {
 								</AlertDialogFooter>
 							</AlertDialogContent>
 						</AlertDialog>
-					</SheetFooter>
-				)}
+					)}
+				</SheetFooter>
 			</SheetContent>
 		</Sheet>
 	)
 }
-
-    

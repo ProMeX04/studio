@@ -1055,8 +1055,7 @@ export default function Home() {
 
 	const onGenerateType = useCallback(
 		(genType: ViewType) => {
-			const forceNew = false; // Never force new from settings buttons
-			handleGenerate(topic, language, model, forceNew, genType);
+			handleGenerate(topic, language, model, false, genType);
 		}, 
 		[handleGenerate, topic, language, model]
 	);
