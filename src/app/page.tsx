@@ -49,12 +49,14 @@ const ApiKeyGuide = ({
 	initialTopic,
 	initialLanguage,
 	initialModel,
+	handleGenerate,
 }: { 
 	settingsProps: any; 
 	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	initialTopic: string;
 	initialLanguage: string;
 	initialModel: string;
+	handleGenerate: (topic: string, language: string, model: string, forceNew: boolean, genType: ViewType) => void;
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
@@ -76,6 +78,15 @@ const ApiKeyGuide = ({
 	const handleFinishOnboarding = () => {
 		onOnboardingComplete(topic, language, model);
 	}
+
+	const handleGenerateOnboardingContent = useCallback((genType: ViewType) => {
+        handleGenerate(topic, language, model, true, genType);
+    }, [handleGenerate, topic, language, model]);
+
+	const onboardingGenerateProps = {
+        ...settingsProps,
+        onGenerateType: handleGenerateOnboardingContent,
+    };
 
 	if (onboardingStep === 1) {
 		return (
@@ -275,7 +286,7 @@ const ApiKeyGuide = ({
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 space-y-4 animate-in fade-in duration-500 delay-300">
-						<Settings {...settingsProps} scope="learn-onboarding-generate" />
+						<Settings {...onboardingGenerateProps} scope="learn-onboarding-generate" />
 						<p className="text-xs text-muted-foreground text-center px-4">
 							Lưu ý: Nếu bạn thoát tab trong khi đang tạo, bạn sẽ cần phải tiếp tục quá trình này thủ công bằng cách nhấn nút <Plus className="inline w-3 h-3" /> trong Cài đặt học tập.
 						</p>
@@ -364,6 +375,7 @@ interface LearnProps {
 	onApiKeyIndexChange: (index: number) => void;
 	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	hasCompletedOnboarding: boolean;
+	handleGenerate: (topic: string, language: string, model: string, forceNew: boolean, genType: ViewType) => void;
 }
 
 function Learn({
@@ -404,6 +416,7 @@ function Learn({
 	onApiKeyIndexChange,
 	onOnboardingComplete,
 	hasCompletedOnboarding,
+	handleGenerate,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -532,6 +545,7 @@ function Learn({
 			initialTopic={topic}
 			initialLanguage={language}
 			initialModel={model}
+			handleGenerate={handleGenerate}
 		/>;
 	}
 
@@ -1636,6 +1650,7 @@ export default function Home() {
 							onApiKeyIndexChange={handleApiKeyIndexChange}
 							onOnboardingComplete={handleOnboardingComplete}
 							hasCompletedOnboarding={hasCompletedOnboarding}
+							handleGenerate={handleGenerate}
 						/>
 					</div>
 				</div>
@@ -1647,6 +1662,7 @@ export default function Home() {
     
 
     
+
 
 
 
