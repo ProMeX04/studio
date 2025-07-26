@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema, GenerateFlashcardsOutput, zodToJsonSchema } from '@/ai/schemas';
+import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema, GenerateFlashcardsOutput, GenerateFlashcardsJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend({
@@ -37,14 +37,13 @@ ${existingCardsPrompt}
 The "front" and "back" fields MUST contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.
 - Use triple backticks with a language identifier for multi-line code blocks.
-- Use bolding for keywords.
 - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
 `;
 
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
     // @ts-ignore - responseSchema is a valid property
-    responseSchema: zodToJsonSchema(GenerateFlashcardsOutputContainerSchema),
+    responseSchema: GenerateFlashcardsJsonSchema,
   };
 
   try {

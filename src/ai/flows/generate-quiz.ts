@@ -6,7 +6,7 @@
  */
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, QuizQuestionSchema, zodToJsonSchema } from '@/ai/schemas';
+import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, GenerateQuizJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
@@ -48,7 +48,7 @@ ${existingQuestionsPrompt}
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
     // @ts-ignore - responseSchema is a valid property
-    responseSchema: zodToJsonSchema(GenerateQuizOutputContainerSchema),
+    responseSchema: GenerateQuizJsonSchema,
   };
   
   let attempts = 0;

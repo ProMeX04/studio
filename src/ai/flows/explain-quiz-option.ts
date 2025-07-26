@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptionOutputSchema, zodToJsonSchema } from '@/ai/schemas';
+import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptionOutputSchema, ExplainQuizOptionJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
@@ -50,7 +50,7 @@ The "explanation" field must be valid standard Markdown:
   const generationConfig: GenerationConfig = {
     responseMimeType: "application/json",
     // @ts-ignore - responseSchema is a valid property
-    responseSchema: zodToJsonSchema(ExplainQuizOptionOutputSchema),
+    responseSchema: ExplainQuizOptionJsonSchema,
   };
 
   try {

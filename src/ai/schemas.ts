@@ -4,43 +4,84 @@
  */
 
 import {z} from 'zod';
+import { Schema, Part, FunctionDeclaration, GenerationConfig } from '@google/generative-ai';
 
-// Helper to convert Zod schema to a basic JSON Schema representation
-// for Google AI's responseSchema field.
-export function zodToJsonSchema(schema: z.ZodType<any, any, any>): object {
-    if (schema instanceof z.ZodObject) {
-      const properties: { [key: string]: object } = {};
-      const required: string[] = [];
-      const shape = schema.shape;
-      for (const key in shape) {
-        if (Object.prototype.hasOwnProperty.call(shape, key)) {
-          properties[key] = zodToJsonSchema(shape[key] as z.ZodType<any, any, any>);
-          if (!shape[key].isOptional()) {
-            required.push(key);
+// --- Manually Defined JSON Schemas for Google AI ---
+
+export const GenerateFlashcardsJsonSchema: Schema = {
+  type: "OBJECT",
+  properties: {
+    cards: {
+      type: "ARRAY",
+      description: "An array of generated flashcards.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          front: {
+            type: "STRING",
+            description: "The front side of the flashcard (a question or term)."
+          },
+          back: {
+            type: "STRING",
+            description: "The back side of the flashcard (the answer or definition)."
           }
-        }
+        },
+        required: ["front", "back"]
       }
-      return {
-        type: 'object',
-        properties,
-        ...(required.length > 0 && { required }),
-      };
-    } else if (schema instanceof z.ZodArray) {
-      return {
-        type: 'array',
-        items: zodToJsonSchema(schema.element),
-      };
-    } else if (schema instanceof z.ZodString) {
-      return { type: 'string', ...(schema.description && { description: schema.description }) };
-    } else if (schema instanceof z.ZodNumber) {
-      return { type: 'number', ...(schema.description && { description: schema.description }) };
-    } else if (schema instanceof z.ZodBoolean) {
-        return { type: 'boolean', ...(schema.description && { description: schema.description }) };
     }
-    // Fallback for other types
-    return {};
-}
+  },
+  required: ["cards"]
+};
 
+export const GenerateQuizJsonSchema: Schema = {
+    type: "OBJECT",
+    properties: {
+        questions: {
+            type: "ARRAY",
+            description: "An array of generated quiz questions.",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    question: {
+                        type: "STRING",
+                        description: "The question text."
+                    },
+                    options: {
+                        type: "ARRAY",
+                        description: "A list of 4 possible answers.",
+                        items: {
+                            type: "STRING"
+                        }
+                    },
+                    answer: {
+                        type: "STRING",
+                        description: "The correct answer. Must be one of the strings from the 'options' array."
+                    },
+                    explanation: {
+                        type: "STRING",
+                        description: "A brief explanation for the correct answer."
+                    }
+                },
+                required: ["question", "options", "answer", "explanation"]
+            }
+        }
+    },
+    required: ["questions"]
+};
+
+export const ExplainQuizOptionJsonSchema: Schema = {
+    type: "OBJECT",
+    properties: {
+        explanation: {
+            type: "STRING",
+            description: "The detailed explanation for the selected option."
+        }
+    },
+    required: ["explanation"]
+};
+
+
+// --- Zod Schemas for Client-Side Validation and Type Inference ---
 
 // Flashcards
 export const FlashcardSchema = z.object({
