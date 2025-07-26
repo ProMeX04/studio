@@ -220,25 +220,18 @@ const ApiKeyGuide = ({
 							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
 						</Button>
 						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
-							<BookOpen className="w-12 h-12 text-primary" />
+							<CheckCircle className="w-12 h-12 text-success" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							Làm thế nào để tạo nội dung?
+							Hoàn tất!
 						</CardTitle>
 						<CardDescription className="text-lg mt-2">
-							Bạn đã sẵn sàng! Bây giờ, làm thế nào để bắt đầu tạo nội dung?
+							Mọi thứ đã sẵn sàng. Hãy xem hướng dẫn cuối cùng để bắt đầu.
 						</CardDescription>
 					</CardHeader>
-					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
-						<div className="bg-secondary/30 p-4 rounded-lg space-y-4 text-center">
-							<p className="text-lg">
-								Bất cứ khi nào bạn muốn tạo hoặc thêm nội dung (Lý thuyết, Flashcard, Trắc nghiệm), chỉ cần nhấn vào nút <strong>Menu</strong> <Menu className="inline-block h-5 w-5 mx-1" /> trên thanh công cụ và chọn <strong>Tạo</strong>.
-							</p>
-						</div>
-					</CardContent>
 					<CardFooter className="p-0 mt-6">
 						<Button onClick={handleNextStep} className="w-full h-12">
-							Đã hiểu!
+							Tiếp tục
 						</Button>
 					</CardFooter>
 				</Card>
@@ -252,21 +245,25 @@ const ApiKeyGuide = ({
 				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
 					<CardHeader className="p-0 mb-6 text-center">
 						<div className="flex items-center justify-center gap-4 mb-4">
-							<CheckCircle className="w-12 h-12 text-success" />
+							<BookOpen className="w-12 h-12 text-primary" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							Hoàn tất!
+							Làm thế nào để tạo nội dung?
 						</CardTitle>
 						<CardDescription className="text-lg mt-2">
-							Mọi thứ đã sẵn sàng. Hãy bắt đầu tạo nội dung đầu tiên cho chủ đề "{topic}".
+							Bất cứ khi nào bạn muốn tạo hoặc thêm nội dung mới, hãy làm theo cách sau.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
-						<Settings {...settingsProps} scope="learn-onboarding-generate" />
+						<div className="bg-secondary/30 p-4 rounded-lg space-y-4 text-center">
+							<p className="text-lg">
+								Nhấn vào nút <strong>Menu</strong> <Menu className="inline-block h-5 w-5 mx-1" /> trên thanh công cụ và chọn <strong>Tạo</strong> cho loại nội dung bạn muốn.
+							</p>
+						</div>
 					</CardContent>
 					<CardFooter className="p-0 mt-6">
 						<Button onClick={handleFinishOnboarding} className="w-full h-12">
-							Bắt đầu học
+							Đã hiểu! Bắt đầu học
 						</Button>
 					</CardFooter>
 				</Card>
@@ -1595,4 +1592,5 @@ export default function Home() {
     
 
     
+
 
