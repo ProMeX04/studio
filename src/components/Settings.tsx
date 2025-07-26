@@ -154,7 +154,7 @@ export function Settings(props: SettingsProps) {
 	const isOnboardingScope = scope.startsWith("learn-onboarding");
 	const { toast } = useToast();
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
-
+	const [isTopicChangeAlertOpen, setIsTopicChangeAlertOpen] = useState(false);
 
 	// Local state for learn settings
 	const [topic, setTopic] = useState(scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : "")
@@ -188,7 +188,7 @@ export function Settings(props: SettingsProps) {
 		}
 	}, [props, scope, isSheetOpen, isOnboardingScope])
 
-	const handleLocalSettingsSave = () => {
+	const handleConfirmSave = () => {
 		if (scope === "learn" && (props as LearnSettingsProps).onSettingsChange) {
 			const learnProps = props as LearnSettingsProps;
 			learnProps.onSettingsChange!({
@@ -205,6 +205,18 @@ export function Settings(props: SettingsProps) {
 				title: "Đã lưu cài đặt",
 				description: "Các thay đổi của bạn đã được lưu lại.",
 			});
+			setIsSheetOpen(false);
+		}
+	}
+	
+	const handleSaveAttempt = () => {
+		if (scope === 'learn') {
+			const learnProps = props as LearnSettingsProps;
+			if (learnProps.topic !== topic) {
+				setIsTopicChangeAlertOpen(true);
+			} else {
+				handleConfirmSave();
+			}
 		}
 	}
 
@@ -727,10 +739,31 @@ export function Settings(props: SettingsProps) {
 									</AlertDialogContent>
 								</AlertDialog>
 							</div>
-							<Button onClick={handleLocalSettingsSave}>
-								<Save className="mr-2 h-4 w-4" />
-								Lưu thay đổi
-							</Button>
+							<AlertDialog open={isTopicChangeAlertOpen} onOpenChange={setIsTopicChangeAlertOpen}>
+								<Button onClick={handleSaveAttempt}>
+									<Save className="mr-2 h-4 w-4" />
+									Lưu thay đổi
+								</Button>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>
+											<div className="flex items-center gap-2">
+												<AlertTriangle className="text-destructive" />
+												<span>Xác nhận thay đổi chủ đề?</span>
+											</div>
+										</AlertDialogTitle>
+										<AlertDialogDescription>
+											Việc thay đổi chủ đề sẽ xóa vĩnh viễn tất cả dữ liệu học tập hiện tại (Lý thuyết, Flashcard, Trắc nghiệm). Bạn có chắc chắn muốn tiếp tục?
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>Hủy</AlertDialogCancel>
+										<AlertDialogAction onClick={handleConfirmSave}>
+											Vâng, thay đổi chủ đề
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
 						</div>
 					) : (
 						<AlertDialog>
@@ -776,5 +809,3 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
-
-    
