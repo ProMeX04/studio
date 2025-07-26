@@ -117,7 +117,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 							</CardHeader>
 							<CardContent>
 								<p className="text-muted-foreground">
-									Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong>, và để AI tạo ra dàn bài và nội dung lý thuyết chi tiết cho bạn!
+									Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong> cho mục Lý thuyết, và để AI tạo ra dàn bài và nội dung chi tiết cho bạn!
 								</p>
 							</CardContent>
 						</Card>

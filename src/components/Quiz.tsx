@@ -403,7 +403,7 @@ export function Quiz({
 						</CardHeader>
 						<CardContent>
 							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong>, và để AI tạo ra các câu hỏi trắc nghiệm thử thách bạn!
+								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong> cho mục Trắc nghiệm, và để AI tạo ra các câu hỏi thử thách bạn!
 							</p>
 						</CardContent>
 					</Card>

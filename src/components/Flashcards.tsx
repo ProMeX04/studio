@@ -165,7 +165,7 @@ export function Flashcards({
 						</CardHeader>
 						<CardContent>
 							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong>, và để AI tạo ra các thẻ ghi nhớ cho bạn!
+								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, chọn <strong className="text-foreground">Tạo</strong> cho mục Flashcard, và để AI tạo ra các thẻ ghi nhớ cho bạn!
 							</p>
 						</CardContent>
 					</Card>
