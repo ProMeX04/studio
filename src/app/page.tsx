@@ -31,7 +31,8 @@ import { AIOperationError, safeAICall } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 
-const BATCH_SIZE = 5;
+const FLASHCARD_BATCH_SIZE = 10;
+const QUIZ_BATCH_SIZE = 5;
 
 interface LearnProps {
 	view: "flashcards" | "quiz"
@@ -463,7 +464,7 @@ export default function Home() {
 
 
 					while (flashcardsNeeded > 0 && !signal.aborted) {
-						const count = Math.min(BATCH_SIZE, flashcardsNeeded)
+						const count = Math.min(FLASHCARD_BATCH_SIZE, flashcardsNeeded)
 						const newCards = await safeAICall(() =>
 							generateFlashcards({
 								apiKey,
@@ -527,7 +528,7 @@ export default function Home() {
 					}
 
 					while (quizNeeded > 0 && !signal.aborted) {
-						const count = Math.min(BATCH_SIZE, quizNeeded)
+						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
 						const newQuestions = await safeAICall(() =>
 							generateQuiz({
 								apiKey,
@@ -1027,3 +1028,5 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
