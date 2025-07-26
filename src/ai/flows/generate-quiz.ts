@@ -25,9 +25,10 @@ export async function generateQuiz(
   }
 
   let currentKeyIndex = apiKeyIndex;
-  const maxAttempts = apiKeys.length;
+  let invalidKeyCount = 0;
+  let quotaErrorCount = 0;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  for (let i = 0; i < apiKeys.length; i++) {
     const apiKey = apiKeys[currentKeyIndex];
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
@@ -106,22 +107,33 @@ export async function generateQuiz(
         
         console.warn(`API Key at index ${currentKeyIndex} failed. Reason: ${errorMessage}`);
         
-        if ((isQuotaError || isBadApiKeyError) && attempt < maxAttempts - 1) {
+        if (isQuotaError) quotaErrorCount++;
+        if (isBadApiKeyError) invalidKeyCount++;
+
+        if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
             console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
-            console.error(`❌ Quiz generation attempt ${attempt + 1} failed:`, error);
-            if (error.message.includes('JSON')) {
-                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            console.error(`❌ Quiz generation attempt ${i + 1} failed:`, error);
+            if (error.message.includes('JSON') || error instanceof z.ZodError) {
+                throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
             }
-            if (error instanceof z.ZodError) {
-                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            if (invalidKeyCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
             }
-            if (error instanceof AIOperationError) throw error;
-            throw new AIOperationError('Failed to generate quiz from AI.', 'AI_GENERATION_FAILED');
+            if (quotaErrorCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau.', 'ALL_KEYS_FAILED');
+            }
+            throw new AIOperationError('Không thể tạo bài trắc nghiệm từ AI.', 'AI_GENERATION_FAILED');
         }
     }
   }
-
-  throw new AIOperationError('All API keys failed due to quota or other issues.', 'ALL_KEYS_FAILED');
+  
+  if (invalidKeyCount === apiKeys.length) {
+      throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại trong Cài đặt.', 'ALL_KEYS_FAILED');
+  }
+  if (quotaErrorCount === apiKeys.length) {
+      throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau hoặc thêm key mới.', 'ALL_KEYS_FAILED');
+  }
+  throw new AIOperationError('Tất cả các API key đều không thành công. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
 }

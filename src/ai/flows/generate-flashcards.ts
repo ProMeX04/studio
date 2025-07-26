@@ -26,6 +26,9 @@ export async function generateFlashcards(
   }
 
   let currentKeyIndex = apiKeyIndex;
+  let invalidKeyCount = 0;
+  let quotaErrorCount = 0;
+
 
   for (let i = 0; i < apiKeys.length; i++) {
     const apiKey = apiKeys[currentKeyIndex];
@@ -93,22 +96,35 @@ export async function generateFlashcards(
         
         console.warn(`API Key at index ${currentKeyIndex} failed. Reason: ${errorMessage}`);
         
+        if (isQuotaError) quotaErrorCount++;
+        if (isBadApiKeyError) invalidKeyCount++;
+
         if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
             console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             console.error('❌ Flashcard generation error:', error);
-            if (error.message.includes('JSON')) {
-                throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            if (error.message.includes('JSON') || error instanceof z.ZodError) {
+                throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
             }
-            if (error instanceof z.ZodError) {
-              throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
+            // After loop, check what kind of error happened most
+            if (invalidKeyCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
             }
-            throw new AIOperationError('Failed to generate flashcards from AI.', 'AI_GENERATION_FAILED');
+            if (quotaErrorCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau.', 'ALL_KEYS_FAILED');
+            }
+            throw new AIOperationError('Không thể tạo flashcard từ AI.', 'AI_GENERATION_FAILED');
         }
     }
   }
 
-  // If all keys failed
-  throw new AIOperationError('All API keys failed due to quota or other issues.', 'ALL_KEYS_FAILED');
+  // This part is now reached if all keys fail and the loop completes
+  if (invalidKeyCount === apiKeys.length) {
+      throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại trong Cài đặt.', 'ALL_KEYS_FAILED');
+  }
+  if (quotaErrorCount === apiKeys.length) {
+      throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau hoặc thêm key mới.', 'ALL_KEYS_FAILED');
+  }
+  throw new AIOperationError('Tất cả các API key đều không thành công. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
 }
