@@ -1061,7 +1061,7 @@ export default function Home() {
 		? flashcardMax 
 		: view === 'quiz'
 		? quizMax
-		: (theorySet?.outline.length ?? 0);
+		: (theorySet?.outline?.length ?? 0);
 
 	const canGenerateMore = currentCount < targetCount && !isOverallLoading
 
