@@ -168,7 +168,16 @@ export function Settings(props: SettingsProps) {
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
-	const topicChanged = scope === "learn" && (props as LearnSettingsProps).topic !== topic;
+	
+	const learnProps = scope === 'learn' ? (props as LearnSettingsProps) : undefined;
+	const topicChanged = learnProps && learnProps.topic !== topic;
+	const settingsChanged = learnProps && (
+		learnProps.topic !== topic ||
+		learnProps.language !== language ||
+		learnProps.model !== model ||
+		learnProps.flashcardMax !== flashcardMax ||
+		learnProps.quizMax !== quizMax
+	);
 
 
 	// Sync local state with props when the sheet opens or props change
@@ -206,7 +215,7 @@ export function Settings(props: SettingsProps) {
 				title: "Đã lưu cài đặt",
 				description: "Các thay đổi của bạn đã được lưu lại.",
 			});
-			setIsSheetOpen(false);
+			// The button will hide itself after saving because `settingsChanged` will become false
 		}
 	}
 	
@@ -486,6 +495,13 @@ export function Settings(props: SettingsProps) {
 					</Select>
 				</div>
 	
+				{settingsChanged && (
+					<Button onClick={handleSave} className="w-full mt-4">
+						<Save className="mr-2 h-4 w-4" />
+						Lưu thay đổi
+					</Button>
+				)}
+
 				<Separator />
 				{renderContentGenerationControls()}
 			</div>
@@ -738,10 +754,6 @@ export function Settings(props: SettingsProps) {
 									</AlertDialogContent>
 								</AlertDialog>
 							</div>
-							<Button onClick={handleSave}>
-								<Save className="mr-2 h-4 w-4" />
-								Lưu thay đổi
-							</Button>
 						</div>
 					) : (
 						<AlertDialog>
