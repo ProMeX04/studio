@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateTheoryOutlineInputSchema, GenerateTheoryOutlineOutputSchema, GenerateTheoryOutlineOutput, GenerateTheoryOutlineJsonSchema } from '@/ai/schemas';
+import { GenerateTheoryOutlineInputSchema, GenerateTheoryOutlineOutputSchema, GenerateTheoryOutlineOutput } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ClientInputSchema = GenerateTheoryOutlineInputSchema.extend({
@@ -34,7 +34,7 @@ export async function generateTheoryOutline(
 
       const promptText = `You are a professional educator. Your task is to generate a comprehensive learning outline for the topic: "${promptInput.topic}" in the language: ${promptInput.language}.
 
-The outline should be structured logically to facilitate learning, starting from a high-level overview and progressively diving into details. Please create a list of chapter titles.
+The outline should be structured logically to facilitate learning, starting from a high-level overview and progressively diving into details.
 
 The structure should follow this pattern:
 1.  Start with a general "Overview" or "Introduction".
@@ -43,12 +43,10 @@ The structure should follow this pattern:
 4.  Include chapters on practical applications or advanced topics if applicable.
 5.  End with a "Conclusion" or "Summary" chapter.
 
-Generate between 5 and 10 chapter titles. Populate the "outline" array in the JSON object with these titles.`;
+Generate between 5 and 10 chapter titles. Each title should be on a new line. Do not use numbering or bullet points.`;
 
       const generationConfig: GenerationConfig = {
-        responseMimeType: "application/json",
-        // @ts-ignore - responseSchema is a valid property
-        responseSchema: GenerateTheoryOutlineJsonSchema,
+        responseMimeType: "text/plain",
       };
 
       const result = await model.generateContent({
@@ -74,7 +72,8 @@ Generate between 5 and 10 chapter titles. Populate the "outline" array in the JS
         ]
       });
       
-      const parsedJson = JSON.parse(result.response.text());
+      const outlineArray = result.response.text().split('\n').filter(line => line.trim() !== '');
+      const parsedJson = { outline: outlineArray };
       const validatedOutput = GenerateTheoryOutlineOutputSchema.parse(parsedJson);
 
       console.log(`✅ Generated theory outline with ${validatedOutput.outline.length} chapters.`);
