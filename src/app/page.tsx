@@ -30,7 +30,7 @@ import {
 } from "@/lib/idb"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AIOperationError, safeAICall } from "@/lib/ai-utils"
+import { AIOperationError } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
