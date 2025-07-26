@@ -82,6 +82,17 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
+export const GenerateTheoryJsonSchema: Schema = {
+  type: "OBJECT",
+  properties: {
+    theory: {
+      type: "STRING",
+      description: "A comprehensive, well-structured theoretical document in Markdown format."
+    }
+  },
+  required: ["theory"]
+};
+
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
@@ -161,4 +172,25 @@ export const ExplainQuizOptionOutputSchema = z.object({
 });
 export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSchema>;
 
-    
+
+// Theory
+export const GenerateTheoryInputSchema = z.object({
+  topic: z.string().describe('The topic for which to generate a theory document.'),
+  language: z.string().describe('The language for the theory document.'),
+});
+export type GenerateTheoryInput = z.infer<typeof GenerateTheoryInputSchema>;
+
+export const GenerateTheoryOutputSchema = z.object({
+  theory: z.string().describe('A comprehensive, well-structured theoretical document in Markdown format.'),
+});
+export type GenerateTheoryOutput = z.infer<typeof GenerateTheoryOutputSchema>;
+
+export const GenerateTheoryOutputContainerSchema = z.object({
+  theory: z.string().describe("A comprehensive, well-structured theoretical document in Markdown format."),
+});
+
+export interface TheorySet {
+  id: string;
+  topic: string;
+  content: string;
+}

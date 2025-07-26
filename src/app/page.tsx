@@ -7,13 +7,15 @@ import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
 import { Clock } from "@/components/Clock"
 import { Flashcards } from "@/components/Flashcards"
-import type { CardData, CardSet } from "@/ai/schemas"
+import type { CardData, CardSet, TheorySet } from "@/ai/schemas"
 import { Quiz } from "@/components/Quiz"
+import { Theory } from "@/components/Theory"
 import type { QuizSet, QuizQuestion } from "@/ai/schemas"
-import type { QuizState, FlashcardState } from "@/app/types"
+import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
+import { generateTheory } from "@/ai/flows/generate-theory"
 import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
@@ -34,11 +36,14 @@ import { FlashcardSummary } from "@/components/FlashcardSummary"
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
 
+type ViewType = "flashcards" | "quiz" | "theory";
+
 interface LearnProps {
-	view: "flashcards" | "quiz"
+	view: ViewType
 	isLoading: boolean
 	flashcardSet: CardSet | null
 	quizSet: QuizSet | null
+	theorySet: TheorySet | null
 	quizState: QuizState | null
 	onGenerateNew: () => void
 	onQuizStateChange: (newState: QuizState) => void
@@ -46,7 +51,7 @@ interface LearnProps {
 	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
-	onViewChange: (view: "flashcards" | "quiz") => void
+	onViewChange: (view: ViewType) => void
 	language: string
 	topic: string
 	showQuizSummary: boolean
@@ -69,6 +74,7 @@ function Learn({
 	isLoading,
 	flashcardSet,
 	quizSet,
+	theorySet,
 	quizState,
 	onGenerateNew,
 	onQuizStateChange,
@@ -94,8 +100,10 @@ function Learn({
 	onApiKeyIndexChange,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
-		? flashcardSet?.cards.length ?? 0 
-		: quizSet?.questions.length ?? 0;
+		? flashcardSet?.cards.length ?? 0
+		: view === "quiz"
+		? quizSet?.questions.length ?? 0
+		: theorySet?.content ? 1 : 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
@@ -103,7 +111,9 @@ function Learn({
 
 	const totalItems = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0 
-		: quizSet?.questions.length ?? 0;
+		: view === "quiz"
+		? quizSet?.questions.length ?? 0
+		: theorySet?.content ? 1 : 0;
 
 	const hasContent = totalItems > 0;
 
@@ -160,6 +170,7 @@ function Learn({
     const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === 'flashcards';
 
 	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary;
+	const isNavDisabled = view === 'theory' || isSummaryActive;
 
 	const handleToggleUnderstood = () => {
 		if (!flashcardState || !flashcardSet) return;
@@ -214,7 +225,7 @@ function Learn({
 						topic={topic}
 						isCurrentUnderstood={isCurrentCardUnderstood}
 					/>
-				) : (
+				) : view === "quiz" ? (
 					<Quiz
 						quizSet={quizSet}
 						quizState={quizState}
@@ -227,6 +238,8 @@ function Learn({
 						apiKeyIndex={apiKeyIndex}
 						onApiKeyIndexChange={onApiKeyIndexChange}
 					/>
+				) : (
+					<Theory theorySet={theorySet} topic={topic} />
 				)}
 			</CardContent>
 
@@ -236,10 +249,11 @@ function Learn({
 					<div className="flex items-center justify-between w-full gap-2">
 						<Tabs
 							value={view}
-							onValueChange={(value) => onViewChange(value as "flashcards" | "quiz")}
+							onValueChange={(value) => onViewChange(value as ViewType)}
 							className="w-auto"
 						>
 							<TabsList>
+								<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
 								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
 								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
 							</TabsList>
@@ -248,7 +262,7 @@ function Learn({
 						<div className="flex items-center gap-2">
 							<Button
 								onClick={handlePrev}
-								disabled={currentIndex === 0 || !hasContent || isSummaryActive}
+								disabled={currentIndex === 0 || !hasContent || isNavDisabled}
 								variant="outline"
 								size="icon"
 								className="h-9 w-9"
@@ -257,12 +271,12 @@ function Learn({
 							</Button>
 
 							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : "Câu hỏi"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Tài liệu"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
 							</span>
 
 							<Button
 								onClick={handleNext}
-								disabled={!hasContent || currentIndex >= totalItems - 1 || isSummaryActive}
+								disabled={!hasContent || currentIndex >= totalItems - 1 || isNavDisabled}
 								variant="outline"
 								size="icon"
 								className="h-9 w-9"
@@ -339,15 +353,17 @@ export interface ComponentVisibility {
 }
 
 export default function Home() {
-	const [view, setView] = useState<"flashcards" | "quiz">("flashcards")
+	const [view, setView] = useState<ViewType>("theory")
 	const [topic, setTopic] = useState("")
 	const [language, setLanguage] = useState("English")
 	const [flashcardMax, setFlashcardMax] = useState(50)
 	const [quizMax, setQuizMax] = useState(50)
 	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
 	const [isQuizLoading, setIsQuizLoading] = useState(false)
+	const [isTheoryLoading, setIsTheoryLoading] = useState(false);
 	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
+	const [theorySet, setTheorySet] = useState<TheorySet | null>(null);
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
 	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(null)
 	const { toast } = useToast()
@@ -372,6 +388,7 @@ export default function Home() {
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
 	const isQuizGeneratingRef = useRef(false)
+	const isTheoryGeneratingRef = useRef(false);
 	const isMountedRef = useRef(true)
 
 	// Initialize once
@@ -399,7 +416,7 @@ export default function Home() {
 			currentTopic: string,
 			currentLanguage: string,
 			forceNew: boolean = false,
-			genType: "flashcards" | "quiz"
+			genType: "flashcards" | "quiz" | "theory"
 		) => {
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
@@ -420,17 +437,21 @@ export default function Home() {
 			}
 			
 			const isGeneratingRef = genType === 'flashcards' 
-				? isFlashcardGeneratingRef 
-				: isQuizGeneratingRef;
+				? isFlashcardGeneratingRef
+				: genType === 'quiz'
+				? isQuizGeneratingRef
+				: isTheoryGeneratingRef;
 
 			const setIsLoading = genType === 'flashcards' 
-				? setIsFlashcardLoading 
-				: setIsQuizLoading;
+				? setIsFlashcardLoading
+				: genType === 'quiz'
+				? setIsQuizLoading
+				: setIsTheoryLoading;
 
 			if (isGeneratingRef.current) {
 				toast({
 					title: "Đang tạo...",
-					description: `Một quá trình tạo ${genType === 'flashcards' ? 'flashcard' : 'quiz'} khác đang chạy.`,
+					description: `Một quá trình tạo ${genType} khác đang chạy.`,
 				})
 				return
 			}
@@ -571,6 +592,36 @@ export default function Home() {
 					}
 				}
 
+				if (genType === "theory") {
+					if (forceNew) {
+						setTheorySet(null);
+						await db.delete("data", "theory");
+					}
+	
+					const { result: newTheory, newApiKeyIndex } = await generateTheory({
+						apiKeys,
+						apiKeyIndex,
+						topic: currentTopic,
+						language: currentLanguage,
+					});
+	
+					await handleApiKeyIndexChange(newApiKeyIndex);
+	
+					if (newTheory?.theory && isMountedRef.current) {
+						const newTheorySet: TheorySet = {
+							id: 'idb-theory',
+							topic: currentTopic,
+							content: newTheory.theory,
+						};
+						setTheorySet(newTheorySet);
+						await db.put("data", {
+							id: "theory",
+							topic: currentTopic,
+							data: newTheorySet,
+						} as any);
+					}
+				}
+
 			} catch (error: any) {
 				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
 				if (error instanceof AIOperationError) {
@@ -631,6 +682,7 @@ export default function Home() {
 			flashcardStateRes,
 			quizDataRes,
 			quizStateRes,
+			theoryDataRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -646,11 +698,12 @@ export default function Home() {
 			db.get("data", "flashcardState"),
 			db.get("data", "quiz"),
 			db.get("data", "quizState"),
+			db.get("data", "theory"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
 		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0;
-		const savedView = (savedViewRes?.data as "flashcards" | "quiz") || "flashcards";
+		const savedView = (savedViewRes?.data as ViewType) || "theory";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
 		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
@@ -663,6 +716,7 @@ export default function Home() {
 		const flashcardStateData = flashcardStateRes as AppData;
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
+		const theoryData = theoryDataRes as LabeledData<TheorySet>;
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);
 		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
@@ -692,10 +746,14 @@ export default function Home() {
 		
 		let currentQuiz =
 			quizData && quizData.topic === savedTopic ? quizData.data : null;
+		
+		let currentTheory = 
+			theoryData && theoryData.topic === savedTopic ? theoryData.data : null;
 
 	
 		setFlashcardSet(currentFlashcards);
 		setQuizSet(currentQuiz);
+		setTheorySet(currentTheory);
 		
 		const currentFlashcardState = (flashcardData && flashcardData.topic === savedTopic && flashcardStateData)
 			? flashcardStateData.data as FlashcardState
@@ -865,7 +923,7 @@ export default function Home() {
 	)
 
 	const handleViewChange = useCallback(
-		async (newView: "flashcards" | "quiz") => {
+		async (newView: ViewType) => {
 			if (view === newView) return
 			setView(newView)
 			setShowQuizSummary(false); // Hide summary when switching views
@@ -937,8 +995,10 @@ export default function Home() {
 	}, [toast]);
 
 	const onGenerateNew = useCallback(() => {
-		handleGenerate(topic, language, false, view)
-	}, [handleGenerate, topic, language, view])
+		const isTheoryAndHasContent = view === 'theory' && theorySet?.content;
+		const forceNew = isTheoryAndHasContent || view !== 'theory';
+		handleGenerate(topic, language, forceNew, view)
+	}, [handleGenerate, topic, language, view, theorySet])
 
 	const handleFlashcardIndexChange = useCallback(
 		async (index: number) => {
@@ -949,20 +1009,28 @@ export default function Home() {
 		[] 
 	);
 
-	const isOverallLoading = isFlashcardLoading || isQuizLoading;
+	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
 	const currentCount =
 		view === "flashcards"
 			? flashcardSet?.cards.length ?? 0
-			: quizSet?.questions.length ?? 0;
-	const targetCount = view === "flashcards" ? flashcardMax : quizMax;
+			: view === 'quiz'
+			? quizSet?.questions.length ?? 0
+			: theorySet?.content ? 1 : 0;
+	
+	const targetCount = view === "flashcards" 
+		? flashcardMax 
+		: view === 'quiz'
+		? quizMax
+		: 1;
 
-	const canGenerateMore =
-		currentCount < targetCount && !isOverallLoading
+	const canGenerateMore = currentCount < targetCount && !isOverallLoading
 
 	const currentViewIsLoading =
 		view === "flashcards" 
-			? isFlashcardLoading 
-			: isQuizLoading;
+			? isFlashcardLoading
+			: view === 'quiz'
+			? isQuizLoading
+			: isTheoryLoading;
 	
 
 	if (!isMounted) {
@@ -1026,6 +1094,7 @@ export default function Home() {
 							isLoading={currentViewIsLoading}
 							flashcardSet={flashcardSet}
 							quizSet={quizSet}
+							theorySet={theorySet}
 							quizState={quizState}
 							onGenerateNew={onGenerateNew}
 							onQuizStateChange={handleQuizStateChange}

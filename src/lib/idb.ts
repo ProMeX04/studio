@@ -10,6 +10,8 @@ export type DataKey =
   | 'flashcardState'
   | 'quiz'
   | 'quizState'
+  | 'theory'
+  | 'theoryState'
   | 'topic'
   | 'language'
   | 'view'

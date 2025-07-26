@@ -23,3 +23,8 @@ export interface QuizState {
 export interface FlashcardState {
   understoodIndices: number[];
 }
+
+export interface TheoryState {
+  // Currently no state needed, but can be extended
+  // e.g. { scrollPosition: number }
+}
