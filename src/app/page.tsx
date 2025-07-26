@@ -1013,12 +1013,13 @@ export default function Home() {
 	const handleApiKeysChange = useCallback(
 		async (newApiKeys: string[]) => {
 			setApiKeys(newApiKeys);
-			setApiKeyIndex(0); // Reset index when keys change
+			const currentKeyIndex = apiKeyIndex >= newApiKeys.length ? 0 : apiKeyIndex;
+			setApiKeyIndex(currentKeyIndex);
 			const db = await getDb();
 			await db.put("data", { id: "apiKeys", data: newApiKeys });
-			await db.put("data", { id: "apiKeyIndex", data: 0 });
+			await db.put("data", { id: "apiKeyIndex", data: currentKeyIndex });
 		},
-		[]
+		[apiKeyIndex]
 	);
 
 	const handleUploadedBackgroundsChange = useCallback(
@@ -1250,8 +1251,8 @@ export default function Home() {
 			{/* Left Column */}
 			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
 				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
-					{visibility.greeting && <Greeting />}
 					<Settings {...globalSettingsProps} scope="global" />
+					{visibility.greeting && <Greeting />}
 				</div>
 
 				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto">
