@@ -117,8 +117,8 @@ const languages = [
 ]
 
 const models = [
-    { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh)" },
-    { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh)" },
+    { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh, mặc định)" },
+    { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ hơn)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
