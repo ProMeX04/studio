@@ -11,7 +11,9 @@ import {
 	AlertTriangle,
 	Brush,
 	BookOpen,
-	KeyRound
+	KeyRound,
+	Plus,
+	X
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -50,7 +52,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
-import { Textarea } from "./ui/textarea"
+import { useToast } from "@/hooks/use-toast"
 
 interface CommonSettingsProps {
 	scope: "global" | "learn";
@@ -102,6 +104,7 @@ const MAX_UPLOADED_IMAGES = 6
 export function Settings(props: SettingsProps) {
 	const { scope } = props;
 	const isLearnScope = scope === "learn";
+	const { toast } = useToast();
 
 	const [isOpen, setIsOpen] = useState(false)
 	
@@ -112,7 +115,8 @@ export function Settings(props: SettingsProps) {
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
 	
 	// Local state for global settings
-	const [apiKeys, setApiKeys] = useState(!isLearnScope ? (props as GlobalSettingsProps).apiKeys.join('\n') : "")
+	const [localApiKeys, setLocalApiKeys] = useState<string[]>(!isLearnScope ? (props as GlobalSettingsProps).apiKeys : [])
+	const [newApiKey, setNewApiKey] = useState("");
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
@@ -128,7 +132,7 @@ export function Settings(props: SettingsProps) {
 			setQuizMax(learnProps.quizMax)
 		} else {
 			const globalProps = props as GlobalSettingsProps;
-			setApiKeys(globalProps.apiKeys.join('\n'));
+			setLocalApiKeys(globalProps.apiKeys);
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -144,11 +148,23 @@ export function Settings(props: SettingsProps) {
 		}
 	}
 
+	const handleAddNewApiKey = () => {
+        if (newApiKey.trim()) {
+            if (!localApiKeys.includes(newApiKey.trim())) {
+                setLocalApiKeys([...localApiKeys, newApiKey.trim()]);
+            }
+            setNewApiKey("");
+        }
+    };
+
+    const handleRemoveApiKey = (keyToRemove: string) => {
+        setLocalApiKeys(localApiKeys.filter(key => key !== keyToRemove));
+    };
+
 	const handleApiKeysSave = () => {
 		if (!isLearnScope) {
 			const globalProps = props as GlobalSettingsProps;
-			const keysArray = apiKeys.split('\n').map(k => k.trim()).filter(Boolean);
-			globalProps.onApiKeysChange(keysArray);
+			globalProps.onApiKeysChange(localApiKeys);
 		}
 	};
 
@@ -174,9 +190,13 @@ export function Settings(props: SettingsProps) {
 			const globalProps = props as GlobalSettingsProps;
 			const file = e.target.files?.[0]
 			if (file) {
-				const MAX_FILE_SIZE = 10 * 1024 * 1024
+				const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 				if (file.size > MAX_FILE_SIZE) {
-					alert("File quá lớn! Vui lòng chọn ảnh nhỏ hơn 10MB.")
+					toast({
+						title: "Lỗi tải lên",
+						description: "File quá lớn! Vui lòng chọn ảnh nhỏ hơn 10MB.",
+						variant: "destructive"
+					})
 					return
 				}
 				const reader = new FileReader()
@@ -339,18 +359,48 @@ export function Settings(props: SettingsProps) {
 					<div className="space-y-2">
 						<Label htmlFor="apiKeys" className="font-medium text-foreground flex items-center gap-2">
 							<KeyRound className="w-4 h-4" />
-							<span>Gemini API Keys</span>
+							<span>Quản lý Gemini API Keys</span>
 						</Label>
-						<div className="flex flex-col gap-2">
-							<Textarea
-								id="apiKeys"
-								value={apiKeys}
-								onChange={(e) => setApiKeys(e.target.value)}
-								placeholder="Dán mỗi API key trên một dòng"
-								rows={5}
+
+						<div className="flex gap-2">
+							<Input
+								id="newApiKey"
+								value={newApiKey}
+								onChange={(e) => setNewApiKey(e.target.value)}
+								placeholder="Dán API key mới vào đây"
+								onKeyDown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										handleAddNewApiKey();
+									}
+								}}
 							/>
-							<Button onClick={handleApiKeysSave} className="self-end">Lưu Keys</Button>
+							<Button onClick={handleAddNewApiKey} variant="outline" size="icon">
+								<Plus className="w-4 h-4" />
+							</Button>
 						</div>
+
+						<div className="space-y-2 mt-2 rounded-md border max-h-48 overflow-y-auto p-2">
+							{localApiKeys.length > 0 ? (
+								localApiKeys.map((key, index) => (
+									<div key={index} className="flex items-center justify-between gap-2 bg-secondary p-2 rounded-md">
+										<span className="truncate text-sm text-secondary-foreground font-mono">
+											...{key.slice(-8)}
+										</span>
+										<Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRemoveApiKey(key)}>
+											<X className="w-4 h-4" />
+										</Button>
+									</div>
+								))
+							) : (
+								<p className="text-xs text-muted-foreground text-center p-2">Chưa có API key nào.</p>
+							)}
+						</div>
+						
+						<div className="flex justify-end pt-2">
+							<Button onClick={handleApiKeysSave}>Lưu danh sách Keys</Button>
+						</div>
+						
 						<p className="text-xs text-muted-foreground pl-1">
 							Các khóa API được lưu trữ an toàn trong trình duyệt và được sử dụng luân phiên.
 						</p>
@@ -498,9 +548,13 @@ export function Settings(props: SettingsProps) {
 		<Sheet
 			open={isOpen}
 			onOpenChange={(open) => {
-				if (!open && isLearnScope) {
-					// Save settings when closing the sheet only for learn scope
-					handleLocalSettingsSave()
+				if (!open) {
+					// Save settings when closing the sheet
+					if(isLearnScope) {
+						handleLocalSettingsSave();
+					} else {
+						handleApiKeysSave();
+					}
 				}
 				setIsOpen(open)
 			}}
@@ -519,7 +573,7 @@ export function Settings(props: SettingsProps) {
 					<SheetTitle>
 						<div className="flex items-center gap-2">
 							{isLearnScope ? <BookOpen /> : <Brush />}
-							<span>{isLearnScope ? "Cài đặt học tập" : "Cài đặt giao diện"}</span>
+							<span>{isLearnScope ? "Cài đặt học tập" : "Cài đặt chung"}</span>
 						</div>
 					</SheetTitle>
 				</SheetHeader>
@@ -573,3 +627,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
