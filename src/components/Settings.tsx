@@ -16,6 +16,7 @@ import {
 	X,
 	Loader,
 	ExternalLink,
+	HelpCircle,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -55,6 +56,8 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion"
+
 
 type ViewType = "flashcards" | "quiz" | "theory";
 
@@ -386,26 +389,42 @@ export function Settings(props: SettingsProps) {
 			<>
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="apiKeys" className="font-medium text-foreground flex items-center gap-2">
+						<Label className="font-medium text-foreground flex items-center gap-2">
 							<KeyRound className="w-4 h-4" />
 							<span>Quản lý Gemini API Keys</span>
 						</Label>
-						<p className="text-sm text-muted-foreground">
-							Ứng dụng này sử dụng Google Gemini để tạo nội dung. Bạn cần cung cấp API Key (miễn phí) của riêng bạn.
-							<a
-								href="https://aistudio.google.com/app/apikey"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-primary hover:underline inline-flex items-center gap-1"
-							>
-								Nhận API Key miễn phí tại đây <ExternalLink className="w-3 h-3" />
-							</a>
-						</p>
-						<p className="text-sm text-muted-foreground">
-							Mẹo: Thêm nhiều API Key sẽ giúp tăng tốc độ tạo nội dung do vượt qua giới hạn sử dụng của Google.
-						</p>
-
-						<div className="flex gap-2">
+						<Accordion type="single" collapsible className="w-full">
+							<AccordionItem value="item-1">
+								<AccordionTrigger>
+									<span className="flex items-center gap-2 text-sm text-muted-foreground">
+										<HelpCircle className="w-4 h-4" />
+										Tại sao cần API Key và lấy ở đâu?
+									</span>
+								</AccordionTrigger>
+								<AccordionContent>
+									<div className="text-sm text-muted-foreground space-y-2">
+										<p>
+											Ứng dụng này sử dụng Google Gemini để tạo nội dung học tập. Bạn cần cung cấp API Key (miễn phí) của riêng bạn để sử dụng các tính năng AI.
+										</p>
+										<p>
+											Mẹo: Để đảm bảo ứng dụng hoạt động ổn định và nhanh chóng, bạn nên có từ 3 API key trở lên. Google giới hạn số lần sử dụng trong một khoảng thời gian nhất định, việc có nhiều key sẽ giúp ứng dụng tự động luân chuyển và tránh bị gián đoạn.
+										</p>
+										<Button asChild variant="link" className="p-0 h-auto">
+											<a
+												href="https://aistudio.google.com/app/apikey"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-flex items-center gap-1"
+											>
+												Nhận API Key miễn phí tại đây <ExternalLink className="w-3 h-3" />
+											</a>
+										</Button>
+									</div>
+								</AccordionContent>
+							</AccordionItem>
+						</Accordion>
+						
+						<div className="flex gap-2 pt-2">
 							<Input
 								id="newApiKey"
 								value={newApiKey}
@@ -439,10 +458,6 @@ export function Settings(props: SettingsProps) {
 								<p className="text-xs text-muted-foreground text-center p-2">Chưa có API key nào.</p>
 							)}
 						</div>
-						
-						<p className="text-xs text-muted-foreground pl-1">
-							Các khóa API được lưu trữ an toàn trong trình duyệt và được sử dụng luân phiên.
-						</p>
 					</div>
 				</div>
 				<Separator />
