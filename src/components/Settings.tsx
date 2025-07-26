@@ -117,8 +117,9 @@ const languages = [
 ]
 
 const models = [
-    { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh, mặc định)" },
-    { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ hơn)" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (Rất Nhanh, kém chính xác)" },
+	{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Nhanh, Ổn định)" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Mạnh, Chậm, Giới hạn)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
