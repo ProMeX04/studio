@@ -406,15 +406,17 @@ export function Settings(props: SettingsProps) {
 							{learnProps.isFlashcardLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
-					{scope === "learn" && <Input
-						id="flashcardMax"
-						type="number"
-						value={flashcardMax}
-						onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
-						className="mt-2"
-						placeholder="Số lượng tối đa, ví dụ: 50"
-						{...numericInputProps}
-					/>}
+					{scope === "learn" && <div className="space-y-2">
+						<Label htmlFor="flashcardMax">Số lượng tối đa</Label>
+						<Input
+							id="flashcardMax"
+							type="number"
+							value={flashcardMax}
+							onChange={(e) => setFlashcardMax(parseInt(e.target.value) || 0)}
+							placeholder="ví dụ: 50"
+							{...numericInputProps}
+						/>
+					</div>}
 				</div>
 
 				{/* Quiz Progress */}
@@ -429,15 +431,17 @@ export function Settings(props: SettingsProps) {
 							{learnProps.isQuizLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
-					{scope === "learn" && <Input
-						id="quizMax"
-						type="number"
-						value={quizMax}
-						onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
-						className="mt-2"
-						placeholder="Số lượng tối đa, ví dụ: 50"
-						{...numericInputProps}
-					/>}
+					{scope === "learn" && <div className="space-y-2">
+						<Label htmlFor="quizMax">Số lượng tối đa</Label>
+						<Input
+							id="quizMax"
+							type="number"
+							value={quizMax}
+							onChange={(e) => setQuizMax(parseInt(e.target.value) || 0)}
+							placeholder="ví dụ: 50"
+							{...numericInputProps}
+						/>
+					</div>}
 				</div>
 			</div>
 		)
@@ -821,3 +825,6 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
+
