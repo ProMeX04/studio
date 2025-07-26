@@ -71,11 +71,9 @@ interface GlobalSettingsProps {
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
-	onApiKeysChange: (apiKeys: string[]) => void;
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
 	currentBackgroundImage: string | null;
-	apiKeys: string[];
 }
 
 interface LearnSettingsProps {
@@ -89,6 +87,7 @@ interface LearnSettingsProps {
 	}) => void
 	onGenerateType: (type: ViewType) => void;
 	onClearLearningData: () => void;
+	onApiKeysChange: (apiKeys: string[]) => void;
 	currentView: ViewType
 	topic: string
 	language: string
@@ -102,6 +101,7 @@ interface LearnSettingsProps {
 	isTheoryLoading: boolean;
 	isFlashcardLoading: boolean;
 	isQuizLoading: boolean;
+	apiKeys: string[];
 }
 
 type SettingsProps = CommonSettingsProps & (GlobalSettingsProps | LearnSettingsProps);
@@ -117,9 +117,8 @@ const languages = [
 ]
 
 const models = [
-    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (Rất Nhanh, kém chính xác)" },
-	{ value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Nhanh, Ổn định)" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Mạnh, Chậm, Giới hạn)" },
+    { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash (Nhanh, mặc định)" },
+    { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ hơn)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
@@ -138,8 +137,8 @@ export function Settings(props: SettingsProps) {
 	const [flashcardMax, setFlashcardMax] = useState(isLearnScope ? (props as LearnSettingsProps).flashcardMax : 50)
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
 	
-	// Local state for global settings
-	const [localApiKeys, setLocalApiKeys] = useState<string[]>(!isLearnScope ? (props as GlobalSettingsProps).apiKeys : [])
+	// Local state for API keys (now managed in learn settings)
+	const [localApiKeys, setLocalApiKeys] = useState<string[]>(isLearnScope ? (props as LearnSettingsProps).apiKeys : [])
 	const [newApiKey, setNewApiKey] = useState("");
 
 
@@ -155,9 +154,7 @@ export function Settings(props: SettingsProps) {
 			setModel(learnProps.model)
 			setFlashcardMax(learnProps.flashcardMax)
 			setQuizMax(learnProps.quizMax)
-		} else {
-			const globalProps = props as GlobalSettingsProps;
-			setLocalApiKeys(globalProps.apiKeys);
+			setLocalApiKeys(learnProps.apiKeys);
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -175,22 +172,22 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleAddNewApiKey = () => {
-		if (isLearnScope) return;
+		if (!isLearnScope) return;
 		if (newApiKey.trim()) {
 			if (!localApiKeys.includes(newApiKey.trim())) {
 				const newKeys = [...localApiKeys, newApiKey.trim()];
 				setLocalApiKeys(newKeys);
-				(props as GlobalSettingsProps).onApiKeysChange(newKeys);
+				(props as LearnSettingsProps).onApiKeysChange(newKeys);
 			}
 			setNewApiKey("");
 		}
     };
 
     const handleRemoveApiKey = (keyToRemove: string) => {
-		if (isLearnScope) return;
+		if (!isLearnScope) return;
         const newKeys = localApiKeys.filter(key => key !== keyToRemove);
 		setLocalApiKeys(newKeys);
-		(props as GlobalSettingsProps).onApiKeysChange(newKeys);
+		(props as LearnSettingsProps).onApiKeysChange(newKeys);
     };
 
 	const handleGenerateType = (type: ViewType) => {
@@ -259,6 +256,80 @@ export function Settings(props: SettingsProps) {
 
 		return (
 			<div className="space-y-4">
+				<div className="space-y-2">
+					<Label className="font-medium text-foreground flex items-center gap-2">
+						<KeyRound className="w-4 h-4" />
+						<span>Quản lý Gemini API Keys</span>
+					</Label>
+					<Accordion type="single" collapsible className="w-full">
+						<AccordionItem value="item-1">
+							<AccordionTrigger>
+								<span className="flex items-center gap-2 text-sm text-muted-foreground">
+									<HelpCircle className="w-4 h-4" />
+									Tại sao cần API Key và lấy ở đâu?
+								</span>
+							</AccordionTrigger>
+							<AccordionContent>
+								<div className="text-sm text-muted-foreground space-y-2">
+									<p>
+										Ứng dụng này sử dụng Google Gemini để tạo nội dung học tập. Bạn cần cung cấp API Key (miễn phí) của riêng bạn để sử dụng các tính năng AI.
+									</p>
+									<p>
+										Mẹo: Để đảm bảo ứng dụng hoạt động ổn định và nhanh chóng, bạn nên có từ 3 API key trở lên. Google giới hạn số lần sử dụng trong một khoảng thời gian nhất định, việc có nhiều key sẽ giúp ứng dụng tự động luân chuyển và tránh bị gián đoạn.
+									</p>
+									<Button asChild variant="link" className="p-0 h-auto">
+										<a
+											href="https://aistudio.google.com/app/apikey"
+											target="_blank"
+											rel="noopener noreferrer"
+											className="inline-flex items-center gap-1"
+										>
+											Nhận API Key miễn phí tại đây <ExternalLink className="w-3 h-3" />
+										</a>
+									</Button>
+								</div>
+							</AccordionContent>
+						</AccordionItem>
+					</Accordion>
+					
+					<div className="flex gap-2 pt-2">
+						<Input
+							id="newApiKey"
+							value={newApiKey}
+							onChange={(e) => setNewApiKey(e.target.value)}
+							placeholder="Dán API key mới vào đây"
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') {
+									e.preventDefault();
+									handleAddNewApiKey();
+								}
+							}}
+						/>
+						<Button onClick={handleAddNewApiKey} variant="outline" size="icon">
+							<Plus className="w-4 h-4" />
+						</Button>
+					</div>
+
+					<div className="space-y-2 mt-2 rounded-md border max-h-48 overflow-y-auto p-2">
+						{localApiKeys.length > 0 ? (
+							localApiKeys.map((key, index) => (
+								<div key={index} className="flex items-center justify-between gap-2 bg-secondary p-2 rounded-md">
+									<span className="truncate text-sm text-secondary-foreground font-mono">
+										...{key.slice(-8)}
+									</span>
+									<Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRemoveApiKey(key)}>
+										<X className="w-4 h-4" />
+									</Button>
+								</div>
+							))
+						) : (
+							<p className="text-xs text-muted-foreground text-center p-2">Chưa có API key nào.</p>
+						)}
+					</div>
+				</div>
+
+				<Separator />
+
 				<div className="space-y-2">
 					<Label htmlFor="topic">Chủ đề</Label>
 					<Input
@@ -407,80 +478,6 @@ export function Settings(props: SettingsProps) {
 		const globalProps = props as GlobalSettingsProps;
 		return (
 			<>
-				<div className="space-y-4">
-					<div className="space-y-2">
-						<Label className="font-medium text-foreground flex items-center gap-2">
-							<KeyRound className="w-4 h-4" />
-							<span>Quản lý Gemini API Keys</span>
-						</Label>
-						<Accordion type="single" collapsible className="w-full">
-							<AccordionItem value="item-1">
-								<AccordionTrigger>
-									<span className="flex items-center gap-2 text-sm text-muted-foreground">
-										<HelpCircle className="w-4 h-4" />
-										Tại sao cần API Key và lấy ở đâu?
-									</span>
-								</AccordionTrigger>
-								<AccordionContent>
-									<div className="text-sm text-muted-foreground space-y-2">
-										<p>
-											Ứng dụng này sử dụng Google Gemini để tạo nội dung học tập. Bạn cần cung cấp API Key (miễn phí) của riêng bạn để sử dụng các tính năng AI.
-										</p>
-										<p>
-											Mẹo: Để đảm bảo ứng dụng hoạt động ổn định và nhanh chóng, bạn nên có từ 3 API key trở lên. Google giới hạn số lần sử dụng trong một khoảng thời gian nhất định, việc có nhiều key sẽ giúp ứng dụng tự động luân chuyển và tránh bị gián đoạn.
-										</p>
-										<Button asChild variant="link" className="p-0 h-auto">
-											<a
-												href="https://aistudio.google.com/app/apikey"
-												target="_blank"
-												rel="noopener noreferrer"
-												className="inline-flex items-center gap-1"
-											>
-												Nhận API Key miễn phí tại đây <ExternalLink className="w-3 h-3" />
-											</a>
-										</Button>
-									</div>
-								</AccordionContent>
-							</AccordionItem>
-						</Accordion>
-						
-						<div className="flex gap-2 pt-2">
-							<Input
-								id="newApiKey"
-								value={newApiKey}
-								onChange={(e) => setNewApiKey(e.target.value)}
-								placeholder="Dán API key mới vào đây"
-								onKeyDown={(e) => {
-									if (e.key === 'Enter') {
-										e.preventDefault();
-										handleAddNewApiKey();
-									}
-								}}
-							/>
-							<Button onClick={handleAddNewApiKey} variant="outline" size="icon">
-								<Plus className="w-4 h-4" />
-							</Button>
-						</div>
-
-						<div className="space-y-2 mt-2 rounded-md border max-h-48 overflow-y-auto p-2">
-							{localApiKeys.length > 0 ? (
-								localApiKeys.map((key, index) => (
-									<div key={index} className="flex items-center justify-between gap-2 bg-secondary p-2 rounded-md">
-										<span className="truncate text-sm text-secondary-foreground font-mono">
-											...{key.slice(-8)}
-										</span>
-										<Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRemoveApiKey(key)}>
-											<X className="w-4 h-4" />
-										</Button>
-									</div>
-								))
-							) : (
-								<p className="text-xs text-muted-foreground text-center p-2">Chưa có API key nào.</p>
-							)}
-						</div>
-					</div>
-				</div>
-				<Separator />
 				<div className="space-y-4">
 					<Label className="font-medium text-foreground">
 						Hình nền

@@ -50,7 +50,7 @@ const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
 					Để tạo nội dung học tập, bạn cần cung cấp một API Key (miễn phí) từ Google AI Studio.
 				</p>
 				<div className="flex flex-col sm:flex-row gap-4 justify-center">
-					<Settings {...settingsProps} scope="global" />
+					<Settings {...settingsProps} scope="learn" />
 					<Button asChild variant="secondary">
 						<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
 							Lấy API Key <ExternalLink className="ml-2 h-4 w-4" />
@@ -99,7 +99,6 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
-	globalSettingsProps: any;
 }
 
 function Learn({
@@ -138,7 +137,6 @@ function Learn({
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
-	globalSettingsProps,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -261,7 +259,7 @@ function Learn({
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
 	if (!apiKeys || apiKeys.length === 0) {
-		return <ApiKeyGuide settingsProps={globalSettingsProps} />;
+		return <ApiKeyGuide settingsProps={settingsProps} />;
 	}
 
 	return (
@@ -941,7 +939,7 @@ export default function Home() {
 			keysToDelete.push(
 				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
-				'flashcardMax', 'quizMax'
+				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex'
 			);
 		}
 	
@@ -1253,6 +1251,8 @@ export default function Home() {
 		isTheoryLoading,
 		isFlashcardLoading,
 		isQuizLoading,
+		onApiKeysChange: handleApiKeysChange,
+		apiKeys: apiKeys,
 	};
 
 	const globalSettingsProps = {
@@ -1260,11 +1260,9 @@ export default function Home() {
 		onVisibilityChange: handleVisibilityChange,
 		onBackgroundChange: handleBackgroundChange,
 		onUploadedBackgroundsChange: handleUploadedBackgroundsChange,
-		onApiKeysChange: handleApiKeysChange,
 		visibility: visibility,
 		uploadedBackgrounds: uploadedBackgrounds,
 		currentBackgroundImage: backgroundImage,
-		apiKeys: apiKeys,
 	}
 
 	return (
@@ -1333,7 +1331,6 @@ export default function Home() {
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
-							globalSettingsProps={globalSettingsProps}
 						/>
 					</div>
 				</div>
