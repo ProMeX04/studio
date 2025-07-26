@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, Plus, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -714,25 +714,15 @@ export default function Home() {
 			} catch (error: any) {
 				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
 				if (error instanceof AIOperationError) {
-					if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
-						toast({
-							title: "Lỗi API Key",
-							description: error.code === 'ALL_KEYS_FAILED' 
-								? "Tất cả các API key của bạn đều không thành công. Vui lòng kiểm tra lại."
-								: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
-							variant: "destructive",
-						});
-					} else {
-						toast({
-							title: "Lỗi tạo nội dung",
-							description: `Không thể tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
-							variant: "destructive",
-						})
-					}
-				} else {
 					toast({
 						title: "Lỗi tạo nội dung",
-						description: `Không thể tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
+						description: error.message,
+						variant: "destructive",
+					});
+				} else {
+					toast({
+						title: "Lỗi không xác định",
+						description: `Đã xảy ra lỗi khi tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
 						variant: "destructive",
 					})
 				}

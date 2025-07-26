@@ -233,25 +233,15 @@ export function Quiz({
 			} catch (error: any) {
 				console.error("Failed to get explanation", error);
 				if (error instanceof AIOperationError) {
-					if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
-						toast({
-							title: "Lỗi API Key",
-							description: error.code === 'ALL_KEYS_FAILED' 
-								? "Tất cả các API key của bạn đều không thành công. Vui lòng kiểm tra lại."
-								: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
-							variant: "destructive",
-						});
-					} else {
-						toast({
-							title: "Lỗi",
-							description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
-							variant: "destructive",
-						});
-					}
+					toast({
+						title: "Lỗi lấy giải thích",
+						description: error.message,
+						variant: "destructive",
+					});
 				} else {
 					toast({
-						title: "Lỗi",
-						description: "Không thể lấy giải thích chi tiết. Vui lòng thử lại.",
+						title: "Lỗi không xác định",
+						description: `Không thể lấy giải thích chi tiết: ${error.message}`,
 						variant: "destructive",
 					});
 				}
