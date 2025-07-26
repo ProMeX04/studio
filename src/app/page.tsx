@@ -18,7 +18,7 @@ import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
 	getDb,
@@ -34,67 +34,113 @@ import { AIOperationError } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
+import { Input } from "@/components/ui/input"
 
 const FLASHCARD_BATCH_SIZE = 10;
 const QUIZ_BATCH_SIZE = 5;
 
 type ViewType = "flashcards" | "quiz" | "theory";
 
-const ApiKeyGuide = ({ settingsProps }: { settingsProps: any; }) => (
-	<div className="w-full h-full flex flex-col items-center justify-center p-4">
-		<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm">
-			<CardHeader className="p-0 mb-6">
-				<div className="flex items-center gap-4 mb-2">
-					<Sparkles className="w-10 h-10 text-primary" />
-					<CardTitle className="text-3xl font-bold">Chào mừng bạn đến với AI New Tab!</CardTitle>
-				</div>
-				<CardDescription className="text-lg">
-					Một trang tab mới được hỗ trợ bởi AI, giúp bạn học bất cứ chủ đề nào bạn muốn.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="p-0">
-				<h3 className="text-xl font-semibold mb-4">Các bước để bắt đầu</h3>
-				<ol className="list-decimal list-inside space-y-6">
-					<li className="space-y-2">
-						<div className="flex items-center gap-2">
-							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
-							<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
+const ApiKeyGuide = ({ 
+	settingsProps, 
+	onTopicSet, 
+	initialTopic 
+}: { 
+	settingsProps: any; 
+	onTopicSet: (topic: string) => void;
+	initialTopic: string;
+}) => {
+	const [onboardingStep, setOnboardingStep] = useState(1);
+	const [topic, setTopic] = useState(initialTopic);
+
+	const handleTopicSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (topic.trim()) {
+			onTopicSet(topic.trim());
+			setOnboardingStep(2);
+		}
+	};
+
+	if (onboardingStep === 1) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm">
+					<CardHeader className="p-0 mb-6">
+						<div className="flex items-center justify-center gap-4 mb-4">
+							<Sparkles className="w-12 h-12 text-primary" />
 						</div>
-						<p className="ml-10 text-muted-foreground">
-							Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
-						</p>
-						<Button asChild variant="secondary" className="ml-10">
-							<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-								Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
-							</a>
-						</Button>
-					</li>
-					<li className="space-y-2">
-						<div className="flex items-center gap-2">
-							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
-							<span className="font-semibold">Thêm API Key vào ứng dụng</span>
-						</div>
-						<p className="ml-10 text-muted-foreground">
-							Mở phần cài đặt học tập và dán API Key bạn vừa tạo vào. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
-						</p>
-						<div className="ml-10">
-							<Settings {...settingsProps} scope="learn" />
-						</div>
-					</li>
-					<li className="space-y-2">
-						<div className="flex items-center gap-2">
-							<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">3</div>
-							<span className="font-semibold">Nhập chủ đề và bắt đầu học</span>
-						</div>
-						<p className="ml-10 text-muted-foreground">
-							Nhập một chủ đề bạn muốn học (ví dụ: "Lịch sử La Mã"), sau đó tạo lý thuyết, flashcard hoặc bài trắc nghiệm.
-						</p>
-					</li>
-				</ol>
-			</CardContent>
-		</Card>
-	</div>
-);
+						<CardTitle className="text-3xl font-bold">Chào mừng bạn đến với AI New Tab!</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							Một trang tab mới được hỗ trợ bởi AI, giúp bạn học bất cứ chủ đề nào bạn muốn.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0">
+						<h3 className="text-xl font-semibold mb-4">Để bắt đầu, bạn muốn học về chủ đề gì?</h3>
+						<form onSubmit={handleTopicSubmit} className="flex items-center gap-2">
+							<Input
+								value={topic}
+								onChange={(e) => setTopic(e.target.value)}
+								placeholder="ví dụ: Lịch sử La Mã, Lập trình React..."
+								className="text-base h-12"
+								autoFocus
+							/>
+							<Button type="submit" className="h-12">Tiếp tục</Button>
+						</form>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	return (
+		<div className="w-full h-full flex flex-col items-center justify-center p-4">
+			<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm">
+				<CardHeader className="p-0 mb-6">
+					<Button variant="ghost" className="absolute top-4 left-4" onClick={() => setOnboardingStep(1)}>
+						<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
+					</Button>
+					<div className="flex items-center justify-center gap-4 mb-4 pt-8">
+						<KeyRound className="w-12 h-12 text-primary" />
+					</div>
+					<CardTitle className="text-3xl font-bold text-center">Tuyệt vời! Chủ đề của bạn là "{topic}"</CardTitle>
+					<CardDescription className="text-lg mt-2 text-center">
+						Để tạo nội dung, bạn cần có API Key (miễn phí) từ Google.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="p-0">
+					<ol className="list-decimal list-inside space-y-6">
+						<li className="space-y-2">
+							<div className="flex items-center gap-2">
+								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">1</div>
+								<span className="font-semibold">Lấy API Key miễn phí từ Google</span>
+							</div>
+							<p className="ml-10 text-muted-foreground">
+								Ứng dụng này sử dụng Gemini AI để tạo nội dung. Bạn cần có API Key để bắt đầu.
+							</p>
+							<Button asChild variant="secondary" className="ml-10">
+								<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+									Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
+								</a>
+							</Button>
+						</li>
+						<li className="space-y-2">
+							<div className="flex items-center gap-2">
+								<div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold">2</div>
+								<span className="font-semibold">Thêm API Key vào ứng dụng</span>
+							</div>
+							<p className="ml-10 text-muted-foreground">
+								Mở phần cài đặt học tập và dán API Key bạn vừa tạo vào. Bạn nên thêm ít nhất 3 key để có trải nghiệm tốt nhất.
+							</p>
+							<div className="ml-10">
+								<Settings {...settingsProps} scope="learn" />
+							</div>
+						</li>
+					</ol>
+				</CardContent>
+			</Card>
+		</div>
+	);
+};
 
 
 interface LearnProps {
@@ -133,6 +179,7 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
+	onTopicSet: (topic: string) => void;
 }
 
 function Learn({
@@ -171,6 +218,7 @@ function Learn({
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
+	onTopicSet,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -293,7 +341,7 @@ function Learn({
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
 	if (!apiKeys || apiKeys.length === 0) {
-		return <ApiKeyGuide settingsProps={settingsProps} />;
+		return <ApiKeyGuide settingsProps={settingsProps} onTopicSet={onTopicSet} initialTopic={topic} />;
 	}
 
 	return (
@@ -1238,6 +1286,16 @@ export default function Home() {
 		[] 
 	);
 
+	const handleTopicSetOnboarding = useCallback(
+		async (newTopic: string) => {
+			setTopic(newTopic);
+			const db = await getDb();
+			await db.put("data", { id: "topic", data: newTopic });
+			await handleClearAllData(true);
+		},
+		[handleClearAllData]
+	);
+
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
 	const currentCount =
 		view === "flashcards"
@@ -1365,6 +1423,7 @@ export default function Home() {
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
+							onTopicSet={handleTopicSetOnboarding}
 						/>
 					</div>
 				</div>
