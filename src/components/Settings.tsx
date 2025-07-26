@@ -50,6 +50,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
+import { Textarea } from "./ui/textarea"
 
 interface CommonSettingsProps {
 	scope: "global" | "learn";
@@ -61,11 +62,11 @@ interface GlobalSettingsProps {
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
-	onApiKeyChange: (apiKey: string) => void;
+	onApiKeysChange: (apiKeys: string[]) => void;
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
 	currentBackgroundImage: string | null;
-	apiKey: string;
+	apiKeys: string[];
 }
 
 interface LearnSettingsProps {
@@ -111,7 +112,7 @@ export function Settings(props: SettingsProps) {
 	const [quizMax, setQuizMax] = useState(isLearnScope ? (props as LearnSettingsProps).quizMax : 50)
 	
 	// Local state for global settings
-	const [apiKey, setApiKey] = useState(!isLearnScope ? (props as GlobalSettingsProps).apiKey : "")
+	const [apiKeys, setApiKeys] = useState(!isLearnScope ? (props as GlobalSettingsProps).apiKeys.join('\n') : "")
 
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
@@ -127,7 +128,7 @@ export function Settings(props: SettingsProps) {
 			setQuizMax(learnProps.quizMax)
 		} else {
 			const globalProps = props as GlobalSettingsProps;
-			setApiKey(globalProps.apiKey);
+			setApiKeys(globalProps.apiKeys.join('\n'));
 		}
 	}, [isOpen, props, isLearnScope])
 
@@ -143,10 +144,11 @@ export function Settings(props: SettingsProps) {
 		}
 	}
 
-	const handleApiKeySave = () => {
+	const handleApiKeysSave = () => {
 		if (!isLearnScope) {
 			const globalProps = props as GlobalSettingsProps;
-			globalProps.onApiKeyChange(apiKey);
+			const keysArray = apiKeys.split('\n').map(k => k.trim()).filter(Boolean);
+			globalProps.onApiKeysChange(keysArray);
 		}
 	};
 
@@ -335,22 +337,22 @@ export function Settings(props: SettingsProps) {
 			<>
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="apiKey" className="font-medium text-foreground flex items-center gap-2">
+						<Label htmlFor="apiKeys" className="font-medium text-foreground flex items-center gap-2">
 							<KeyRound className="w-4 h-4" />
-							<span>Gemini API Key</span>
+							<span>Gemini API Keys</span>
 						</Label>
-						<div className="flex items-center gap-2">
-							<Input
-								id="apiKey"
-								type="password"
-								value={apiKey}
-								onChange={(e) => setApiKey(e.target.value)}
-								placeholder="Nhập khóa API của bạn ở đây"
+						<div className="flex flex-col gap-2">
+							<Textarea
+								id="apiKeys"
+								value={apiKeys}
+								onChange={(e) => setApiKeys(e.target.value)}
+								placeholder="Dán mỗi API key trên một dòng"
+								rows={5}
 							/>
-							<Button onClick={handleApiKeySave}>Lưu</Button>
+							<Button onClick={handleApiKeysSave} className="self-end">Lưu Keys</Button>
 						</div>
 						<p className="text-xs text-muted-foreground pl-1">
-							Khóa API của bạn được lưu trữ an toàn trong trình duyệt và không bao giờ được chia sẻ.
+							Các khóa API được lưu trữ an toàn trong trình duyệt và được sử dụng luân phiên.
 						</p>
 					</div>
 				</div>
@@ -366,7 +368,7 @@ export function Settings(props: SettingsProps) {
 							onClick={() => fileInputRef.current?.click()}
 						>
 							<Upload className="mr-2 h-4 w-4" />
-							Tải ảnh lên
+							Tải ảnh lên (tối đa 10MB)
 						</Button>
 						<Button
 							variant="ghost"

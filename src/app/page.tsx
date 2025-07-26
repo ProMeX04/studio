@@ -59,7 +59,9 @@ interface LearnProps {
 	settingsProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
-	apiKey: string;
+	apiKeys: string[];
+	apiKeyIndex: number;
+	onApiKeyIndexChange: (index: number) => void;
 }
 
 function Learn({
@@ -87,7 +89,9 @@ function Learn({
 	settingsProps,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
-	apiKey,
+	apiKeys,
+	apiKeyIndex,
+	onApiKeyIndexChange,
 }: LearnProps) {
 	const currentCount = view === "flashcards" ? flashcardSet?.cards.length ?? 0 : quizSet?.questions.length ?? 0;
 	const currentIndex = view === "flashcards" ? flashcardIndex : currentQuestionIndex;
@@ -216,7 +220,9 @@ function Learn({
 						topic={topic}
 						currentQuestionIndex={currentQuestionIndex}
 						onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
-						apiKey={apiKey}
+						apiKeys={apiKeys}
+						apiKeyIndex={apiKeyIndex}
+						onApiKeyIndexChange={onApiKeyIndexChange}
 					/>
 				)}
 			</CardContent>
@@ -352,7 +358,8 @@ export default function Home() {
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
 	const [isMounted, setIsMounted] = useState(false)
-	const [apiKey, setApiKey] = useState("");
+	const [apiKeys, setApiKeys] = useState<string[]>([]);
+	const [apiKeyIndex, setApiKeyIndex] = useState(0);
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
@@ -382,6 +389,15 @@ export default function Home() {
 		setIsMounted(true)
 	}, [])
 
+	const getNextApiKey = useCallback(async () => {
+        const currentKeyIndex = apiKeyIndex;
+        const nextKeyIndex = (currentKeyIndex + 1) % (apiKeys.length || 1);
+        setApiKeyIndex(nextKeyIndex);
+        const db = await getDb();
+        await db.put("data", { id: "apiKeyIndex", data: nextKeyIndex });
+        return apiKeys[currentKeyIndex];
+    }, [apiKeys, apiKeyIndex]);
+
 	const handleGenerate = useCallback(
 		async (
 			currentTopic: string,
@@ -389,7 +405,7 @@ export default function Home() {
 			forceNew: boolean = false,
 			genType: "flashcards" | "quiz"
 		) => {
-			if (!apiKey) {
+			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
 					description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
@@ -465,9 +481,10 @@ export default function Home() {
 
 					while (flashcardsNeeded > 0 && !signal.aborted) {
 						const count = Math.min(FLASHCARD_BATCH_SIZE, flashcardsNeeded)
+						const apiKeyToUse = await getNextApiKey();
 						const newCards = await safeAICall(() =>
 							generateFlashcards({
-								apiKey,
+								apiKey: apiKeyToUse,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
@@ -529,9 +546,10 @@ export default function Home() {
 
 					while (quizNeeded > 0 && !signal.aborted) {
 						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
+						const apiKeyToUse = await getNextApiKey();
 						const newQuestions = await safeAICall(() =>
 							generateQuiz({
-								apiKey,
+								apiKey: apiKeyToUse,
 								topic: currentTopic,
 								count,
 								language: currentLanguage,
@@ -595,14 +613,22 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, apiKey]
+		[toast, flashcardMax, quizMax, apiKeys, getNextApiKey]
 	)
 	
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb();
 	
+		// Migration from single 'apiKey' to 'apiKeys'
+		const oldApiKeyRes = await db.get("data", "apiKey" as any);
+		if (oldApiKeyRes?.data && typeof oldApiKeyRes.data === 'string') {
+			await db.put("data", { id: "apiKeys", data: [oldApiKeyRes.data] });
+			await db.delete("data", "apiKey" as any);
+		}
+
 		const [
-			savedApiKeyRes,
+			savedApiKeysRes,
+			savedApiKeyIndexRes,
 			savedViewRes,
 			savedTopicRes,
 			savedLanguageRes,
@@ -616,7 +642,8 @@ export default function Home() {
 			quizDataRes,
 			quizStateRes,
 		] = await Promise.all([
-			db.get("data", "apiKey"),
+			db.get("data", "apiKeys"),
+			db.get("data", "apiKeyIndex"),
 			db.get("data", "view"),
 			db.get("data", "topic"),
 			db.get("data", "language"),
@@ -631,7 +658,8 @@ export default function Home() {
 			db.get("data", "quizState"),
 		]);
 	
-		const savedApiKey = (savedApiKeyRes?.data as string) || "";
+		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
+		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0;
 		const savedView = (savedViewRes?.data as "flashcards" | "quiz") || "flashcards";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
@@ -645,7 +673,8 @@ export default function Home() {
 		const quizData = quizDataRes as LabeledData<QuizSet>;
 		const quizStateData = quizStateRes as AppData;
 	
-		if (savedApiKey) setApiKey(savedApiKey);
+		if (savedApiKeys) setApiKeys(savedApiKeys);
+		if (savedApiKeyIndex) setApiKeyIndex(savedApiKeyIndex);
 		if (savedBg) setBackgroundImage(savedBg);
 		setUploadedBackgrounds(savedUploadedBgs);
 	
@@ -795,14 +824,16 @@ export default function Home() {
 		[backgroundImage]
 	)
 
-	const handleApiKeyChange = useCallback(
-		async (newApiKey: string) => {
-			setApiKey(newApiKey);
+	const handleApiKeysChange = useCallback(
+		async (newApiKeys: string[]) => {
+			setApiKeys(newApiKeys);
+			setApiKeyIndex(0); // Reset index when keys change
 			const db = await getDb();
-			await db.put("data", { id: "apiKey", data: newApiKey });
+			await db.put("data", { id: "apiKeys", data: newApiKeys });
+			await db.put("data", { id: "apiKeyIndex", data: 0 });
 			toast({
-				title: "Đã lưu API Key",
-				description: "Khóa API của bạn đã được lưu vào bộ nhớ cục bộ.",
+				title: "Đã lưu API Keys",
+				description: "Danh sách khóa API của bạn đã được lưu vào bộ nhớ cục bộ.",
 			});
 		},
 		[toast]
@@ -926,6 +957,15 @@ export default function Home() {
 		[] 
 	);
 
+	const handleApiKeyIndexChange = useCallback(
+        async (index: number) => {
+            setApiKeyIndex(index);
+            const db = await getDb();
+            await db.put("data", { id: "apiKeyIndex", data: index });
+        },
+        []
+    );
+
 	const isOverallLoading = isFlashcardLoading || isQuizLoading
 	const currentCount =
 		view === "flashcards"
@@ -958,11 +998,11 @@ export default function Home() {
 		onVisibilityChange: handleVisibilityChange,
 		onBackgroundChange: handleBackgroundChange,
 		onUploadedBackgroundsChange: handleUploadedBackgroundsChange,
-		onApiKeyChange: handleApiKeyChange,
+		onApiKeysChange: handleApiKeysChange,
 		visibility: visibility,
 		uploadedBackgrounds: uploadedBackgrounds,
 		currentBackgroundImage: backgroundImage,
-		apiKey: apiKey,
+		apiKeys: apiKeys,
 	}
 
 	return (
@@ -1020,7 +1060,9 @@ export default function Home() {
 							settingsProps={learnSettingsProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
-							apiKey={apiKey}
+							apiKeys={apiKeys}
+							apiKeyIndex={apiKeyIndex}
+							onApiKeyIndexChange={handleApiKeyIndexChange}
 						/>
 					</div>
 				</div>
@@ -1028,5 +1070,3 @@ export default function Home() {
 		</main>
 	)
 }
-
-    

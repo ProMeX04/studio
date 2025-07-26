@@ -11,35 +11,37 @@ import { ExplainQuizOptionInputSchema, ExplainQuizOptionOutput, ExplainQuizOptio
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ExplainQuizOptionClientInputSchema = ExplainQuizOptionInputSchema.extend({
-    apiKey: z.string().optional(),
+    apiKey: z.string(), // API key is now required and passed directly
 });
 type ExplainQuizOptionClientInput = z.infer<typeof ExplainQuizOptionClientInputSchema>;
 
 export async function explainQuizOption(input: ExplainQuizOptionClientInput): Promise<ExplainQuizOptionOutput> {
-  if (!input.apiKey) {
+  const { apiKey, ...promptInput } = input;
+
+  if (!apiKey) {
       throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
 
-  const genAI = new GoogleGenerativeAI(input.apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
   
   const promptText = `You are a helpful quiz tutor.
-${input.selectedOption === input.correctAnswer 
+${promptInput.selectedOption === promptInput.correctAnswer 
     ? `The user has chosen the CORRECT answer and wants a more detailed explanation.
 
-Topic: ${input.topic}
-Question: "${input.question}"
-Correct Answer: "${input.correctAnswer}"
+Topic: ${promptInput.topic}
+Question: "${promptInput.question}"
+Correct Answer: "${promptInput.correctAnswer}"
 
-Please provide a more in-depth explanation of why "${input.selectedOption}" is the correct answer for the question "${input.question}", in the language: ${input.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.`
+Please provide a more in-depth explanation of why "${promptInput.selectedOption}" is the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. You can provide additional context or interesting facts related to the topic. Populate the "explanation" field in the JSON output with this information.`
     : `The user has chosen an INCORRECT answer and wants to know why it's wrong.
 
-Topic: ${input.topic}
-Question: "${input.question}"
-Correct Answer: "${input.correctAnswer}"
-The Incorrect Option to Explain: "${input.selectedOption}"
+Topic: ${promptInput.topic}
+Question: "${promptInput.question}"
+Correct Answer: "${promptInput.correctAnswer}"
+The Incorrect Option to Explain: "${promptInput.selectedOption}"
 
-Please explain specifically why "${input.selectedOption}" is not the correct answer for the question "${input.question}", in the language: ${input.language}. Populate the "explanation" field in the JSON output with this information.`
+Please explain specifically why "${promptInput.selectedOption}" is not the correct answer for the question "${promptInput.question}", in the language: ${promptInput.language}. Populate the "explanation" field in the JSON output with this information.`
 }
 
 The "explanation" field must be valid standard Markdown:

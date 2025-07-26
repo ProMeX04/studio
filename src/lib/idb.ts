@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 3; // Incremented version
+const DB_VERSION = 4; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -19,7 +19,8 @@ export type DataKey =
   | 'flashcardMax'
   | 'quizMax'
   | 'flashcardIndex'
-  | 'apiKey';
+  | 'apiKeys'
+  | 'apiKeyIndex';
 
 export type LabeledData<T> = {
   id: string;
@@ -52,9 +53,10 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         }
         if (oldVersion < 3) {
             // In v3, we remove old randomization keys.
-            // We can do this by just letting the app load without them,
-            // as the new loadInitialData doesn't use them.
-            // No explicit deletion needed unless we want to clean up.
+        }
+        if (oldVersion < 4) {
+            // In v4, we are migrating 'apiKey' to 'apiKeys'.
+            // This logic is handled in page.tsx's loadInitialData to ensure it runs once.
         }
       },
     });
@@ -80,13 +82,13 @@ export const clearAllData = async (db: IDBPDatabase<MyDB>) => {
   try {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const apiKey = await store.get('apiKey'); // Preserve API key
+    const apiKeys = await store.get('apiKeys'); // Preserve API keys
     await store.clear();
-    if (apiKey) {
-      await store.put(apiKey); // Put it back after clearing
+    if (apiKeys) {
+      await store.put(apiKeys); // Put it back after clearing
     }
     await tx.done;
-    console.log('✅ All data cleared successfully (API key preserved)');
+    console.log('✅ All data cleared successfully (API keys preserved)');
   } catch (error) {
     console.error('❌ Error clearing data:', error);
     throw new Error(`Failed to clear data: ${error instanceof Error ? error.message : 'Unknown error'}`);

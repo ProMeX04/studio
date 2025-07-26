@@ -11,28 +11,30 @@ import { GenerateFlashcardsInputSchema, GenerateFlashcardsOutputContainerSchema,
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateFlashcardsClientInputSchema = GenerateFlashcardsInputSchema.extend({
-    apiKey: z.string().optional(),
+    apiKey: z.string(), // API key is now required and passed directly
 });
 type GenerateFlashcardsClientInput = z.infer<typeof GenerateFlashcardsClientInputSchema>;
 
 export async function generateFlashcards(input: GenerateFlashcardsClientInput): Promise<GenerateFlashcardsOutput> {
-  if (!input.apiKey) {
+  const { apiKey, ...promptInput } = input;
+  
+  if (!apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
   
-  const genAI = new GoogleGenerativeAI(input.apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-  const existingCardsPrompt = input.existingCards && input.existingCards.length > 0 
+  const existingCardsPrompt = promptInput.existingCards && promptInput.existingCards.length > 0 
     ? `
 You have already generated the following flashcards. Do not repeat them or create cards with very similar content.
 
 Existing Flashcards:
-${input.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back}"`).join('\n')}
+${promptInput.existingCards.map(card => `- Front: "${card.front}" / Back: "${card.back}"`).join('\n')}
 ` 
     : '';
 
-  const promptText = `You are a flashcard generator. Generate a set of ${input.count} new, unique flashcards for the topic: ${input.topic} in the language: ${input.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" and a "back".
+  const promptText = `You are a flashcard generator. Generate a set of ${promptInput.count} new, unique flashcards for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" and a "back".
 ${existingCardsPrompt}
 The "front" and "back" fields MUST contain valid standard Markdown.
 - Use standard backticks (\`) for inline code blocks.

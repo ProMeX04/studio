@@ -50,7 +50,9 @@ interface QuizProps {
 	topic: string;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
-	apiKey: string;
+	apiKeys: string[];
+	apiKeyIndex: number;
+	onApiKeyIndexChange: (index: number) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -116,7 +118,9 @@ export function Quiz({
 	topic,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
-	apiKey,
+	apiKeys,
+	apiKeyIndex,
+	onApiKeyIndexChange,
 }: QuizProps) {
 	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
@@ -191,12 +195,15 @@ export function Quiz({
 			setIsExplaining(option);
 	
 			try {
-				if (!apiKey) {
+				if (!apiKeys || apiKeys.length === 0) {
 					throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
 				}
+				const apiKeyToUse = apiKeys[apiKeyIndex];
+				onApiKeyIndexChange((apiKeyIndex + 1) % apiKeys.length);
+
 
 				const result = await explainQuizOption({
-					apiKey,
+					apiKey: apiKeyToUse,
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
@@ -252,7 +259,9 @@ export function Quiz({
 			language,
 			toast,
 			onQuizStateChange,
-			apiKey
+			apiKeys,
+			apiKeyIndex,
+			onApiKeyIndexChange
 		]
 	);
 
@@ -391,5 +400,3 @@ export function Quiz({
 		</div>
 	)
 }
-
-    

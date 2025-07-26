@@ -10,28 +10,30 @@ import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQui
 import { AIOperationError } from '@/lib/ai-utils';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
-    apiKey: z.string().optional(),
+    apiKey: z.string(), // API key is now required and passed directly
 });
 type GenerateQuizClientInput = z.infer<typeof GenerateQuizClientInputSchema>;
 
 export async function generateQuiz(input: GenerateQuizClientInput): Promise<GenerateQuizOutput> {
-  if (!input.apiKey) {
+  const { apiKey, ...promptInput } = input;
+
+  if (!apiKey) {
     throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
   }
 
-  const genAI = new GoogleGenerativeAI(input.apiKey);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-  const existingQuestionsPrompt = input.existingQuestions && input.existingQuestions.length > 0
+  const existingQuestionsPrompt = promptInput.existingQuestions && promptInput.existingQuestions.length > 0
     ? `
 You have already generated the following questions. Do not repeat them or create questions with very similar content.
 
 Existing Questions:
-${input.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
+${promptInput.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
 `
     : '';
 
-  const promptText = `You are a quiz generator. Generate a ${input.count}-question multiple-choice quiz for the topic: ${input.topic} in the language: ${input.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
+  const promptText = `You are a quiz generator. Generate a ${promptInput.count}-question multiple-choice quiz for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
 
 For the "options" array:
  - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.
