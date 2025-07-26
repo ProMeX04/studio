@@ -280,6 +280,7 @@ interface LearnProps {
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
 	onOnboardingComplete: (topic: string, language: string) => void;
+	hasCompletedOnboarding: boolean;
 }
 
 function Learn({
@@ -319,6 +320,7 @@ function Learn({
 	apiKeyIndex,
 	onApiKeyIndexChange,
 	onOnboardingComplete,
+	hasCompletedOnboarding,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -440,7 +442,7 @@ function Learn({
 		return false;
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
-	if (!apiKeys || apiKeys.length === 0) {
+	if (!hasCompletedOnboarding) {
 		return <ApiKeyGuide 
 			settingsProps={settingsProps} 
 			onOnboardingComplete={onOnboardingComplete} 
@@ -628,6 +630,7 @@ export default function Home() {
 	const [isMounted, setIsMounted] = useState(false)
 	const [apiKeys, setApiKeys] = useState<string[]>([]);
 	const [apiKeyIndex, setApiKeyIndex] = useState(0);
+	const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 	
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [showQuizSummary, setShowQuizSummary] = useState(false);
@@ -985,6 +988,7 @@ export default function Home() {
 			quizStateRes,
 			theoryDataRes,
 			theoryStateRes,
+			onboardingStatusRes,
 		] = await Promise.all([
 			db.get("data", "apiKeys"),
 			db.get("data", "apiKeyIndex"),
@@ -1003,6 +1007,7 @@ export default function Home() {
 			db.get("data", "quizState"),
 			db.get("data", "theory"),
 			db.get("data", "theoryState"),
+			db.get("data", "hasCompletedOnboarding"),
 		]);
 	
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || [];
@@ -1016,13 +1021,9 @@ export default function Home() {
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
-		
-		const flashcardData = flashcardDataRes as LabeledData<CardSet>;
-		const flashcardStateData = flashcardStateRes as AppData;
-		const quizData = quizDataRes as LabeledData<QuizSet>;
-		const quizStateData = quizStateRes as AppData;
-		const theoryData = theoryDataRes as LabeledData<TheorySet>;
-		const theoryStateData = theoryStateRes as AppData;
+		const onboardingCompleted = (onboardingStatusRes?.data as boolean) || false;
+
+		setHasCompletedOnboarding(onboardingCompleted);
 
 		if (savedApiKeys) setApiKeys(savedApiKeys);
 		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0);
@@ -1127,6 +1128,7 @@ export default function Home() {
 				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
 				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
+				'hasCompletedOnboarding'
 			);
 		}
 	
@@ -1144,6 +1146,12 @@ export default function Home() {
 				: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
 		});
 	}, [loadInitialData, toast]);
+
+	const handleResetOnboarding = useCallback(async () => {
+        const db = await getDb();
+        await db.delete('data', 'hasCompletedOnboarding');
+        window.location.reload();
+    }, []);
 
 	useEffect(() => {
 		if (isMounted) {
@@ -1393,9 +1401,11 @@ export default function Home() {
 		async (finalTopic: string, finalLanguage: string) => {
 			setTopic(finalTopic);
 			setLanguage(finalLanguage);
+			setHasCompletedOnboarding(true);
 			const db = await getDb();
 			await db.put("data", { id: "topic", data: finalTopic });
 			await db.put("data", { id: "language", data: finalLanguage });
+			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 			await handleClearAllData(true);
 		},
 		[handleClearAllData]
@@ -1450,6 +1460,7 @@ export default function Home() {
 		isQuizLoading,
 		onApiKeysChange: handleApiKeysChange,
 		apiKeys: apiKeys,
+		onResetOnboarding: handleResetOnboarding,
 	};
 
 	const globalSettingsProps = {
@@ -1529,6 +1540,7 @@ export default function Home() {
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
 							onOnboardingComplete={handleOnboardingComplete}
+							hasCompletedOnboarding={hasCompletedOnboarding}
 						/>
 					</div>
 				</div>

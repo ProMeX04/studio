@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 9; // Incremented version
+const DB_VERSION = 10; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -24,7 +24,8 @@ export type DataKey =
   | 'flashcardIndex'
   | 'theoryChapterIndex'
   | 'apiKeys'
-  | 'apiKeyIndex';
+  | 'apiKeyIndex'
+  | 'hasCompletedOnboarding';
 
 export type LabeledData<T> = {
   id: string;
