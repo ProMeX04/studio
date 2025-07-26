@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, ChevronsRight } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, ChevronsRight, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings } from "@/components/Settings"
 import {
@@ -34,7 +34,7 @@ import { AIOperationError } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
 const FLASHCARD_BATCH_SIZE = 10;
@@ -66,7 +66,7 @@ const OnboardingTour = ({
 
     if (step === 1) {
         return (
-            <Dialog open={true} onOpenChange={() => {}}>
+            <Dialog open={true} onOpenChange={() => onStepComplete(0) /* Close tour if dialog is closed */}>
                 <DialogContent className="max-w-xl">
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center gap-2">
@@ -94,9 +94,12 @@ const OnboardingTour = ({
                             </a>
                         </Button>
                     </div>
-                    <Button onClick={handleApiKeySubmit} disabled={!apiKey.trim()}>
-                        Lưu và Tiếp tục <ChevronsRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <DialogFooter className="sm:justify-between gap-2">
+                        <Button variant="ghost" onClick={() => onStepComplete(0)}>Bỏ qua</Button>
+                        <Button onClick={handleApiKeySubmit} disabled={!apiKey.trim()}>
+                            Lưu và Tiếp tục <ChevronsRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         );
@@ -141,6 +144,7 @@ const OnboardingTour = ({
     return (
         <div className="fixed inset-0 bg-black/70 z-[99] animate-in fade-in-50" onClick={() => {
              if (step === 3) onOpenLearnSettings();
+             else onStepComplete(0); // Close tour if clicking away
         }}>
             {step === 2 && topicRect && renderHighlight(topicRect, "Tuyệt vời! Giờ hãy nhập chủ đề bạn muốn học tại đây.", 'bottom')}
             {step === 3 && menuRect && renderHighlight(menuRect, "Cuối cùng, nhấn vào đây để tạo nội dung học tập.", 'left')}
@@ -149,7 +153,7 @@ const OnboardingTour = ({
 };
 
 
-const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
+const ApiKeyGuide = ({ settingsProps, onStartTour }: { settingsProps: any; onStartTour: () => void; }) => (
 	<div className="w-full h-full flex flex-col items-center justify-center p-4">
 		<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm">
 			<CardHeader className="p-0 mb-6">
@@ -200,6 +204,12 @@ const ApiKeyGuide = ({ settingsProps }: { settingsProps: any }) => (
 						</p>
 					</li>
 				</ol>
+                <div className="mt-8 pt-4 border-t border-border flex justify-center">
+                    <Button variant="outline" onClick={onStartTour}>
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        Xem lại hướng dẫn
+                    </Button>
+                </div>
 			</CardContent>
 		</Card>
 	</div>
@@ -242,6 +252,7 @@ interface LearnProps {
 	apiKeys: string[];
 	apiKeyIndex: number;
 	onApiKeyIndexChange: (index: number) => void;
+    onStartTour: () => void;
 }
 
 function Learn({
@@ -280,6 +291,7 @@ function Learn({
 	apiKeys,
 	apiKeyIndex,
 	onApiKeyIndexChange,
+    onStartTour,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -402,7 +414,7 @@ function Learn({
 	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view]);
 
 	if (!apiKeys || apiKeys.length === 0) {
-		return <ApiKeyGuide settingsProps={settingsProps} />;
+		return <ApiKeyGuide settingsProps={settingsProps} onStartTour={onStartTour} />;
 	}
 
 	return (
@@ -632,7 +644,7 @@ export default function Home() {
 			genType: "flashcards" | "quiz" | "theory"
 		) => {
 
-			if (tourStep !== 0) {
+			if (tourStep > 1) { // If tour was active beyond step 1
                 setTourStep(0);
                 const db = await getDb();
                 await db.put("data", { id: "hasCompletedOnboarding", data: true });
@@ -1372,9 +1384,16 @@ export default function Home() {
 		[] 
 	);
 
-	const handleTourStepComplete = useCallback((step: number) => {
-        if (step === 1) {
+	const handleTourStepComplete = useCallback(async (step: number, data?: any) => {
+        if (step === 0) { // Tour skipped or finished
+            setTourStep(0);
+        }
+        if (step === 1) { // API key submitted
             setTourStep(2);
+			if (data && data.hasCompletedOnboarding) {
+				const db = await getDb();
+				await db.put("data", { id: "hasCompletedOnboarding", data: true });
+			}
         }
     }, []);
 
@@ -1447,7 +1466,11 @@ export default function Home() {
 			<OnboardingTour 
                 step={tourStep}
                 onStepComplete={handleTourStepComplete}
-                onApiKeysChange={handleApiKeysChange}
+                onApiKeysChange={async (keys) => {
+					await handleApiKeysChange(keys);
+					const db = await getDb();
+					await db.put("data", { id: "hasCompletedOnboarding", data: true });
+				}}
                 onOpenLearnSettings={() => setLearnSettingsOpen(true)}
             />
 			{backgroundImage && (
@@ -1514,6 +1537,7 @@ export default function Home() {
 							apiKeys={apiKeys}
 							apiKeyIndex={apiKeyIndex}
 							onApiKeyIndexChange={handleApiKeyIndexChange}
+                            onStartTour={() => setTourStep(1)}
 						/>
 					</div>
 				</div>
