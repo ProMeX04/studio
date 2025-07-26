@@ -1054,7 +1054,7 @@ export default function Home() {
 			: view === 'quiz'
 			? quizSet?.questions.length ?? 0
 			: view === 'theory'
-			? (theorySet?.chapters.filter(c => c.content).length ?? 0)
+			? (theorySet?.chapters?.filter(c => c.content).length ?? 0)
 			: 0;
 	
 	const targetCount = view === "flashcards" 
