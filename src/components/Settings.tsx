@@ -367,7 +367,7 @@ export function Settings(props: SettingsProps) {
 					<div className="flex items-center gap-2">
 						<Progress value={learnProps.theoryMax! > 0 ? (learnProps.theoryCount! / learnProps.theoryMax!) * 100 : 0} id="theory-progress" />
 						<Button size="icon" variant="outline" onClick={() => handleGenerateType('theory')} disabled={learnProps.isTheoryLoading}>
-							{learnProps.isTheoryLoading ? <Loader className="animate-spin" /> : <Plus />}
+							{learnProps.isTheoryLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
 				</div>
@@ -381,7 +381,7 @@ export function Settings(props: SettingsProps) {
 					<div className="flex items-center gap-2">
 						<Progress value={(learnProps.flashcardCount! / fMax) * 100} id="flashcard-progress" />
 						<Button size="icon" variant="outline" onClick={() => handleGenerateType('flashcards')} disabled={learnProps.flashcardCount! >= fMax || learnProps.isFlashcardLoading}>
-							{learnProps.isFlashcardLoading ? <Loader className="animate-spin" /> : <Plus />}
+							{learnProps.isFlashcardLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
 					{scope === "learn" && <Input
@@ -404,7 +404,7 @@ export function Settings(props: SettingsProps) {
 					<div className="flex items-center gap-2">
 						<Progress value={(learnProps.quizCount! / qMax) * 100} id="quiz-progress" />
 						<Button size="icon" variant="outline" onClick={() => handleGenerateType('quiz')} disabled={learnProps.quizCount! >= qMax || learnProps.isQuizLoading}>
-							{learnProps.isQuizLoading ? <Loader className="animate-spin" /> : <Plus />}
+							{learnProps.isQuizLoading ? <Loader className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
 						</Button>
 					</div>
 					{scope === "learn" && <Input

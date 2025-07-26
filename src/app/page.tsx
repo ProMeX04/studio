@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages } from "@/components/Settings"
 import {
@@ -210,7 +210,7 @@ const ApiKeyGuide = ({
 			</div>
 		);
 	}
-	
+
 	if (onboardingStep === 5) {
 		return (
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
@@ -220,15 +220,21 @@ const ApiKeyGuide = ({
 							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
 						</Button>
 						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
-							<CheckCircle className="w-12 h-12 text-success" />
+							<Plus className="w-12 h-12 text-primary" />
 						</div>
 						<CardTitle className="text-3xl font-bold">
-							Hoàn tất!
+							Tạo nội dung đầu tiên
 						</CardTitle>
 						<CardDescription className="text-lg mt-2">
-							Mọi thứ đã sẵn sàng. Hãy xem hướng dẫn cuối cùng để bắt đầu.
+							Nhấn nút <Plus className="inline w-4 h-4 mx-1" /> để AI bắt đầu tạo nội dung học tập cho bạn.
 						</CardDescription>
 					</CardHeader>
+					<CardContent className="p-0 space-y-4 animate-in fade-in duration-500 delay-300">
+						<Settings {...settingsProps} scope="learn-onboarding-generate" />
+						<p className="text-xs text-muted-foreground text-center px-4">
+							Lưu ý: Nếu bạn thoát tab trong khi đang tạo, bạn sẽ cần phải tiếp tục quá trình này thủ công bằng cách nhấn nút <Plus className="inline w-3 h-3" /> trong Cài đặt học tập.
+						</p>
+					</CardContent>
 					<CardFooter className="p-0 mt-6">
 						<Button onClick={handleNextStep} className="w-full h-12">
 							Tiếp tục
@@ -238,7 +244,7 @@ const ApiKeyGuide = ({
 			</div>
 		);
 	}
-
+	
 	if (onboardingStep === 6) {
 		return (
 			<div className="w-full h-full flex flex-col items-center justify-center p-4">
@@ -1499,8 +1505,8 @@ export default function Home() {
 		isFlashcardLoading,
 		isQuizLoading,
 		onApiKeysChange: handleApiKeysChange,
-		apiKeys: apiKeys,
 		onResetOnboarding: handleResetOnboarding,
+		apiKeys: apiKeys,
 	};
 
 	const globalSettingsProps = {
@@ -1592,5 +1598,6 @@ export default function Home() {
     
 
     
+
 
 
