@@ -5,7 +5,6 @@
 export interface AICallOptions {
   retries?: number;
   timeoutMs?: number;
-  signal?: AbortSignal;
 }
 
 export class AIOperationError extends Error {
@@ -20,7 +19,7 @@ export class AIOperationError extends Error {
 }
 
 /**
- * Safely execute an AI function with timeout, retry, and abort support
+ * Safely execute an AI function with timeout and retry support
  */
 export async function safeAICall<T>(
   aiFunction: () => Promise<T>,
@@ -29,24 +28,22 @@ export async function safeAICall<T>(
   const { 
     retries = 3, 
     timeoutMs = 30000, 
-    signal 
   } = options;
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    if (signal?.aborted) {
-      throw new AIOperationError("Operation was aborted", "ABORTED");
-    }
-
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
         const timeoutId = setTimeout(() => {
           reject(new AIOperationError("AI operation timed out", "TIMEOUT", true));
         }, timeoutMs);
         
-        signal?.addEventListener('abort', () => {
-          clearTimeout(timeoutId);
-          reject(new AIOperationError("Operation was aborted", "ABORTED"));
-        });
+        // This is a simple way to allow the aiFunction to clear the timeout
+        // if it completes successfully before the timeout.
+        const originalThen = (aiFunction as any)().then;
+        (aiFunction as any)().then = (onfulfilled: any, onrejected: any) => {
+            clearTimeout(timeoutId);
+            return originalThen.call(aiFunction, onfulfilled, onrejected);
+        };
       });
 
       const result = await Promise.race([
@@ -90,30 +87,23 @@ export async function safeAICall<T>(
  */
 export async function processBatch<T, R>(
   items: T[],
-  processor: (item: T, signal: AbortSignal) => Promise<R>,
+  processor: (item: T) => Promise<R>,
   options: {
     batchSize?: number;
     delayBetweenBatches?: number;
-    signal?: AbortSignal;
   } = {}
 ): Promise<R[]> {
   const {
     batchSize = 5,
     delayBetweenBatches = 1000,
-    signal
   } = options;
 
   const results: R[] = [];
   
   for (let i = 0; i < items.length; i += batchSize) {
-    if (signal?.aborted) {
-      throw new AIOperationError("Batch processing was aborted", "ABORTED");
-    }
 
     const batch = items.slice(i, i + batchSize);
-    const batchPromises = batch.map(item => 
-      processor(item, signal || new AbortController().signal)
-    );
+    const batchPromises = batch.map(item => processor(item));
 
     try {
       const batchResults = await Promise.all(batchPromises);

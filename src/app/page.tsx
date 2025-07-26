@@ -369,7 +369,6 @@ export default function Home() {
 	// Prevent race conditions and cleanup async operations
 	const isFlashcardGeneratingRef = useRef(false)
 	const isQuizGeneratingRef = useRef(false)
-	const abortControllerRef = useRef<AbortController | null>(null)
 	const isMountedRef = useRef(true)
 
 	// Initialize once
@@ -378,10 +377,6 @@ export default function Home() {
 			isMountedRef.current = false;
 			closeDb();
 			clearAllToastTimeouts();
-
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort();
-			}
 		}
 	}, []);
 
@@ -435,12 +430,6 @@ export default function Home() {
 			isGeneratingRef.current = true
 			setIsLoading(true)
 
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort()
-			}
-			abortControllerRef.current = new AbortController()
-			const signal = abortControllerRef.current.signal
-
 			const db = await getDb()
 
 			try {
@@ -477,7 +466,7 @@ export default function Home() {
 					}
 
 
-					while (flashcardsNeeded > 0 && !signal.aborted) {
+					while (flashcardsNeeded > 0) {
 						const count = Math.min(FLASHCARD_BATCH_SIZE, flashcardsNeeded)
 						
 						const { result: newCards, newApiKeyIndex } = await safeAICall(() =>
@@ -488,7 +477,7 @@ export default function Home() {
 								count,
 								language: currentLanguage,
 								existingCards: currentFlashcards.cards,
-							}), { signal }
+							})
 						)
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
@@ -496,7 +485,6 @@ export default function Home() {
 						if (
 							Array.isArray(newCards) &&
 							newCards.length > 0 &&
-							!signal.aborted &&
 							isMountedRef.current
 						) {
 							currentFlashcards.cards.push(...newCards)
@@ -545,7 +533,7 @@ export default function Home() {
 						return
 					}
 
-					while (quizNeeded > 0 && !signal.aborted) {
+					while (quizNeeded > 0) {
 						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
 
 						const { result: newQuestions, newApiKeyIndex } = await safeAICall(() =>
@@ -556,7 +544,7 @@ export default function Home() {
 								count,
 								language: currentLanguage,
 								existingQuestions: currentQuiz.questions,
-							}), { signal }
+							})
 						)
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
@@ -564,7 +552,6 @@ export default function Home() {
 						if (
 							Array.isArray(newQuestions) &&
 							newQuestions.length > 0 &&
-							!signal.aborted &&
 							isMountedRef.current
 						) {
 							currentQuiz.questions.push(...newQuestions)
@@ -585,12 +572,7 @@ export default function Home() {
 			} catch (error: any) {
 				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
 				if (error instanceof AIOperationError) {
-					if (error.code === "ABORTED") {
-						toast({
-							title: "Đã hủy",
-							description: `Quá trình tạo ${genType} đã được hủy.`,
-						});
-					} else if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
+					if (error.code === 'API_KEY_REQUIRED' || error.code === 'ALL_KEYS_FAILED') {
 						toast({
 							title: "Lỗi API Key",
 							description: error.code === 'ALL_KEYS_FAILED' 

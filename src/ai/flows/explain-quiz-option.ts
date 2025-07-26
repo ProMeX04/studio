@@ -98,12 +98,12 @@ export async function explainQuizOption(
         const isQuotaError = error.message?.includes('quota');
         console.warn(`API Key at index ${currentKeyIndex} failed.`, error.message);
 
-        if (isQuotaError) {
-            // Move to the next key
+        if (isQuotaError && i < apiKeys.length - 1) {
+            // Move to the next key if it's a quota error and not the last key
             currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
             console.log(`Quota error. Trying next API Key at index ${currentKeyIndex}.`);
         } else {
-            // For non-quota errors, fail fast
+            // For other errors or if all keys have been tried for quota
             console.error('❌ AI Explanation Error:', error);
             if (error.message.includes('JSON')) {
                 throw new AIOperationError('AI returned an invalid data format.', 'AI_INVALID_FORMAT');
