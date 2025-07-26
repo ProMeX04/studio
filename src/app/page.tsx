@@ -1017,12 +1017,8 @@ export default function Home() {
 			const db = await getDb();
 			await db.put("data", { id: "apiKeys", data: newApiKeys });
 			await db.put("data", { id: "apiKeyIndex", data: 0 });
-			toast({
-				title: "Đã lưu API Keys",
-				description: "Danh sách khóa API của bạn đã được lưu vào bộ nhớ cục bộ.",
-			});
 		},
-		[toast]
+		[]
 	);
 
 	const handleUploadedBackgroundsChange = useCallback(
