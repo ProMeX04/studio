@@ -551,7 +551,7 @@ function Learn({
 	return (
 		<div className="w-full h-full p-0 flex flex-col bg-transparent relative">
 			{/* Scrollable Content Area */}
-			<div className="flex-grow overflow-y-auto pb-20"> {/* Add padding to bottom to avoid toolbar overlap */}
+			<div className="flex-grow overflow-y-auto">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -1544,9 +1544,8 @@ export default function Home() {
 			await db.put("data", { id: "language", data: finalLanguage });
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
-			await handleClearAllData(true);
 		},
-		[handleClearAllData]
+		[]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
@@ -1692,4 +1691,5 @@ export default function Home() {
     
 
     
+
 
