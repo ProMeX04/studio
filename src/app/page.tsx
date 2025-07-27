@@ -549,7 +549,7 @@ function Learn({
 	}
 
 	return (
-		<div className="w-full h-full p-0 flex flex-col bg-transparent relative">
+		<div className="w-full h-full flex flex-col bg-transparent">
 			<div className="flex-grow overflow-y-auto pb-[80px]">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
@@ -606,58 +606,73 @@ function Learn({
 			</div>
 
 			{/* Floating Toolbar */}
-			<div className="absolute bottom-0 left-0 right-0 flex justify-center p-2">
-				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
-						<Tabs
-							value={view}
-							onValueChange={(value) => onViewChange(value as ViewType)}
-							className="w-auto"
-						>
-							<TabsList>
-								<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
-								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-							</TabsList>
-						</Tabs>
-
-						<div className="flex items-center gap-2">
-							<Button
-								onClick={handlePrev}
-								disabled={currentIndex === 0 || !hasContent || isNavDisabled}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
+			<div className="flex-shrink-0">
+				<div className="flex justify-center p-2">
+					<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
+							<Tabs
+								value={view}
+								onValueChange={(value) => onViewChange(value as ViewType)}
+								className="w-auto"
 							>
-								<ChevronLeft className="h-4 w-4" />
-							</Button>
+								<TabsList>
+									<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
+									<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+									<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+								</TabsList>
+							</Tabs>
 
-							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
-							</span>
+							<div className="flex items-center gap-2">
+								<Button
+									onClick={handlePrev}
+									disabled={currentIndex === 0 || !hasContent || isNavDisabled}
+									variant="outline"
+									size="icon"
+									className="h-9 w-9"
+								>
+									<ChevronLeft className="h-4 w-4" />
+								</Button>
 
-							<Button
-								onClick={handleNext}
-								disabled={!hasContent || currentIndex >= totalItems - 1 || isNavDisabled}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								<ChevronRight className="h-4 w-4" />
-							</Button>
-							
-							{(view === 'flashcards' || view === 'theory') && (
-								<>
+								<span className="text-sm text-muted-foreground w-24 text-center">
+									{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+								</span>
+
+								<Button
+									onClick={handleNext}
+									disabled={!hasContent || currentIndex >= totalItems - 1 || isNavDisabled}
+									variant="outline"
+									size="icon"
+									className="h-9 w-9"
+								>
+									<ChevronRight className="h-4 w-4" />
+								</Button>
+								
+								{(view === 'flashcards' || view === 'theory') && (
+									<>
+										<Button
+											onClick={handleToggleUnderstood}
+											disabled={!hasContent || isSummaryActive}
+											variant={isCurrentItemUnderstood ? "default" : "outline"}
+											size="icon"
+											className="h-9 w-9"
+										>
+											<CheckCircle className="w-4 h-4" />
+										</Button>
+										<Button
+											onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
+											disabled={!hasContent || isSummaryActive}
+											variant="outline"
+											size="icon"
+											className="h-9 w-9"
+										>
+											<Award className="w-4 h-4" />
+										</Button>
+									</>
+								)}
+
+
+								{view === 'quiz' && (
 									<Button
-										onClick={handleToggleUnderstood}
-										disabled={!hasContent || isSummaryActive}
-										variant={isCurrentItemUnderstood ? "default" : "outline"}
-										size="icon"
-										className="h-9 w-9"
-									>
-										<CheckCircle className="w-4 h-4" />
-									</Button>
-									<Button
-										onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
+										onClick={() => setShowQuizSummary(true)}
 										disabled={!hasContent || isSummaryActive}
 										variant="outline"
 										size="icon"
@@ -665,25 +680,12 @@ function Learn({
 									>
 										<Award className="w-4 h-4" />
 									</Button>
-								</>
-							)}
+								)}
+								
+								<Settings {...settingsProps} scope="learn" />
 
-
-							{view === 'quiz' && (
-								<Button
-									onClick={() => setShowQuizSummary(true)}
-									disabled={!hasContent || isSummaryActive}
-									variant="outline"
-									size="icon"
-									className="h-9 w-9"
-								>
-									<Award className="w-4 h-4" />
-								</Button>
-							)}
-							
-							<Settings {...settingsProps} scope="learn" />
-
-						</div>
+							</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -1219,28 +1221,7 @@ export default function Home() {
 	
 
 	const handleClearAllData = useCallback(async (isLearningReset: boolean = false) => {
-		const db = await getDb();
-		const keysToDelete: DataKey[] = isLearningReset 
-			? [
-				"flashcards", "flashcardState", "flashcardIndex",
-				"quiz", "quizState",
-				"theory", "theoryState", "theoryChapterIndex",
-			]
-			: [
-				"flashcards", "flashcardState", "flashcardIndex",
-				"quiz", "quizState",
-				"theory", "theoryState", "theoryChapterIndex",
-				'topic', 'language', 'model', 'view', 'visibility', 
-				'background', 'uploadedBackgrounds', 
-				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
-				'hasCompletedOnboarding'
-			];
-	
-		const tx = db.transaction("data", 'readwrite');
-		const store = tx.objectStore("data");
-		await Promise.all(keysToDelete.map(key => store.delete(key)));
-		await tx.done;
-
+		
 		// Reset state in memory
 		setFlashcardSet(null);
 		setFlashcardState({ understoodIndices: [] });
@@ -1278,6 +1259,29 @@ export default function Home() {
                 description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa."
             });
         }
+
+		const db = await getDb();
+		const keysToDelete: DataKey[] = isLearningReset 
+			? [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
+			]
+			: [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
+				'topic', 'language', 'model', 'view', 'visibility', 
+				'background', 'uploadedBackgrounds', 
+				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
+				'hasCompletedOnboarding'
+			];
+	
+		const tx = db.transaction("data", 'readwrite');
+		const store = tx.objectStore("data");
+		await Promise.all(keysToDelete.map(key => store.delete(key)));
+		await tx.done;
+
 	}, [toast]);
 
 	const handleResetOnboarding = useCallback(async () => {
@@ -1532,6 +1536,7 @@ export default function Home() {
 
 	const handleOnboardingComplete = useCallback(
 		async (finalTopic: string, finalLanguage: string, finalModel: string) => {
+			await handleClearAllData(true);
 			setTopic(finalTopic);
 			setLanguage(finalLanguage);
 			setModel(finalModel);
@@ -1542,7 +1547,7 @@ export default function Home() {
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 		},
-		[]
+		[handleClearAllData]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
@@ -1688,6 +1693,7 @@ export default function Home() {
     
 
     
+
 
 
 
