@@ -549,7 +549,7 @@ function Learn({
 
 	return (
 		<div className="w-full h-full relative">
-			<div className="h-full w-full overflow-y-auto p-4 sm:p-6 md:p-8 pb-20">
+			<div className="h-full w-full overflow-y-auto pb-20">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -605,7 +605,7 @@ function Learn({
 			</div>
 
 			{/* Sticky Toolbar */}
-			<div className="absolute bottom-0 left-0 right-0 flex justify-center p-4">
+			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
@@ -1685,5 +1685,9 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
+
+    
 
     
