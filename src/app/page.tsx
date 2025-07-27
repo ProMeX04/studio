@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, Minus } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages, models } from "@/components/Settings"
 import {
@@ -550,8 +550,7 @@ function Learn({
 
 	return (
 		<div className="w-full h-full p-0 flex flex-col bg-transparent relative">
-			{/* Scrollable Content Area */}
-			<div className="flex-grow overflow-y-auto pb-[50px]">
+			<div className="flex-grow overflow-y-auto pb-[80px]">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -1689,6 +1688,7 @@ export default function Home() {
     
 
     
+
 
 
 
