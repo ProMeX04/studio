@@ -1543,7 +1543,7 @@ export default function Home() {
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 		},
-		[handleClearAllData]
+		[]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
@@ -1689,6 +1689,7 @@ export default function Home() {
     
 
     
+
 
 
 
