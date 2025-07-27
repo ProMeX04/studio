@@ -551,7 +551,7 @@ function Learn({
 	return (
 		<div className="w-full h-full p-0 flex flex-col bg-transparent relative">
 			{/* Scrollable Content Area */}
-			<div className="flex-grow overflow-y-auto">
+			<div className="flex-grow overflow-y-auto pb-[50px]">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -1691,5 +1691,6 @@ export default function Home() {
     
 
     
+
 
 
