@@ -549,8 +549,9 @@ function Learn({
 	}
 
 	return (
-		<Card className="w-full h-full bg-transparent shadow-none border-none p-0 flex flex-col">
-			<CardContent className="flex-grow flex flex-col p-0">
+		<div className="w-full h-full p-0 flex flex-col bg-transparent">
+			{/* Scrollable Content Area */}
+			<div className="flex-grow overflow-y-auto">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -603,10 +604,10 @@ function Learn({
 				) : (
 					<Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />
 				)}
-			</CardContent>
+			</div>
 
-			{/* Unified Toolbar */}
-			<div className="flex justify-center pb-2">
+			{/* Sticky Toolbar */}
+			<div className="flex-shrink-0 flex justify-center pt-4 pb-2">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
@@ -686,7 +687,7 @@ function Learn({
 						</div>
 				</div>
 			</div>
-		</Card>
+		</div>
 	)
 }
 
@@ -1268,13 +1269,17 @@ export default function Home() {
 			setApiKeys([]);
 			setApiKeyIndex(0);
 			setHasCompletedOnboarding(false);
-		}
+		} else {
+            toast({
+                title: "Đã xóa dữ liệu học tập",
+                description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa."
+            });
+            return; // Return early to avoid showing the "all data deleted" toast
+        }
 	
 		toast({
 			title: "Đã xóa dữ liệu",
-			description: isLearningReset 
-				? "Toàn bộ dữ liệu học tập đã được xóa." 
-				: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
+			description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
 		});
 	}, [toast]);
 
@@ -1634,7 +1639,7 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col justify-start items-center p-4 sm:p-6 md:p-8 max-h-screen overflow-y-auto">
+				<div className="relative flex flex-col p-4 sm:p-6 md:p-8 h-screen overflow-hidden">
 					<div className="flex flex-col w-full h-full">
 						<Learn
 							view={view}
@@ -1682,5 +1687,7 @@ export default function Home() {
 		</main>
 	)
 }
+
+    
 
     

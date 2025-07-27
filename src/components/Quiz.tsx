@@ -40,6 +40,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { QuizSummary } from "./QuizSummary"
 import { AIOperationError } from "@/lib/ai-utils"
+import { ScrollArea } from "./ui/scroll-area"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -287,10 +288,10 @@ export function Quiz({
 	}
 
 	return (
-		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
-			<div className="flex-grow flex flex-col justify-center items-center overflow-y-auto pb-4">
-				{hasContent && currentQuestion ? (
-					<div className="w-full max-w-5xl mx-auto space-y-6">
+		<div className="h-full flex flex-col items-center justify-center">
+			{hasContent && currentQuestion ? (
+				<ScrollArea className="h-full w-full pr-4">
+					<div className="w-full max-w-5xl mx-auto space-y-6 py-4">
 						<div className="text-3xl font-semibold bg-background/50 backdrop-blur rounded-lg p-6 prose dark:prose-invert max-w-none prose-p:my-0 prose-code:text-left">
 							<MarkdownRenderer>
 								{currentQuestion.question}
@@ -393,22 +394,25 @@ export function Quiz({
 							</Alert>
 						)}
 					</div>
-				) : (
-					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
-						<CardHeader>
-							<div className="mx-auto bg-primary/10 p-4 rounded-full">
-								<HelpCircle className="w-12 h-12 text-primary" />
-							</div>
-							<CardTitle className="mt-4 text-2xl">Kiểm tra kiến thức của bạn</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Trắc nghiệm để AI tạo câu hỏi cho bạn.
-							</p>
-						</CardContent>
-					</Card>
-				)}
-			</div>
+				</ScrollArea>
+			) : (
+				<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
+					<CardHeader>
+						<div className="mx-auto bg-primary/10 p-4 rounded-full">
+							<HelpCircle className="w-12 h-12 text-primary" />
+						</div>
+						<CardTitle className="mt-4 text-2xl">Kiểm tra kiến thức của bạn</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<p className="text-muted-foreground">
+							Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Trắc nghiệm để AI tạo câu hỏi cho bạn.
+						</p>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	)
 }
+
+
+    
