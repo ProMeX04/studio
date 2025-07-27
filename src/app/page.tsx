@@ -17,7 +17,7 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, Minus } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages, models } from "@/components/Settings"
 import {
@@ -549,8 +549,8 @@ function Learn({
 	}
 
 	return (
-		<div className="w-full h-full flex flex-col bg-transparent">
-			<div className="flex-grow overflow-y-auto pb-[80px]">
+		<div className="w-full h-full relative">
+			<div className="h-full w-full overflow-y-auto pb-20">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -605,74 +605,59 @@ function Learn({
 				)}
 			</div>
 
-			{/* Floating Toolbar */}
-			<div className="flex-shrink-0">
-				<div className="flex justify-center p-2">
-					<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
-							<Tabs
-								value={view}
-								onValueChange={(value) => onViewChange(value as ViewType)}
-								className="w-auto"
+			{/* Sticky Toolbar */}
+			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2">
+				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
+						<Tabs
+							value={view}
+							onValueChange={(value) => onViewChange(value as ViewType)}
+							className="w-auto"
+						>
+							<TabsList>
+								<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
+								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
+								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
+							</TabsList>
+						</Tabs>
+
+						<div className="flex items-center gap-2">
+							<Button
+								onClick={handlePrev}
+								disabled={currentIndex === 0 || !hasContent || isNavDisabled}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
 							>
-								<TabsList>
-									<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
-									<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-									<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-								</TabsList>
-							</Tabs>
+								<ChevronLeft className="h-4 w-4" />
+							</Button>
 
-							<div className="flex items-center gap-2">
-								<Button
-									onClick={handlePrev}
-									disabled={currentIndex === 0 || !hasContent || isNavDisabled}
-									variant="outline"
-									size="icon"
-									className="h-9 w-9"
-								>
-									<ChevronLeft className="h-4 w-4" />
-								</Button>
+							<span className="text-sm text-muted-foreground w-24 text-center">
+								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
+							</span>
 
-								<span className="text-sm text-muted-foreground w-24 text-center">
-									{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"} {hasContent ? currentIndex + 1 : 0} / {totalItems}
-								</span>
-
-								<Button
-									onClick={handleNext}
-									disabled={!hasContent || currentIndex >= totalItems - 1 || isNavDisabled}
-									variant="outline"
-									size="icon"
-									className="h-9 w-9"
-								>
-									<ChevronRight className="h-4 w-4" />
-								</Button>
-								
-								{(view === 'flashcards' || view === 'theory') && (
-									<>
-										<Button
-											onClick={handleToggleUnderstood}
-											disabled={!hasContent || isSummaryActive}
-											variant={isCurrentItemUnderstood ? "default" : "outline"}
-											size="icon"
-											className="h-9 w-9"
-										>
-											<CheckCircle className="w-4 h-4" />
-										</Button>
-										<Button
-											onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
-											disabled={!hasContent || isSummaryActive}
-											variant="outline"
-											size="icon"
-											className="h-9 w-9"
-										>
-											<Award className="w-4 h-4" />
-										</Button>
-									</>
-								)}
-
-
-								{view === 'quiz' && (
+							<Button
+								onClick={handleNext}
+								disabled={!hasContent || currentIndex >= totalItems - 1 || isNavDisabled}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<ChevronRight className="h-4 w-4" />
+							</Button>
+							
+							{(view === 'flashcards' || view === 'theory') && (
+								<>
 									<Button
-										onClick={() => setShowQuizSummary(true)}
+										onClick={handleToggleUnderstood}
+										disabled={!hasContent || isSummaryActive}
+										variant={isCurrentItemUnderstood ? "default" : "outline"}
+										size="icon"
+										className="h-9 w-9"
+									>
+										<CheckCircle className="w-4 h-4" />
+									</Button>
+									<Button
+										onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
 										disabled={!hasContent || isSummaryActive}
 										variant="outline"
 										size="icon"
@@ -680,12 +665,25 @@ function Learn({
 									>
 										<Award className="w-4 h-4" />
 									</Button>
-								)}
-								
-								<Settings {...settingsProps} scope="learn" />
+								</>
+							)}
 
-							</div>
-					</div>
+
+							{view === 'quiz' && (
+								<Button
+									onClick={() => setShowQuizSummary(true)}
+									disabled={!hasContent || isSummaryActive}
+									variant="outline"
+									size="icon"
+									className="h-9 w-9"
+								>
+									<Award className="w-4 h-4" />
+								</Button>
+							)}
+							
+							<Settings {...settingsProps} scope="learn" />
+
+						</div>
 				</div>
 			</div>
 		</div>
@@ -1221,7 +1219,28 @@ export default function Home() {
 	
 
 	const handleClearAllData = useCallback(async (isLearningReset: boolean = false) => {
-		
+		const db = await getDb();
+		const keysToDelete: DataKey[] = isLearningReset 
+			? [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
+			]
+			: [
+				"flashcards", "flashcardState", "flashcardIndex",
+				"quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex",
+				'topic', 'language', 'model', 'view', 'visibility', 
+				'background', 'uploadedBackgrounds', 
+				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
+				'hasCompletedOnboarding'
+			];
+	
+		const tx = db.transaction("data", 'readwrite');
+		const store = tx.objectStore("data");
+		await Promise.all(keysToDelete.map(key => store.delete(key)));
+		await tx.done;
+
 		// Reset state in memory
 		setFlashcardSet(null);
 		setFlashcardState({ understoodIndices: [] });
@@ -1249,39 +1268,18 @@ export default function Home() {
 			setApiKeys([]);
 			setApiKeyIndex(0);
 			setHasCompletedOnboarding(false);
-			toast({
-				title: "Đã xóa dữ liệu",
-				description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
-			});
 		} else {
             toast({
                 title: "Đã xóa dữ liệu học tập",
                 description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa."
             });
+            return; // Return early to avoid showing the "all data deleted" toast
         }
-
-		const db = await getDb();
-		const keysToDelete: DataKey[] = isLearningReset 
-			? [
-				"flashcards", "flashcardState", "flashcardIndex",
-				"quiz", "quizState",
-				"theory", "theoryState", "theoryChapterIndex",
-			]
-			: [
-				"flashcards", "flashcardState", "flashcardIndex",
-				"quiz", "quizState",
-				"theory", "theoryState", "theoryChapterIndex",
-				'topic', 'language', 'model', 'view', 'visibility', 
-				'background', 'uploadedBackgrounds', 
-				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
-				'hasCompletedOnboarding'
-			];
 	
-		const tx = db.transaction("data", 'readwrite');
-		const store = tx.objectStore("data");
-		await Promise.all(keysToDelete.map(key => store.delete(key)));
-		await tx.done;
-
+		toast({
+			title: "Đã xóa dữ liệu",
+			description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
+		});
 	}, [toast]);
 
 	const handleResetOnboarding = useCallback(async () => {
@@ -1314,9 +1312,9 @@ export default function Home() {
 			const topicChanged = topic !== newTopic;
 
 			if (topicChanged) {
-				await handleClearAllData(true);
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
+				await handleClearAllData(true);
 			}
 			if (language !== newLanguage) {
 				setLanguage(newLanguage)
@@ -1536,7 +1534,6 @@ export default function Home() {
 
 	const handleOnboardingComplete = useCallback(
 		async (finalTopic: string, finalLanguage: string, finalModel: string) => {
-			await handleClearAllData(true);
 			setTopic(finalTopic);
 			setLanguage(finalLanguage);
 			setModel(finalModel);
@@ -1547,7 +1544,7 @@ export default function Home() {
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 		},
-		[handleClearAllData]
+		[]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
@@ -1694,10 +1691,4 @@ export default function Home() {
 
     
 
-
-
-
-
-
-
-
+    
