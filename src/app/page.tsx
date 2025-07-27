@@ -1269,18 +1269,16 @@ export default function Home() {
 			setApiKeys([]);
 			setApiKeyIndex(0);
 			setHasCompletedOnboarding(false);
+			toast({
+				title: "Đã xóa dữ liệu",
+				description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
+			});
 		} else {
             toast({
                 title: "Đã xóa dữ liệu học tập",
                 description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa."
             });
-            return; // Return early to avoid showing the "all data deleted" toast
         }
-	
-		toast({
-			title: "Đã xóa dữ liệu",
-			description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
-		});
 	}, [toast]);
 
 	const handleResetOnboarding = useCallback(async () => {
@@ -1545,7 +1543,7 @@ export default function Home() {
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
 		},
-		[]
+		[handleClearAllData]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
@@ -1691,6 +1689,7 @@ export default function Home() {
     
 
     
+
 
 
 
