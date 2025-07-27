@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
@@ -549,7 +550,7 @@ function Learn({
 
 	return (
 		<div className="w-full h-full relative">
-			<div className="h-full w-full overflow-y-auto pb-20">
+			<div className="h-full w-full overflow-y-auto p-4 sm:p-6 md:p-8 pb-20">
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -605,7 +606,7 @@ function Learn({
 			</div>
 
 			{/* Sticky Toolbar */}
-			<div className="absolute bottom-0 left-0 right-0 flex justify-center">
+			<div className="absolute bottom-0 left-0 right-0 flex justify-center p-4">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
@@ -1622,7 +1623,7 @@ export default function Home() {
 
 			{/* Left Column */}
 			<div className="relative flex h-full flex-col justify-center p-4 sm:p-8 md:p-12">
-				<div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 flex justify-start items-center gap-4">
+				<div className="absolute top-0 left-0 right-0 p-4 sm:p-8 md:p-12 flex justify-start items-center gap-4">
 					<Settings {...globalSettingsProps} scope="global" />
 					{visibility.greeting && <Greeting />}
 				</div>
@@ -1637,7 +1638,7 @@ export default function Home() {
 
 			{/* Right Column */}
 			{visibility.learn && (
-				<div className="relative flex flex-col p-4 sm:p-6 md:p-8 h-screen overflow-hidden">
+				<div className="relative flex flex-col h-screen overflow-hidden">
 					<div className="flex flex-col w-full h-full">
 						<Learn
 							view={view}
@@ -1685,3 +1686,6 @@ export default function Home() {
 		</main>
 	)
 }
+
+
+    
