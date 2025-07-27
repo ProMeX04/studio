@@ -607,7 +607,7 @@ function Learn({
 			</div>
 
 			{/* Sticky Toolbar */}
-			<div className="flex-shrink-0 flex justify-center pt-4 pb-2">
+			<div className="flex-shrink-0 flex justify-center py-[5px]">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
@@ -1313,9 +1313,9 @@ export default function Home() {
 			const topicChanged = topic !== newTopic;
 
 			if (topicChanged) {
+				await handleClearAllData(true);
 				setTopic(newTopic)
 				await db.put("data", { id: "topic", data: newTopic })
-				await handleClearAllData(true);
 			}
 			if (language !== newLanguage) {
 				setLanguage(newLanguage)
@@ -1544,8 +1544,9 @@ export default function Home() {
 			await db.put("data", { id: "language", data: finalLanguage });
 			await db.put("data", { id: "model", data: finalModel });
 			await db.put("data", { id: "hasCompletedOnboarding", data: true });
+			await handleClearAllData(true);
 		},
-		[]
+		[handleClearAllData]
 	);
 
 	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
