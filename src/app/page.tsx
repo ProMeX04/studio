@@ -549,9 +549,9 @@ function Learn({
 	}
 
 	return (
-		<div className="w-full h-full p-0 flex flex-col bg-transparent">
+		<div className="w-full h-full p-0 flex flex-col bg-transparent relative">
 			{/* Scrollable Content Area */}
-			<div className="flex-grow overflow-y-auto">
+			<div className="flex-grow overflow-y-auto pb-20"> {/* Add padding to bottom to avoid toolbar overlap */}
 				{shouldShowQuizSummary && quizSet ? (
 					<QuizSummary
 						correctAnswers={correctAnswers}
@@ -606,8 +606,8 @@ function Learn({
 				)}
 			</div>
 
-			{/* Sticky Toolbar */}
-			<div className="flex-shrink-0 flex justify-center py-[5px]">
+			{/* Floating Toolbar */}
+			<div className="absolute bottom-0 left-0 right-0 flex justify-center py-[5px]">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
 						<Tabs
 							value={view}
@@ -1692,3 +1692,4 @@ export default function Home() {
     
 
     
+
