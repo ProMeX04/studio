@@ -47,12 +47,12 @@ ${promptInput.theoryContent}
 ---
 
 Yêu cầu:
-1.  Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ.
-2.  Tạo một danh sách các "nodes" (nút) và "edges" (cạnh nối) và trả về dưới dạng một đối tượng JSON duy nhất.
-3.  Nút gốc phải có id là 'root'.
-4.  Mỗi 'node' trong mảng 'nodes' phải có 'id' (chuỗi), và 'data: { label: "tên nút" }'.
-5.  Mỗi 'edge' trong mảng 'edges' phải có 'id' (chuỗi, ví dụ: 'e-root-1'), 'source' (id nút nguồn), và 'target' (id nút đích).
-6.  Sử dụng ngôn ngữ: ${promptInput.language}.
+1. Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ, tạo thành một cấu trúc cây phân cấp.
+2. Trả về một đối tượng JSON duy nhất.
+3. Đối tượng này phải là nút gốc, có thuộc tính "label" (tên của chương) và một thuộc tính "children" là một mảng các đối tượng nút con.
+4. Mỗi nút con cũng có "label" và có thể có một mảng "children" của riêng nó.
+5. Cấu trúc phải được lồng nhau một cách chính xác để thể hiện mối quan hệ cha-con.
+6. Sử dụng ngôn ngữ: ${promptInput.language}.
 `;
 
       const generationConfig: GenerationConfig = {

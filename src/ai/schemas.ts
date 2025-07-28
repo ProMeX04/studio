@@ -85,41 +85,42 @@ export const ExplainQuizOptionJsonSchema: Schema = {
 
 export const GenerateMindMapJsonSchema: Schema = {
   type: "OBJECT",
+  description: "The root node of the mind map tree.",
   properties: {
-    nodes: {
-      type: "ARRAY",
-      description: "An array of mind map nodes.",
-      items: {
-        type: "OBJECT",
-        properties: {
-          id: { type: "STRING", description: "A unique identifier for the node." },
-          data: {
-            type: "OBJECT",
-            properties: {
-              label: { type: "STRING", description: "The text label for the node." }
-            },
-            required: ["label"]
-          }
-        },
-        required: ["id", "data"]
-      }
+    label: {
+      type: "STRING",
+      description: "The text label for the node."
     },
-    edges: {
+    children: {
       type: "ARRAY",
-      description: "An array of edges connecting the mind map nodes.",
+      description: "An array of child nodes, which can themselves have children.",
       items: {
-        type: "OBJECT",
-        properties: {
-          id: { type: "STRING", description: "A unique identifier for the edge (e.g., 'e-source-target')." },
-          source: { type: "STRING", description: "The ID of the source node." },
-          target: { type: "STRING", description: "The ID of the target node." }
-        },
-        required: ["id", "source", "target"]
+        $ref: "#/definitions/mindMapNode"
       }
     }
   },
-  required: ["nodes", "edges"]
+  required: ["label"],
+  definitions: {
+    mindMapNode: {
+      type: "OBJECT",
+      properties: {
+        label: {
+          type: "STRING",
+          description: "The text label for the node."
+        },
+        children: {
+          type: "ARRAY",
+          description: "An array of child nodes.",
+          items: {
+            $ref: "#/definitions/mindMapNode"
+          }
+        }
+      },
+      required: ["label"]
+    }
+  }
 };
+
 
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
@@ -261,24 +262,19 @@ export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
 // Mind Map
-const MindMapNodeSchema = z.object({
-  id: z.string(),
-  data: z.object({
+type MindMapNode = {
+  label: string;
+  children?: MindMapNode[];
+};
+
+export const MindMapNodeSchema: z.ZodType<MindMapNode> = z.lazy(() => 
+  z.object({
     label: z.string(),
-  }),
-  // position is handled by layout algorithm in the frontend
-});
+    children: z.array(MindMapNodeSchema).optional(),
+  })
+);
 
-const MindMapEdgeSchema = z.object({
-  id: z.string(),
-  source: z.string(),
-  target: z.string(),
-});
-
-export const GenerateMindMapOutputSchema = z.object({
-  nodes: z.array(MindMapNodeSchema),
-  edges: z.array(MindMapEdgeSchema),
-});
+export const GenerateMindMapOutputSchema = MindMapNodeSchema;
 export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
   
 export const GenerateMindMapInputSchema = z.object({

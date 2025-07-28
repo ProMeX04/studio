@@ -1,43 +1,69 @@
 
 "use client"
 
-import React, { useMemo } from "react"
-import ReactFlow, { MiniMap, Controls, Background, type Node, type Edge, type NodeProps } from 'reactflow';
-import 'reactflow/dist/style.css';
+import React, { useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import type { TheorySet } from "@/ai/schemas"
+import type { TheorySet, GenerateMindMapOutput } from "@/ai/schemas"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, Map, Menu, Plus, Share2 } from "lucide-react"
-import { DagreLayout } from "@/lib/mindmap-layout";
-import { cn } from "@/lib/utils";
+import { CheckCircle, Map, Menu, Plus, Minus, Share2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { ScrollArea } from "./ui/scroll-area"
 
+interface MindmapProps {
+	theorySet: TheorySet | null
+	chapterIndex: number
+	isCurrentUnderstood: boolean
+}
 
-const CustomNode = ({ data }: NodeProps<{ label: string }>) => {
-	return (
-		<div className="bg-background border border-primary/50 shadow-lg rounded-lg p-3 text-center w-[172px]">
-			<div className="flex items-center justify-center gap-2">
-				<Share2 className="w-4 h-4 text-primary" />
-				<span className="font-semibold text-sm">{data.label}</span>
-			</div>
-		</div>
-	);
-};
+const MindMapNodeView: React.FC<{ node: GenerateMindMapOutput, level: number }> = ({ node, level }) => {
+    const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first few levels
+    const hasChildren = node.children && node.children.length > 0;
 
-const nodeTypes = {
-	custom: CustomNode,
-};
+    const toggleExpansion = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (hasChildren) {
+            setIsExpanded(!isExpanded);
+        }
+    };
 
+    return (
+        <li className={cn(
+            "relative",
+            level > 0 && "pl-8 pt-4", // Indent children
+        )}>
+            {/* Vertical line connecting to sibling/parent */}
+            {level > 0 && <span className="absolute left-4 top-0 w-px h-full bg-border -translate-x-1/2"></span>}
+            
+            <div className="flex items-center gap-2">
+                 {/* Horizontal line connecting to node */}
+                {level > 0 && <span className="absolute left-4 top-[1.3rem] w-4 h-px bg-border -translate-y-1/2"></span>}
 
-const layout = new DagreLayout();
+                {/* Node Content */}
+                <div 
+                    className={cn(
+                        "relative flex items-center gap-2 p-2 rounded-lg bg-background border border-primary/50 cursor-pointer hover:border-primary transition-colors",
+                        isExpanded && hasChildren && "border-primary"
+                    )}
+                    onClick={toggleExpansion}
+                >
+                    {hasChildren ? (
+                        isExpanded ? <Minus className="h-4 w-4 text-primary shrink-0"/> : <Plus className="h-4 w-4 text-primary shrink-0"/>
+                    ) : (
+                        <Share2 className="h-4 w-4 text-muted-foreground shrink-0"/>
+                    )}
+                    <span className="font-medium">{node.label}</span>
+                </div>
+            </div>
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: 'TB' | 'LR' = 'TB') => {
-  const { nodes: layoutedNodes, edges: layoutedEdges } = layout.getLayoutedElements(
-    nodes,
-    edges,
-    direction
-  );
-
-  return { nodes: layoutedNodes, edges: layoutedEdges };
+            {hasChildren && isExpanded && (
+                <ul className="pt-2">
+                    {node.children?.map((child, index) => (
+                        <MindMapNodeView key={index} node={child} level={level + 1} />
+                    ))}
+                </ul>
+            )}
+        </li>
+    );
 };
 
 
@@ -46,50 +72,23 @@ export function Mindmap({ theorySet, chapterIndex, isCurrentUnderstood }: Mindma
 	const hasContent = !!currentChapter;
     const mindMapData = currentChapter?.mindMap;
 
-	const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-		if (!mindMapData || !Array.isArray(mindMapData.nodes) || !Array.isArray(mindMapData.edges)) {
-			return { nodes: [], edges: [] };
-		}
-		const nodes = mindMapData.nodes.map(node => ({
-			...node,
-			position: { x: 0, y: 0 }, // initial position
-			type: 'custom', // Use custom node type
-		}));
-		return getLayoutedElements(nodes, mindMapData.edges);
-	}, [mindMapData]);
-	
 	return (
 		<div className="h-full w-full flex flex-col bg-transparent shadow-none border-none">
-			<div className="flex-grow w-full flex items-center justify-center overflow-auto">
+			<div className="flex-grow w-full flex items-center justify-center overflow-hidden">
 				{hasContent ? (
-					<div className="w-full h-full relative">
+					<div className="w-full h-full flex flex-col items-center">
+                        <div className="relative w-full text-center pt-4">
+                            <h1 className="text-4xl font-bold text-shadow bg-background/50 backdrop-blur-sm rounded-lg inline-block px-4 py-2">{currentChapter.title}</h1>
+						    {isCurrentUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-8 h-8 bg-background rounded-full p-1" />}
+                        </div>
 						{mindMapData ? (
-							<>
-								<ReactFlow
-									nodes={layoutedNodes}
-									edges={layoutedEdges}
-									fitView
-									className="bg-transparent"
-									proOptions={{ hideAttribution: true }}
-									nodeTypes={nodeTypes}
-									defaultEdgeOptions={{
-										type: 'step',
-										style: { strokeWidth: 2 },
-										animated: true,
-									}}
-								>
-									<Controls />
-									<MiniMap nodeStrokeWidth={3} zoomable pannable />
-									<Background gap={24} />
-								</ReactFlow>
-								<div className="absolute top-4 left-4 right-4 text-center pointer-events-none">
-									<h1 className="text-4xl font-bold text-shadow bg-background/50 backdrop-blur-sm rounded-lg inline-block px-4 py-2">{currentChapter.title}</h1>
-								</div>
-								{isCurrentUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-8 h-8 bg-background rounded-full p-1" />}
-							</>
+                            <ScrollArea className="w-full h-full p-8">
+                                <ul className="flex flex-col items-start">
+                                    <MindMapNodeView node={mindMapData} level={0} />
+                                </ul>
+                            </ScrollArea>
 						) : (
-							<div className="w-full h-full flex flex-col items-center justify-center">
-								<h1 className="text-4xl font-bold mb-8 text-center">{currentChapter.title}</h1>
+							<div className="w-full h-full flex flex-col items-center justify-center p-8">
 								<Skeleton className="w-full h-3/4" />
 							</div>
 						)}
