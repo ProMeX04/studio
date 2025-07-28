@@ -217,8 +217,6 @@ export function QuickLinks() {
 				>
 					<a
 						href={link.url}
-						target="_blank"
-						rel="noopener noreferrer"
 						className="flex flex-col items-center justify-center gap-2 rounded-lg transition-colors h-full p-2 min-h-[96px]"
 					>
 						<div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary">
