@@ -88,33 +88,35 @@ Yêu cầu:
 
             console.warn(`API Key at index ${currentKeyIndex} failed on attempt ${attempt}. Reason: ${errorMessage}`);
             
+            // Prioritize retrying for invalid format errors
             if (isInvalidFormatError && attempt < maxRetries) {
                 console.log(`Invalid format received. Retrying... (${attempt}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // wait before retrying
                 continue; // retry with the same key
             }
 
+            // Handle API key errors (quota, invalid) by switching keys
             if (isQuotaError) quotaErrorCount++;
             if (isBadApiKeyError) invalidKeyCount++;
 
             if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
-                // Move to the next key if it's a known, recoverable error and not the last key
                 currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
                 console.log(`Trying next API Key at index ${currentKeyIndex}.`);
                 break; // Break from retry loop to switch key
-            } else {
-                console.error('❌ Mind Map generation error:', error);
-                if (isInvalidFormatError) {
-                    throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
-                }
-                if (invalidKeyCount === apiKeys.length) {
-                    throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
-                }
-                if (quotaErrorCount === apiKeys.length) {
-                    throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau.', 'ALL_KEYS_FAILED');
-                }
-                throw new AIOperationError('Không thể tạo sơ đồ tư duy từ AI.', 'AI_GENERATION_FAILED');
+            } 
+            
+            // If all retries/keys fail, throw the final error
+            console.error('❌ Mind Map generation error:', error);
+            if (isInvalidFormatError) {
+                throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
             }
+            if (invalidKeyCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
+            }
+            if (quotaErrorCount === apiKeys.length) {
+                throw new AIOperationError('Tất cả API key đều đã hết dung lượng. Vui lòng thử lại sau.', 'ALL_KEYS_FAILED');
+            }
+            throw new AIOperationError('Không thể tạo sơ đồ tư duy từ AI.', 'AI_GENERATION_FAILED');
         }
     }
   }
