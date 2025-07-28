@@ -6,6 +6,7 @@ import {
 	GoogleGenerativeAI,
 	HarmCategory,
 	HarmBlockThreshold,
+	ChatSession,
 } from "@google/generative-ai"
 import { Mic, Loader } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,8 +20,8 @@ type SessionStatus =
 	| "recording"
 	| "processing"
 
-// Use the correct model for multi-turn chat capabilities on the client
-const MODEL_NAME = "gemini-1.5-flash-latest"
+// Use the model specified by the user
+const MODEL_NAME = "gemini-2.5-flash-preview-native-audio-dialog"
 
 export function AdvancedVoiceChat({
 	apiKeys,
@@ -39,7 +40,7 @@ export function AdvancedVoiceChat({
 	const audioContextRef = useRef<AudioContext | null>(null)
 	const audioQueueRef = useRef<ArrayBuffer[]>([])
 	const isPlayingRef = useRef(false)
-	const chatSessionRef = useRef<any | null>(null) // This will be a ChatSession object
+	const chatSessionRef = useRef<ChatSession | null>(null)
 	const aiRef = useRef<GoogleGenerativeAI | null>(null)
 
 	useEffect(() => {
@@ -63,17 +64,20 @@ export function AdvancedVoiceChat({
 
 		if (audioData) {
 			try {
-				// The audio from the API is raw PCM, needs proper buffer creation
 				const audioBuffer = await audioContextRef.current.decodeAudioData(audioData)
 				const source = audioContextRef.current.createBufferSource()
 				source.buffer = audioBuffer
 				source.connect(audioContextRef.current.destination)
 				source.onended = () => {
 					isPlayingRef.current = false
-					// If there's more audio, play it immediately
 					if (audioQueueRef.current.length > 0) {
 						playNextInQueue();
-					}
+					} else {
+                        // When playback finishes, transition back to connected if not disconnected
+                        if (status !== 'disconnected') {
+                            setStatus("connected");
+                        }
+                    }
 				}
 				source.start()
 			} catch (error) {
@@ -84,22 +88,19 @@ export function AdvancedVoiceChat({
 		} else {
 			isPlayingRef.current = false
 		}
-	}, [])
+	}, [status])
 
-
-	// This function handles incoming messages from the AI
 	const handleServerMessage = useCallback(
 		async (response: any) => {
-			// The response from generateContentStream is different from `live`
-			// We need to check for `response.candidates[0].content.parts`
 			const parts = response?.candidates?.[0]?.content?.parts ?? [];
 			for (const part of parts) {
 				if (part.text) {
-					console.log("AI Text:", part.text)
+					console.log("AI Text:", part.text) // Log text for debugging
 				}
-				if (part.inlineData && part.inlineData.mimeType === 'audio/wav') {
-					// The SDK returns base64 encoded WAV data
+				// The client-side SDK's stream response for audio is typically in an inlineData part
+				if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
 					const base64Audio = part.inlineData.data;
+					// The base64 data needs to be converted to an ArrayBuffer
 					const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0)).buffer;
 					audioQueueRef.current.push(audioBytes);
 					playNextInQueue();
@@ -108,7 +109,7 @@ export function AdvancedVoiceChat({
 		},
 		[playNextInQueue]
 	)
-
+    
 	const disconnectSession = useCallback(() => {
 		if (mediaRecorderRef.current?.state === "recording") {
 			mediaRecorderRef.current.stop()
@@ -152,7 +153,7 @@ export function AdvancedVoiceChat({
 					{ category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 				],
 				generationConfig: {
-					// Request audio output
+					// Request audio output along with text
 					responseMimeType: "audio/wav",
 				}
 			})
@@ -163,7 +164,6 @@ export function AdvancedVoiceChat({
 				history: [],
 			})
 
-			// Initialize AudioContext
 			audioContextRef.current = new (window.AudioContext ||(window as any).webkitAudioContext)()
 			
 			setStatus("connected")
@@ -199,7 +199,6 @@ export function AdvancedVoiceChat({
 				}
 			}
 
-			// When the recording stops, send the complete audio blob
 			mediaRecorderRef.current.onstop = async () => {
 				setStatus("processing");
 				const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -210,25 +209,26 @@ export function AdvancedVoiceChat({
 				reader.onloadend = async () => {
 					const base64Audio = (reader.result as string).split(',')[1];
 					try {
-						// Send the audio data as a single part in the stream
-						const result = await chatSessionRef.current.sendMessageStream([
+						const result = await chatSessionRef.current?.sendMessageStream([
 							{ inlineData: { data: base64Audio, mimeType: 'audio/webm' } },
 						]);
+						
+						if (!result || !result.stream) {
+							throw new Error("No stream returned from sendMessageStream.");
+						}
 
-						// Process the streamed response from the AI
 						for await (const chunk of result.stream) {
 							await handleServerMessage(chunk)
 						}
 
 					} catch (e: any) {
-						toast({ title: "Lỗi gửi âm thanh", description: e.message, variant: "destructive" });
-						disconnectSession();
-					} finally {
-						// Once processing is done, return to connected state to allow another recording
-						if (status !== 'disconnected') {
-							setStatus("connected");
-						}
-					}
+						console.error("Error sending or processing stream:", e);
+						toast({ title: "Lỗi giao tiếp với AI", description: e.message, variant: "destructive" });
+						// Don't disconnect, just return to connected state
+                        if (status !== 'disconnected') {
+						    setStatus("connected");
+                        }
+					} 
 				}
 			}
 
@@ -236,11 +236,11 @@ export function AdvancedVoiceChat({
 				setStatus("recording");
 			}
 
-			mediaRecorderRef.current.start(); // No timeslice, record until stop() is called
+			mediaRecorderRef.current.start(); 
 		} catch (error) {
 			console.error("Failed to get microphone access:", error)
 			toast({ title: "Lỗi Micro", description: "Không thể truy cập micro.", variant: "destructive" });
-			setStatus("connected") // Revert to connected if mic access fails
+			setStatus("connected") 
 		}
 	}
 
@@ -265,7 +265,7 @@ export function AdvancedVoiceChat({
 				break
 			case "connecting":
 			case "processing":
-				// Button is disabled in these states, do nothing
+				// Button is disabled
 				break
 		}
 	}
@@ -325,6 +325,3 @@ export function AdvancedVoiceChat({
 		</div>
 	)
 }
-
-
-    
