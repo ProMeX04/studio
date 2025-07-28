@@ -4,9 +4,14 @@
 import React from "react"
 import { AppProvider, useAppContext } from "@/contexts/AppContext"
 import LeftColumn from "@/components/LeftColumn"
-import RightColumn from "@/components/RightColumn"
 import { ApiKeyGuide } from "@/components/ApiKeyGuide"
 import { Learn } from "@/components/Learn"
+import {
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
+} from "@/components/ui/resizable"
+import RightColumn from "@/components/RightColumn"
 
 
 function HomePageContent() {
@@ -17,7 +22,7 @@ function HomePageContent() {
 	}
 
 	return (
-		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1.2fr,1.5fr]">
+		<main className="relative min-h-screen w-full">
 			{backgroundImage && (
 				<div
 					className="absolute inset-0 bg-cover bg-center"
@@ -26,14 +31,19 @@ function HomePageContent() {
 					<div className="absolute inset-0 bg-black/60"></div>
 				</div>
 			)}
-			<LeftColumn />
-            {visibility.learn && (
-                <div className="relative flex flex-col h-screen overflow-hidden">
-                    <div className="flex flex-col w-full h-full">
-                        {hasCompletedOnboarding ? <Learn /> : <ApiKeyGuide />}
-                    </div>
-                </div>
-            )}
+			<ResizablePanelGroup direction="horizontal" className="relative min-h-screen w-full">
+				<ResizablePanel defaultSize={45} minSize={30}>
+					<LeftColumn />
+				</ResizablePanel>
+				{visibility.learn && (
+					<>
+						<ResizableHandle withHandle />
+						<ResizablePanel defaultSize={55} minSize={30}>
+							<RightColumn />
+						</ResizablePanel>
+					</>
+				)}
+			</ResizablePanelGroup>
 		</main>
 	)
 }
