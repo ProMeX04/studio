@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenerativeAI, Session, LiveServerMessage } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Mic, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,14 +19,15 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioQueueRef = useRef<ArrayBuffer[]>([]);
     const isPlayingRef = useRef(false);
-    const sessionRef = useRef<Session | null>(null);
+    const chatSessionRef = useRef<any | null>(null);
     const aiRef = useRef<GoogleGenerativeAI | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
         return () => {
-            if (sessionRef.current) {
-                sessionRef.current.close();
+            if (chatSessionRef.current) {
+                // No explicit close method on stream, just stop processing
+                chatSessionRef.current = null;
             }
             if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
@@ -61,31 +62,12 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         }
     }, []);
 
-    const handleServerMessage = useCallback((message: LiveServerMessage) => {
-        if (message.serverContent?.modelTurn?.parts) {
-            const part = message.serverContent.modelTurn.parts[0];
-            if (part?.inlineData?.data) {
-                if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-                    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-                }
-                const buffer = Buffer.from(part.inlineData.data, 'base64').buffer;
-                audioQueueRef.current.push(buffer);
-                if (!isPlayingRef.current) {
-                    playNextInQueue();
-                }
-            }
-        }
-    }, [playNextInQueue]);
-    
     const disconnectSession = useCallback(() => {
-        if (sessionRef.current) {
-            sessionRef.current.close();
-        }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
         mediaRecorderRef.current = null;
-        sessionRef.current = null;
+        chatSessionRef.current = null;
         setStatus('disconnected');
         audioQueueRef.current = [];
         isPlayingRef.current = false;
@@ -93,7 +75,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
 
 
     const connectSession = useCallback(async () => {
-        if (!isMounted || sessionRef.current) return;
+        if (!isMounted || chatSessionRef.current) return;
         if (!apiKeys || apiKeys.length === 0) {
             toast({ title: "Thiếu API Key", description: "Vui lòng thêm API key trong Cài đặt.", variant: "destructive" });
             return;
@@ -106,33 +88,18 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
                  throw new Error("API key không hợp lệ.");
             }
             
-            aiRef.current = new GoogleGenerativeAI({ apiKey });
+            aiRef.current = new GoogleGenerativeAI(apiKey);
 
-            const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
-            const config = {
-                responseModalities: ['AUDIO', 'TEXT'],
-                mediaResolution: 'MEDIA_RESOLUTION_MEDIUM',
-                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-            };
-    
-            const newSession = await aiRef.current.live.connect({
-                model,
-                config,
-                callbacks: {
-                    onmessage: handleServerMessage,
-                    onerror: (e: ErrorEvent) => {
-                        console.error('Session Error:', e.message);
-                        toast({ title: "Lỗi Session", description: e.message, variant: "destructive" });
-                        disconnectSession();
-                    },
-                    onclose: () => {
-                        console.log('Session closed by server.');
-                        disconnectSession();
-                    },
-                },
+            const model = aiRef.current.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+            
+            chatSessionRef.current = model.startChat({
+                history: [],
+                generationConfig: {
+                    // @ts-ignore
+                    responseMimeType: "audio/webm",
+                }
             });
-
-            sessionRef.current = newSession;
+    
             setStatus('connected');
 
         } catch (error: any) {
@@ -140,28 +107,21 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             toast({ title: "Lỗi kết nối", description: error.message || "Không thể bắt đầu phiên hội thoại.", variant: "destructive" });
             setStatus('disconnected');
         }
-    }, [isMounted, apiKeys, apiKeyIndex, toast, handleServerMessage, disconnectSession]);
+    }, [isMounted, apiKeys, apiKeyIndex, toast]);
 
 
     const startRecording = async () => {
-        if (status !== 'connected' || !sessionRef.current) return;
+        if (status !== 'connected' || !chatSessionRef.current) return;
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            
+            const audioChunks: BlobPart[] = [];
 
             mediaRecorderRef.current.ondataavailable = (event) => {
-                if (event.data.size > 0 && sessionRef.current) {
-                   const reader = new FileReader();
-                    reader.readAsDataURL(event.data);
-                    reader.onloadend = () => {
-                        const base64Audio = (reader.result as string).split(',')[1];
-                        if (sessionRef.current) {
-                            sessionRef.current.sendClientContent({
-                                audio: { inlineData: { data: base64Audio, mimeType: 'audio/webm' }}
-                            });
-                        }
-                    };
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
                 }
             };
 
@@ -169,17 +129,46 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
                 setStatus('recording');
             };
             
-            mediaRecorderRef.current.onstop = () => {
-                // Wait for the final audio to be played before setting status back to connected
-                const checkQueue = setInterval(() => {
-                    if (audioQueueRef.current.length === 0 && !isPlayingRef.current) {
+            mediaRecorderRef.current.onstop = async () => {
+                setStatus('processing');
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = async () => {
+                    const base64Audio = (reader.result as string).split(',')[1];
+                    try {
+                        const result = await chatSessionRef.current.sendMessage([
+                            {
+                                inlineData: {
+                                    data: base64Audio,
+                                    mimeType: "audio/webm"
+                                }
+                            }
+                        ]);
+                        
+                        const response = await result.response;
+                        const audioContent = response.candidates[0].content.parts.find((part: any) => part.inlineData && part.inlineData.mimeType.startsWith('audio/'));
+
+                        if (audioContent) {
+                            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+                                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+                            }
+                            const buffer = Buffer.from(audioContent.inlineData.data, 'base64').buffer;
+                            audioQueueRef.current.push(buffer);
+                            if (!isPlayingRef.current) {
+                                playNextInQueue();
+                            }
+                        }
+
+                    } catch(e: any) {
+                        toast({ title: "Lỗi gửi âm thanh", description: e.message, variant: "destructive" });
+                    } finally {
                         setStatus('connected');
-                        clearInterval(checkQueue);
                     }
-                }, 100);
+                };
             };
 
-            mediaRecorderRef.current.start(500); // Send data every 500ms
+            mediaRecorderRef.current.start();
 
         } catch (error) {
             console.error("Failed to get microphone access:", error);
@@ -191,7 +180,6 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
     const stopRecording = () => {
         if (mediaRecorderRef.current && status === 'recording') {
             mediaRecorderRef.current.stop();
-            setStatus('processing');
         }
     };
 
@@ -265,4 +253,3 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         </div>
     );
 }
-
