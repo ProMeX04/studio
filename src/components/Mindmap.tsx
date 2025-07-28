@@ -38,7 +38,9 @@ export function Mindmap({ theorySet, chapterIndex, isCurrentUnderstood }: Mindma
     const mindMapData = currentChapter?.mindMap;
 
 	const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-		if (!mindMapData) return { nodes: [], edges: [] };
+		if (!mindMapData || !Array.isArray(mindMapData.nodes) || !Array.isArray(mindMapData.edges)) {
+			return { nodes: [], edges: [] };
+		}
 		const nodes = mindMapData.nodes.map(node => ({
 			...node,
 			position: { x: 0, y: 0 } // initial position
@@ -51,21 +53,30 @@ export function Mindmap({ theorySet, chapterIndex, isCurrentUnderstood }: Mindma
 			<div className="flex-grow w-full flex items-center justify-center overflow-auto">
 				{hasContent ? (
 					<div className="w-full h-full relative">
-						<ReactFlow
-							nodes={layoutedNodes}
-							edges={layoutedEdges}
-							fitView
-							className="bg-transparent"
-							proOptions={{ hideAttribution: true }}
-						>
-							<Controls />
-							<MiniMap />
-							<Background gap={16} />
-						</ReactFlow>
-						<div className="absolute top-4 left-4 right-4 text-center pointer-events-none">
-							<h1 className="text-4xl font-bold text-shadow bg-background/50 backdrop-blur-sm rounded-lg inline-block px-4 py-2">{currentChapter.title}</h1>
-						</div>
-						{isCurrentUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-8 h-8 bg-background rounded-full p-1" />}
+						{mindMapData ? (
+							<>
+								<ReactFlow
+									nodes={layoutedNodes}
+									edges={layoutedEdges}
+									fitView
+									className="bg-transparent"
+									proOptions={{ hideAttribution: true }}
+								>
+									<Controls />
+									<MiniMap />
+									<Background gap={16} />
+								</ReactFlow>
+								<div className="absolute top-4 left-4 right-4 text-center pointer-events-none">
+									<h1 className="text-4xl font-bold text-shadow bg-background/50 backdrop-blur-sm rounded-lg inline-block px-4 py-2">{currentChapter.title}</h1>
+								</div>
+								{isCurrentUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-8 h-8 bg-background rounded-full p-1" />}
+							</>
+						) : (
+							<div className="w-full h-full flex flex-col items-center justify-center">
+								<h1 className="text-4xl font-bold mb-8 text-center">{currentChapter.title}</h1>
+								<Skeleton className="w-full h-3/4" />
+							</div>
+						)}
 					</div>
 				) : (
 					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
