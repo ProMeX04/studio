@@ -19,15 +19,18 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioQueueRef = useRef<ArrayBuffer[]>([]);
     const isPlayingRef = useRef(false);
-    const chatSessionRef = useRef<any | null>(null);
+    const chatSessionRef = useRef<any | null>(null); // This will hold the chat session from startChat
     const aiRef = useRef<GoogleGenerativeAI | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
         return () => {
+            // Clean up resources
             if (chatSessionRef.current) {
-                // No explicit close method on stream, just stop processing
                 chatSessionRef.current = null;
+            }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
             }
             if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
@@ -41,6 +44,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         }
         isPlayingRef.current = true;
         const audioData = audioQueueRef.current.shift();
+        
         if (audioData && audioContextRef.current) {
             try {
                 const audioBuffer = await audioContextRef.current.decodeAudioData(audioData);
@@ -61,7 +65,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             isPlayingRef.current = false;
         }
     }, []);
-
+    
     const disconnectSession = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -72,8 +76,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         audioQueueRef.current = [];
         isPlayingRef.current = false;
     }, []);
-
-
+    
     const connectSession = useCallback(async () => {
         if (!isMounted || chatSessionRef.current) return;
         if (!apiKeys || apiKeys.length === 0) {
@@ -89,25 +92,24 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             }
             
             aiRef.current = new GoogleGenerativeAI(apiKey);
-
+    
             const model = aiRef.current.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
             
+            // Use startChat for interactive, streaming conversations
             chatSessionRef.current = model.startChat({
                 history: [],
-                generationConfig: {
-                    // @ts-ignore
-                    responseMimeType: "audio/webm",
-                }
+                // This enables back-and-forth conversation
             });
     
             setStatus('connected');
+            toast({ title: "Đã kết nối", description: "Sẵn sàng nhận lệnh thoại." });
 
         } catch (error: any) {
-            console.error("Failed to connect to live session:", error);
+            console.error("Failed to connect to chat session:", error);
             toast({ title: "Lỗi kết nối", description: error.message || "Không thể bắt đầu phiên hội thoại.", variant: "destructive" });
-            setStatus('disconnected');
+            disconnectSession();
         }
-    }, [isMounted, apiKeys, apiKeyIndex, toast]);
+    }, [isMounted, apiKeys, apiKeyIndex, toast, disconnectSession]);
 
 
     const startRecording = async () => {
@@ -117,7 +119,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             
-            const audioChunks: BlobPart[] = [];
+            const audioChunks: Blob[] = [];
 
             mediaRecorderRef.current.ondataavailable = (event) => {
                 if (event.data.size > 0) {
@@ -132,6 +134,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             mediaRecorderRef.current.onstop = async () => {
                 setStatus('processing');
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = async () => {
@@ -146,19 +149,19 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
                             }
                         ]);
                         
+                        // In a non-live API, the response comes after the user finishes speaking.
+                        // For a more "live" feel, we would need to handle streaming responses,
+                        // which is more complex and not directly supported by the provided example.
+                        // This implementation processes audio after recording stops.
+                        
                         const response = await result.response;
-                        const audioContent = response.candidates[0].content.parts.find((part: any) => part.inlineData && part.inlineData.mimeType.startsWith('audio/'));
+                        const text = response.text();
+                        console.log("AI Response:", text); // Log text response
+                        
+                        // We will need a separate TTS flow to convert this text to audio.
+                        // For now, let's just log it. A full implementation would call a TTS service here.
+                        toast({ title: "AI đã trả lời (văn bản)", description: text });
 
-                        if (audioContent) {
-                            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-                                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-                            }
-                            const buffer = Buffer.from(audioContent.inlineData.data, 'base64').buffer;
-                            audioQueueRef.current.push(buffer);
-                            if (!isPlayingRef.current) {
-                                playNextInQueue();
-                            }
-                        }
 
                     } catch(e: any) {
                         toast({ title: "Lỗi gửi âm thanh", description: e.message, variant: "destructive" });
