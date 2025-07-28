@@ -35,7 +35,16 @@ import type {
 	FlashcardState,
 	TheoryState,
 } from "@/app/types"
-import { ComponentVisibility } from "@/app/page"
+
+export interface ComponentVisibility {
+	home: boolean;
+	clock: boolean;
+	greeting: boolean;
+	search: boolean;
+	quickLinks: boolean;
+	learn: boolean;
+	advancedVoiceChat: boolean;
+}
 
 const FLASHCARDS_PER_CHAPTER = 5
 const QUIZ_QUESTIONS_PER_CHAPTER = 4
@@ -917,23 +926,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	const onVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
-			if (
-				visibility.home === newVisibility.home &&
-				visibility.clock === newVisibility.clock &&
-				visibility.greeting === newVisibility.greeting &&
-				visibility.search === newVisibility.search &&
-				visibility.quickLinks === newVisibility.quickLinks &&
-				visibility.learn === newVisibility.learn &&
-				visibility.advancedVoiceChat === newVisibility.advancedVoiceChat
-			)
-				return
-
-			setVisibility(newVisibility)
-			const db = await getDb()
-			await db.put("data", { id: "visibility", data: newVisibility })
+			setVisibility(newVisibility);
+			const db = await getDb();
+			await db.put("data", { id: "visibility", data: newVisibility });
 		},
-		[visibility]
-	)
+		[]
+	);
 
 	// --- Learning UI Callbacks ---
 	const onViewChange = useCallback(

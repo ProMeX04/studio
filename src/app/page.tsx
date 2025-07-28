@@ -15,6 +15,7 @@ import { Settings } from "@/components/Settings"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
+import type { ComponentVisibility } from "@/contexts/AppContext"
 
 function HomePageContent() {
 	const { 
