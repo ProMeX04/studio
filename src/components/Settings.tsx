@@ -37,7 +37,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
-import type { ComponentVisibility } from "@/app/page"
+import type { ComponentVisibility } from "@/contexts/AppContext"
 import { Switch } from "./ui/switch"
 import {
 	Select,
@@ -853,43 +853,7 @@ export function Settings(props: SettingsProps) {
 							)}
 						</div>
 					) : (
-						<AlertDialog>
-							<AlertDialogTrigger asChild>
-								<Button variant="destructive">
-									<Trash2 className="mr-2 h-4 w-4" />
-									Xóa toàn bộ dữ liệu
-								</Button>
-							</AlertDialogTrigger>
-							<AlertDialogContent>
-								<AlertDialogHeader>
-									<AlertDialogTitle>
-										<div className="flex items-center gap-2">
-											<AlertTriangle className="text-destructive" />
-											<span>Bạn có chắc chắn không?</span>
-										</div>
-									</AlertDialogTitle>
-									<AlertDialogDescription>
-										Hành động này sẽ xóa vĩnh viễn tất cả
-										flashcard, bài trắc nghiệm, lịch sử và
-										cài đặt của bạn. Hành động này không thể
-										hoàn tác.
-									</AlertDialogDescription>
-								</AlertDialogHeader>
-								<AlertDialogFooter>
-									<AlertDialogCancel>Hủy</AlertDialogCancel>
-									<AlertDialogAction
-										onClick={handleClearData}
-										className={cn(
-											buttonVariants({
-												variant: "destructive",
-											})
-										)}
-									>
-										Vâng, xóa tất cả
-									</AlertDialogAction>
-								</AlertDialogFooter>
-							</AlertDialogContent>
-						</AlertDialog>
+						null
 					)}
 				</SheetFooter>
 			</SheetContent>
