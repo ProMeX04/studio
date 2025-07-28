@@ -32,8 +32,6 @@ export function AdvancedVoiceChat({
 
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
 	const audioContextRef = useRef<AudioContext | null>(null)
-	const audioQueueRef = useRef<Float32Array[]>([])
-    const isPlayingRef = useRef(false)
 	const chatSessionRef = useRef<ChatSession | null>(null)
 	const aiRef = useRef<GoogleGenerativeAI | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
@@ -61,40 +59,30 @@ export function AdvancedVoiceChat({
 		mediaRecorderRef.current = null
 		chatSessionRef.current = null
 		setStatus("idle")
-		audioQueueRef.current = []
-		isPlayingRef.current = false
 	}, [])
 
     const decodeAndPlay = useCallback(async (base64Audio: string) => {
         try {
-            // 1. Decode Base64 to binary string
             const binaryString = atob(base64Audio);
             const len = binaryString.length;
             const bytes = new Uint8Array(len);
             for (let i = 0; i < len; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-
-            // 2. Create Int16Array from the Uint8Array buffer
-            // The audio from Gemini is 16-bit PCM
             const pcmData = new Int16Array(bytes.buffer);
-
-            // 3. Convert Int16 PCM to Float32 range [-1, 1]
             const float32Data = new Float32Array(pcmData.length);
             for (let i = 0; i < pcmData.length; i++) {
                 float32Data[i] = pcmData[i] / 32768.0;
             }
 
-            // 4. Create an AudioBuffer
             if (!audioContextRef.current) return;
             const audioBuffer = audioContextRef.current.createBuffer(
-                1, // num channels
+                1,
                 float32Data.length,
-                24000 // Gemini returns 24kHz audio
+                24000
             );
             audioBuffer.copyToChannel(float32Data, 0);
 
-            // 5. Play the buffer
             const source = audioContextRef.current.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(audioContextRef.current.destination);
@@ -115,9 +103,6 @@ export function AdvancedVoiceChat({
 			try {
 				const parts = response?.candidates?.[0]?.content?.parts ?? []
 				for (const part of parts) {
-					if (part.text) {
-						// console.log("AI Text:", part.text); // Log text for debugging
-					}
 					if (part.audio) {
                         await decodeAndPlay(part.audio);
 					}
@@ -280,5 +265,3 @@ export function AdvancedVoiceChat({
 		</div>
 	)
 }
-
-    
