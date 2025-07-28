@@ -6,7 +6,7 @@ import { Mic, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { GoogleGenerativeAI, Session, LiveServerMessage, Modality, MediaResolution } from '@google/generative-ai';
+import { GoogleGenerativeAI, Session, LiveServerMessage } from '@google/generative-ai';
 
 type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'processing';
 
@@ -112,8 +112,9 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             const ai = new GoogleGenerativeAI({ apiKey: apiKeys[apiKeyIndex] });
             const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
             const config = {
-                responseModalities: [Modality.AUDIO, Modality.TEXT],
-                mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+                // Use direct string values for client-side API
+                responseModalities: ['AUDIO', 'TEXT'],
+                mediaResolution: 'MEDIA_RESOLUTION_MEDIUM',
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
             };
     
