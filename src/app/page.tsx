@@ -455,8 +455,8 @@ function Learn({
 	const handlePrev = () => {
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
-			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
-			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex + 1);
+			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
+			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex - 1);
 		}
 	};
 
@@ -1630,4 +1630,5 @@ export default function Home() {
     
 
     
+
 
