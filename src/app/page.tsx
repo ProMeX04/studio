@@ -21,7 +21,7 @@ import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
 import { generateAudio } from "@/ai/flows/generate-audio";
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, AudioLines, Podcast as PodcastIcon } from "lucide-react"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, AudioLines, Podcast as PodcastIcon, Mic } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages, models } from "@/components/Settings"
 import {
@@ -368,6 +368,7 @@ interface LearnProps {
 	onTheoryStateChange: (newState: TheoryState) => void;
 	onTheoryReset: () => void;
 	settingsProps: any;
+	voiceChatProps: any;
 	currentQuestionIndex: number;
 	onCurrentQuestionIndexChange: (index: number) => void;
 	theoryChapterIndex: number;
@@ -380,6 +381,7 @@ interface LearnProps {
 	handleGenerate: (forceNew: boolean) => void;
 	handleGeneratePodcastForChapter: (chapterIndex: number) => void;
 	isGeneratingPodcast: boolean;
+	visibility: ComponentVisibility;
 }
 
 function Learn({
@@ -410,6 +412,7 @@ function Learn({
 	onTheoryStateChange,
 	onTheoryReset,
 	settingsProps,
+	voiceChatProps,
 	currentQuestionIndex,
 	onCurrentQuestionIndexChange,
 	theoryChapterIndex,
@@ -421,7 +424,8 @@ function Learn({
 	hasCompletedOnboarding,
 	handleGenerate,
 	handleGeneratePodcastForChapter,
-	isGeneratingPodcast
+	isGeneratingPodcast,
+	visibility,
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -457,7 +461,7 @@ function Learn({
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
-			else onTheoryChapterIndexChange(theoryChapterIndex - 1);
+			else onTheoryChapterIndexChange(theoryChapterIndex + 1);
 		}
 	};
 
@@ -641,12 +645,12 @@ function Learn({
 
 			{/* Sticky Toolbar */}
 			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2">
-				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
+				<div className="flex flex-wrap items-center justify-center gap-2 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-3xl">
 						<Select
 							value={view}
 							onValueChange={(value) => onViewChange(value as ViewType)}
 						>
-							<SelectTrigger className="w-[180px]">
+							<SelectTrigger className="w-[150px]">
 								<SelectValue placeholder="Chọn chế độ" />
 							</SelectTrigger>
 							<SelectContent>
@@ -722,7 +726,8 @@ function Learn({
 							)}
 							
 							<Settings {...settingsProps} scope="learn" />
-
+							
+							{visibility.advancedVoiceChat && <AdvancedVoiceChat {...voiceChatProps} />}
 						</div>
 				</div>
 			</div>
@@ -1555,6 +1560,12 @@ export default function Home() {
 		currentBackgroundImage: backgroundImage,
 	}
 
+	const voiceChatProps = {
+		apiKeys: apiKeys,
+		apiKeyIndex: apiKeyIndex,
+		onApiKeyIndexChange: handleApiKeyIndexChange,
+	};
+
 	return (
 		<main className="relative min-h-screen w-full lg:grid lg:grid-cols-[1.2fr,1.5fr]">
 			{backgroundImage && (
@@ -1573,15 +1584,11 @@ export default function Home() {
 					{visibility.greeting && <Greeting />}
 				</div>
 
-				{visibility.advancedVoiceChat ? (
-					<AdvancedVoiceChat apiKeys={apiKeys} apiKeyIndex={apiKeyIndex} onApiKeyIndexChange={handleApiKeyIndexChange} />
-				) : (
-					<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto p-4 sm:p-8 md:p-12">
-						{visibility.clock && <Clock />}
-						{visibility.search && <Search />}
-						{visibility.quickLinks && <QuickLinks />}
-					</div>
-				)}
+				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto p-4 sm:p-8 md:p-12">
+					{visibility.clock && <Clock />}
+					{visibility.search && <Search />}
+					{visibility.quickLinks && <QuickLinks />}
+				</div>
 			</div>
 
 
@@ -1617,6 +1624,7 @@ export default function Home() {
 							onTheoryStateChange={handleTheoryStateChange}
 							onTheoryReset={handleTheoryReset}
 							settingsProps={learnSettingsProps}
+							voiceChatProps={voiceChatProps}
 							currentQuestionIndex={currentQuestionIndex}
 							onCurrentQuestionIndexChange={handleCurrentQuestionIndexChange}
 							theoryChapterIndex={theoryChapterIndex}
@@ -1629,6 +1637,7 @@ export default function Home() {
 							handleGenerate={handleGenerate}
 							handleGeneratePodcastForChapter={handleGeneratePodcastForChapter}
 							isGeneratingPodcast={isGeneratingPodcast}
+							visibility={visibility}
 						/>
 					</div>
 				</div>
@@ -1642,3 +1651,4 @@ export default function Home() {
     
 
     
+
