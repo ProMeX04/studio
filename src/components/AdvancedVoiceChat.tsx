@@ -19,7 +19,8 @@ type SessionStatus =
 	| "recording"
 	| "processing"
 
-const MODEL_NAME = "gemini-1.5-pro-latest"
+// Use the correct model for multi-turn chat capabilities on the client
+const MODEL_NAME = "gemini-1.5-flash-latest"
 
 export function AdvancedVoiceChat({
 	apiKeys,
@@ -38,12 +39,13 @@ export function AdvancedVoiceChat({
 	const audioContextRef = useRef<AudioContext | null>(null)
 	const audioQueueRef = useRef<ArrayBuffer[]>([])
 	const isPlayingRef = useRef(false)
-	const chatSessionRef = useRef<any | null>(null)
+	const chatSessionRef = useRef<any | null>(null) // This will be a ChatSession object
 	const aiRef = useRef<GoogleGenerativeAI | null>(null)
 
 	useEffect(() => {
 		setIsMounted(true)
 		return () => {
+			// Ensure all resources are cleaned up on unmount
 			disconnectSession()
 		}
 	}, [])
@@ -61,35 +63,47 @@ export function AdvancedVoiceChat({
 
 		if (audioData) {
 			try {
-				const audioBuffer =
-					await audioContextRef.current.decodeAudioData(audioData)
+				// The audio from the API is raw PCM, needs proper buffer creation
+				const audioBuffer = await audioContextRef.current.decodeAudioData(audioData)
 				const source = audioContextRef.current.createBufferSource()
 				source.buffer = audioBuffer
 				source.connect(audioContextRef.current.destination)
 				source.onended = () => {
 					isPlayingRef.current = false
-					playNextInQueue()
+					// If there's more audio, play it immediately
+					if (audioQueueRef.current.length > 0) {
+						playNextInQueue();
+					}
 				}
 				source.start()
 			} catch (error) {
 				console.error("Error playing audio:", error)
 				isPlayingRef.current = false
-				playNextInQueue()
+				playNextInQueue() // Try next item even if current one fails
 			}
 		} else {
 			isPlayingRef.current = false
 		}
 	}, [])
 
+
+	// This function handles incoming messages from the AI
 	const handleServerMessage = useCallback(
 		async (response: any) => {
-			if (response.text) {
-				console.log("AI Text:", response.text())
-			}
-			if (response.audio) {
-				const audioData = new Uint8Array(await response.audio()).buffer
-				audioQueueRef.current.push(audioData)
-				playNextInQueue()
+			// The response from generateContentStream is different from `live`
+			// We need to check for `response.candidates[0].content.parts`
+			const parts = response?.candidates?.[0]?.content?.parts ?? [];
+			for (const part of parts) {
+				if (part.text) {
+					console.log("AI Text:", part.text)
+				}
+				if (part.inlineData && part.inlineData.mimeType === 'audio/wav') {
+					// The SDK returns base64 encoded WAV data
+					const base64Audio = part.inlineData.data;
+					const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0)).buffer;
+					audioQueueRef.current.push(audioBytes);
+					playNextInQueue();
+				}
 			}
 		},
 		[playNextInQueue]
@@ -102,13 +116,15 @@ export function AdvancedVoiceChat({
 		mediaRecorderRef.current = null
 		chatSessionRef.current = null
 		if (audioContextRef.current?.state !== "closed") {
-			audioContextRef.current?.close()
+			audioContextRef.current?.close().catch(console.error);
 		}
 		audioContextRef.current = null
 		setStatus("disconnected")
 		audioQueueRef.current = []
 		isPlayingRef.current = false
+		console.log("Session disconnected.")
 	}, [])
+
 
 	const connectSession = useCallback(async () => {
 		if (status !== "disconnected" || !isMounted) return
@@ -130,120 +146,101 @@ export function AdvancedVoiceChat({
 			const model = aiRef.current.getGenerativeModel({
 				model: MODEL_NAME,
 				safetySettings: [
-					{
-						category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-						threshold: HarmBlockThreshold.BLOCK_NONE,
-					},
-					{
-						category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-						threshold: HarmBlockThreshold.BLOCK_NONE,
-					},
-					{
-						category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-						threshold: HarmBlockThreshold.BLOCK_NONE,
-					},
-					{
-						category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-						threshold: HarmBlockThreshold.BLOCK_NONE,
-					},
+					{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+					{ category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+					{ category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+					{ category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 				],
+				generationConfig: {
+					// Request audio output
+					responseMimeType: "audio/wav",
+				}
 			})
 
+			// Use startChat for client-side bi-directional streaming
 			chatSessionRef.current = model.startChat({
-				// @ts-ignore - This property enables bi-directional streaming
 				enableBackAndForthMode: true,
 				history: [],
 			})
 
-			audioContextRef.current = new (window.AudioContext ||
-				(window as any).webkitAudioContext)()
-
+			// Initialize AudioContext
+			audioContextRef.current = new (window.AudioContext ||(window as any).webkitAudioContext)()
+			
 			setStatus("connected")
 			toast({
 				title: "Đã kết nối",
 				description: "Nhấn nút micro để bắt đầu nói.",
 			})
+
 		} catch (error: any) {
 			console.error("Failed to connect to chat session:", error)
 			toast({
 				title: "Lỗi kết nối",
-				description:
-					error.message || "Không thể bắt đầu phiên hội thoại.",
+				description: error.message || "Không thể bắt đầu phiên hội thoại.",
 				variant: "destructive",
 			})
 			disconnectSession()
 		}
 	}, [isMounted, apiKeys, apiKeyIndex, toast, disconnectSession])
 
+
 	const startRecording = async () => {
 		if (status !== "connected" || !chatSessionRef.current) return
 
 		try {
-			const stream = await navigator.mediaDevices.getUserMedia({
-				audio: true,
-			})
-			mediaRecorderRef.current = new MediaRecorder(stream, {
-				mimeType: "audio/webm",
-			})
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+			mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "audio/webm" })
+			
+			const audioChunks: Blob[] = [];
 
-			mediaRecorderRef.current.ondataavailable = async (event) => {
-				if (event.data.size > 0 && chatSessionRef.current) {
-					const audioBlob = event.data
-					const reader = new FileReader()
-					reader.readAsDataURL(audioBlob)
-					reader.onloadend = async () => {
-						const base64Audio = (reader.result as string).split(
-							","
-						)[1]
-						try {
-							const result =
-								await chatSessionRef.current.sendMessageStream([
-									{
-										inlineData: {
-											data: base64Audio,
-											mimeType: "audio/webm",
-										},
-									},
-								])
+			mediaRecorderRef.current.ondataavailable = (event) => {
+				if (event.data.size > 0) {
+					audioChunks.push(event.data);
+				}
+			}
 
-							for await (const chunk of result.stream) {
-								handleServerMessage(chunk)
-							}
-						} catch (e: any) {
-							toast({
-								title: "Lỗi gửi âm thanh",
-								description: e.message,
-								variant: "destructive",
-							})
-							disconnectSession()
+			// When the recording stops, send the complete audio blob
+			mediaRecorderRef.current.onstop = async () => {
+				setStatus("processing");
+				const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+				audioChunks.length = 0; // Clear the array
+
+				const reader = new FileReader();
+				reader.readAsDataURL(audioBlob);
+				reader.onloadend = async () => {
+					const base64Audio = (reader.result as string).split(',')[1];
+					try {
+						// Send the audio data as a single part in the stream
+						const result = await chatSessionRef.current.sendMessageStream([
+							{ inlineData: { data: base64Audio, mimeType: 'audio/webm' } },
+						]);
+
+						// Process the streamed response from the AI
+						for await (const chunk of result.stream) {
+							await handleServerMessage(chunk)
+						}
+
+					} catch (e: any) {
+						toast({ title: "Lỗi gửi âm thanh", description: e.message, variant: "destructive" });
+						disconnectSession();
+					} finally {
+						// Once processing is done, return to connected state to allow another recording
+						if (status !== 'disconnected') {
+							setStatus("connected");
 						}
 					}
 				}
 			}
 
 			mediaRecorderRef.current.onstart = () => {
-				setStatus("recording")
+				setStatus("recording");
 			}
 
-			mediaRecorderRef.current.onstop = () => {
-				setStatus("processing")
-				// Give time for the last chunk to be processed
-				setTimeout(() => {
-					if (status === "processing") {
-						setStatus("connected")
-					}
-				}, 2000)
-			}
-
-			mediaRecorderRef.current.start(1000) // Collect 1-second chunks
+			mediaRecorderRef.current.start(); // No timeslice, record until stop() is called
 		} catch (error) {
 			console.error("Failed to get microphone access:", error)
-			toast({
-				title: "Lỗi Micro",
-				description: "Không thể truy cập micro.",
-				variant: "destructive",
-			})
-			setStatus("connected")
+			toast({ title: "Lỗi Micro", description: "Không thể truy cập micro.", variant: "destructive" });
+			setStatus("connected") // Revert to connected if mic access fails
 		}
 	}
 
@@ -254,7 +251,7 @@ export function AdvancedVoiceChat({
 	}
 
 	const handleMicClick = () => {
-		if (!isMounted) return
+		if (!isMounted) return;
 
 		switch (status) {
 			case "disconnected":
@@ -268,7 +265,7 @@ export function AdvancedVoiceChat({
 				break
 			case "connecting":
 			case "processing":
-				// Do nothing, wait for the state to change
+				// Button is disabled in these states, do nothing
 				break
 		}
 	}
@@ -306,14 +303,10 @@ export function AdvancedVoiceChat({
 				size="lg"
 				className={cn(
 					"relative rounded-full w-24 h-24 transition-all duration-300",
-					status === "recording" &&
-						"bg-destructive/80 hover:bg-destructive/70 scale-110",
-					status === "connected" &&
-						"bg-primary/80 hover:bg-primary/70",
-					status === "disconnected" &&
-						"bg-secondary hover:bg-secondary/90",
-					(status === "connecting" || status === "processing") &&
-						"bg-muted cursor-not-allowed"
+					status === "recording" && "bg-destructive/80 hover:bg-destructive/70 scale-110",
+					status === "connected" && "bg-primary/80 hover:bg-primary/70",
+					status === "disconnected" && "bg-secondary hover:bg-secondary/90",
+					(status === "connecting" || status === "processing") && "bg-muted cursor-not-allowed"
 				)}
 				disabled={status === "connecting" || status === "processing"}
 			>
@@ -332,3 +325,6 @@ export function AdvancedVoiceChat({
 		</div>
 	)
 }
+
+
+    
