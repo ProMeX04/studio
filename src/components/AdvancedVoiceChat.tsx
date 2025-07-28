@@ -7,11 +7,15 @@ import {
 	HarmCategory,
 	HarmBlockThreshold,
 	ChatSession,
+	Session,
+	Modality,
+	LiveServerMessage,
 } from "@google/generative-ai"
-import { Mic, Loader } from "lucide-react"
+import { Mic, Loader, Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { createBlob, decode, decodeAudioData } from "@/lib/audio-utils"
 
 const MODEL_NAME = "gemini-2.5-flash-preview-native-audio-dialog"
 
@@ -25,94 +29,54 @@ export function AdvancedVoiceChat({
 	onApiKeyIndexChange: (index: number) => void
 }) {
 	const { toast } = useToast()
-	const [status, setStatus] = useState<
-		"idle" | "connecting" | "recording" | "processing"
-	>("idle")
+	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "processing">("idle")
 	const [isMounted, setIsMounted] = useState(false)
 
-	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-	const audioContextRef = useRef<AudioContext | null>(null)
-	const chatSessionRef = useRef<ChatSession | null>(null)
 	const aiRef = useRef<GoogleGenerativeAI | null>(null)
-	const streamRef = useRef<MediaStream | null>(null)
-    const nextStartTimeRef = useRef(0)
+	const sessionRef = useRef<Session | null>(null)
+	const inputAudioContextRef = useRef<AudioContext | null>(null)
+	const outputAudioContextRef = useRef<AudioContext | null>(null)
+	const mediaStreamRef = useRef<MediaStream | null>(null)
+	const scriptProcessorNodeRef = useRef<ScriptProcessorNode | null>(null)
+	const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null)
+    const nextStartTimeRef = useRef(0);
+    const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
+
 
 	useEffect(() => {
 		setIsMounted(true)
 		return () => {
-			disconnectSession()
+			setIsMounted(false)
+			disconnectSession(true) // Full cleanup on unmount
 		}
 	}, [])
 
-	const disconnectSession = useCallback(() => {
-		if (mediaRecorderRef.current?.state === "recording") {
-			mediaRecorderRef.current.stop()
+	const disconnectSession = useCallback((isUnmounting = false) => {
+		if (scriptProcessorNodeRef.current && sourceNodeRef.current) {
+			scriptProcessorNodeRef.current.disconnect()
+			sourceNodeRef.current.disconnect()
+			scriptProcessorNodeRef.current = null
+			sourceNodeRef.current = null
 		}
-		if (streamRef.current) {
-			streamRef.current.getTracks().forEach((track) => track.stop())
-			streamRef.current = null
+
+		if (mediaStreamRef.current) {
+			mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+			mediaStreamRef.current = null
 		}
-		if (audioContextRef.current?.state !== "closed") {
-			audioContextRef.current?.close().catch(console.error)
-            audioContextRef.current = null;
+
+		if (sessionRef.current) {
+			sessionRef.current.close()
+			sessionRef.current = null
 		}
-		mediaRecorderRef.current = null
-		chatSessionRef.current = null
+        
+        // Don't close audio contexts on regular stop, only on unmount
+        if (isUnmounting) {
+            inputAudioContextRef.current?.close().catch(console.error)
+            outputAudioContextRef.current?.close().catch(console.error)
+        }
+
 		setStatus("idle")
 	}, [])
-
-    const decodeAndPlay = useCallback(async (base64Audio: string) => {
-        try {
-            const binaryString = atob(base64Audio);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const pcmData = new Int16Array(bytes.buffer);
-            const float32Data = new Float32Array(pcmData.length);
-            for (let i = 0; i < pcmData.length; i++) {
-                float32Data[i] = pcmData[i] / 32768.0;
-            }
-
-            if (!audioContextRef.current) return;
-            const audioBuffer = audioContextRef.current.createBuffer(
-                1,
-                float32Data.length,
-                24000
-            );
-            audioBuffer.copyToChannel(float32Data, 0);
-
-            const source = audioContextRef.current.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContextRef.current.destination);
-            
-            const currentTime = audioContextRef.current.currentTime;
-            const startTime = Math.max(currentTime, nextStartTimeRef.current);
-            source.start(startTime);
-            nextStartTimeRef.current = startTime + audioBuffer.duration;
-
-        } catch (error) {
-            console.error("Error playing audio:", error);
-        }
-    }, []);
-
-
-	const handleServerMessage = useCallback(
-		async (response: any) => {
-			try {
-				const parts = response?.candidates?.[0]?.content?.parts ?? []
-				for (const part of parts) {
-					if (part.audio) {
-                        await decodeAndPlay(part.audio);
-					}
-				}
-			} catch (error) {
-				console.error("Error processing server message:", error)
-			}
-		},
-		[decodeAndPlay]
-	)
 
 	const startSession = useCallback(async () => {
 		if (status !== "idle" || !isMounted) return
@@ -124,82 +88,124 @@ export function AdvancedVoiceChat({
 			})
 			return
 		}
+
 		setStatus("connecting")
+		toast({ title: "Đang kết nối..." });
 
 		try {
 			const apiKey = apiKeys[apiKeyIndex]
 			if (!apiKey) throw new Error("API key không hợp lệ.")
 
 			aiRef.current = new GoogleGenerativeAI(apiKey)
-			const model = aiRef.current.getGenerativeModel({ model: MODEL_NAME })
+            
+            // Initialize AudioContexts if they don't exist or are closed
+			if (!inputAudioContextRef.current || inputAudioContextRef.current.state === "closed") {
+				inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+			}
+			if (!outputAudioContextRef.current || outputAudioContextRef.current.state === "closed") {
+				outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+			}
 
-			chatSessionRef.current = model.startChat({
-				enableBackAndForthMode: true,
-				history: [],
-			})
+            nextStartTimeRef.current = outputAudioContextRef.current.currentTime;
 
-			audioContextRef.current = new (window.AudioContext ||
-				(window as any).webkitAudioContext)({sampleRate: 24000})
-            nextStartTimeRef.current = audioContextRef.current.currentTime;
+			sessionRef.current = await aiRef.current.live.connect({
+				model: MODEL_NAME,
+				config: {
+					responseModalities: [Modality.AUDIO],
+					speechConfig: {
+						voiceConfig: { prebuiltVoiceConfig: { voiceName: "Orus" } },
+					},
+				},
+				callbacks: {
+					onopen: () => {
+						if (!isMounted) return;
+						toast({ title: "Đã kết nối", description: "Bạn có thể bắt đầu nói." });
+					},
+					onmessage: async (message: LiveServerMessage) => {
+						if (!isMounted) return;
+						const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
+						if (audio?.data && outputAudioContextRef.current) {
+                            const outputContext = outputAudioContextRef.current;
+							nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputContext.currentTime);
+							
+                            const audioBuffer = await decodeAudioData(
+								decode(audio.data),
+								outputContext,
+								24000,
+								1
+							);
 
-			streamRef.current = await navigator.mediaDevices.getUserMedia({
-				audio: true,
-			})
+							const source = outputContext.createBufferSource();
+							source.buffer = audioBuffer;
+							source.connect(outputContext.destination);
+                            
+                            source.addEventListener('ended', () => {
+                                sourcesRef.current.delete(source);
+                            });
 
-			mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
-			
-            mediaRecorderRef.current.ondataavailable = async (event) => {
-                if (event.data.size > 0 && chatSessionRef.current) {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(event.data);
-                    reader.onloadend = async () => {
-                        const base64Audio = (reader.result as string).split(",")[1];
-                        try {
-                            const result = await chatSessionRef.current!.sendMessageStream([
-                                {
-                                    inlineData: {
-                                        data: base64Audio,
-                                        mimeType: 'audio/webm',
-                                    },
-                                },
-                            ]);
-                            for await (const chunk of result.stream) {
-                                await handleServerMessage(chunk);
-                            }
-                        } catch (e: any) {
-                            console.error("Error sending or processing stream:", e);
-                            toast({ title: "Lỗi giao tiếp với AI", description: e.message, variant: "destructive" });
-                            disconnectSession();
+							source.start(nextStartTimeRef.current);
+							nextStartTimeRef.current += audioBuffer.duration;
+                            sourcesRef.current.add(source);
+						}
+
+                        const interrupted = message.serverContent?.interrupted;
+                        if(interrupted) {
+                            sourcesRef.current.forEach(source => source.stop());
+                            sourcesRef.current.clear();
+                            nextStartTimeRef.current = 0;
                         }
-                    };
-                }
-            };
-
-			mediaRecorderRef.current.start(1000) // Collect and send 1-second chunks
-			setStatus("recording")
-			toast({
-				title: "Đã kết nối",
-				description: "Bạn có thể bắt đầu nói.",
+					},
+					onerror: (e: ErrorEvent) => {
+						if (!isMounted) return;
+						console.error("Session Error:", e)
+						toast({
+							title: "Lỗi Session",
+							description: e.message || "Đã xảy ra lỗi không xác định.",
+							variant: "destructive",
+						})
+						disconnectSession()
+					},
+					onclose: (e: CloseEvent) => {
+						if (!isMounted) return;
+						console.log("Session Closed:", e.reason);
+					},
+				},
 			})
+
+			// --- Start recording AFTER session is established ---
+			await inputAudioContextRef.current.resume();
+
+			mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+			
+			sourceNodeRef.current = inputAudioContextRef.current.createMediaStreamSource(mediaStreamRef.current);
+			
+			const bufferSize = 256;
+			scriptProcessorNodeRef.current = inputAudioContextRef.current.createScriptProcessor(bufferSize, 1, 1);
+			
+			scriptProcessorNodeRef.current.onaudioprocess = (event) => {
+				if (status !== 'recording' || !sessionRef.current) return;
+				const inputBuffer = event.inputBuffer;
+				const pcmData = inputBuffer.getChannelData(0);
+				sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
+			};
+			
+			sourceNodeRef.current.connect(scriptProcessorNodeRef.current);
+			scriptProcessorNodeRef.current.connect(inputAudioContextRef.current.destination);
+
+			setStatus("recording")
+
 		} catch (error: any) {
 			console.error("Failed to start session:", error)
 			toast({
 				title: "Lỗi kết nối",
-				description:
-					error.message || "Không thể bắt đầu phiên hội thoại.",
+				description: error.message?.includes('FETCH_ERROR') 
+                    ? 'Không thể kết nối. Vui lòng kiểm tra API key và kết nối mạng.'
+                    : (error.message || "Không thể bắt đầu phiên hội thoại."),
 				variant: "destructive",
 			})
 			disconnectSession()
 		}
-	}, [
-		status,
-		isMounted,
-		apiKeys,
-		apiKeyIndex,
-		toast,
-		disconnectSession,
-		handleServerMessage,
-	])
+	}, [status, isMounted, apiKeys, apiKeyIndex, toast, disconnectSession])
 
 	const handleMicClick = () => {
 		if (!isMounted) return
@@ -219,7 +225,7 @@ export function AdvancedVoiceChat({
 			case "recording":
 				return (
 					<>
-						<Mic className="w-8 h-8" />
+						<Power className="w-8 h-8" />
 						<div className="absolute inset-0 rounded-full border-2 border-destructive animate-pulse"></div>
 					</>
 				)
@@ -242,25 +248,18 @@ export function AdvancedVoiceChat({
 				size="lg"
 				className={cn(
 					"relative rounded-full w-24 h-24 transition-all duration-300",
-					status === "recording" &&
-						"bg-destructive/80 hover:bg-destructive/70 scale-110",
+					status === "recording" && "bg-destructive/80 hover:bg-destructive/70 scale-110",
 					status === "idle" && "bg-secondary hover:bg-secondary/90",
-					(status === "connecting" || status === "processing") &&
-						"bg-muted cursor-not-allowed"
+					(status === "connecting" || status === "processing") && "bg-muted cursor-not-allowed"
 				)}
 				disabled={status === "connecting" || status === "processing"}
 			>
 				{getButtonContent()}
 			</Button>
 			{status !== "idle" && (
-				<Button
-					variant="link"
-					size="sm"
-					onClick={disconnectSession}
-					className="mt-2 text-xs"
-				>
-					Kết thúc
-				</Button>
+				<p className="mt-4 text-sm text-muted-foreground">
+					{status === 'recording' ? 'Đang nói chuyện... Nhấn để kết thúc' : 'Đang xử lý...'}
+				</p>
 			)}
 		</div>
 	)
