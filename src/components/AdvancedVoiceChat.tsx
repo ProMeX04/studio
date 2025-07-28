@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -123,7 +124,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             toast({ title: "Lỗi kết nối", description: error.message || "Không thể bắt đầu phiên hội thoại.", variant: "destructive" });
             setStatus('disconnected');
         }
-    }, [isMounted, apiKeys, apiKeyIndex, toast, handleServerMessage]);
+    }, [isMounted, apiKeys, apiKeyIndex, toast, handleServerMessage, disconnectSession]);
     
     const disconnectSession = useCallback(() => {
         if (sessionRef.current) {
@@ -259,3 +260,5 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         </div>
     );
 }
+
+    
