@@ -29,11 +29,13 @@ import type {
 	CardSet,
 	QuizSet,
 	TheorySet,
+} from "@/ai/schemas"
+import type { 
 	QuizState,
 	FlashcardState,
 	TheoryState,
 } from "@/app/types"
-import type { ComponentVisibility } from "@/app/page"
+import { ComponentVisibility } from "@/app/page"
 
 const FLASHCARDS_PER_CHAPTER = 5
 const QUIZ_QUESTIONS_PER_CHAPTER = 4
@@ -104,7 +106,7 @@ interface AppContextType {
 	onFlashcardReset: () => void
 	onTheoryStateChange: (newState: TheoryState) => void
 	onTheoryReset: () => void
-	handleOnboardingComplete: (
+	onOnboardingComplete: (
 		topic: string,
 		language: string,
 		model: string
@@ -130,6 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
 	const [visibility, setVisibility] = useState<ComponentVisibility>({
+		home: true,
 		clock: true,
 		greeting: true,
 		search: true,
@@ -246,6 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				setModel("gemini-1.5-flash-latest")
 				setView("theory")
 				setVisibility({
+					home: true,
 					clock: true,
 					greeting: true,
 					search: true,
@@ -352,6 +356,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 		setVisibility(
 			savedVisibility ?? {
+				home: true,
 				clock: true,
 				greeting: true,
 				search: true,
@@ -913,6 +918,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const onVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
 			if (
+				visibility.home === newVisibility.home &&
 				visibility.clock === newVisibility.clock &&
 				visibility.greeting === newVisibility.greeting &&
 				visibility.search === newVisibility.search &&
@@ -1043,7 +1049,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	// --- Onboarding Callbacks ---
 
-	const handleOnboardingComplete = useCallback(
+	const onOnboardingComplete = useCallback(
 		async (finalTopic: string, finalLanguage: string, finalModel: string) => {
 			setTopic(finalTopic)
 			setLanguage(finalLanguage)
@@ -1119,7 +1125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		onFlashcardReset,
 		onTheoryStateChange,
 		onTheoryReset,
-		handleOnboardingComplete,
+		onOnboardingComplete,
 		handleResetOnboarding,
 	}
 

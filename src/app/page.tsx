@@ -33,34 +33,47 @@ function HomePageContent() {
 				direction="horizontal" 
 				className="relative min-h-screen w-full"
 				onLayout={(sizes: number[]) => {
-					// This is a workaround to handle the case where the panel
-					// is programmatically set to invisible.
-					if (sizes[1] === 100) {
-						onVisibilityChange({ ...visibility, learn: false })
+					if (sizes.length === 2) {
+						if (sizes[0] === 0) onVisibilityChange({ ...visibility, home: false, learn: true });
+						if (sizes[1] === 0) onVisibilityChange({ ...visibility, home: true, learn: false });
 					}
 				}}
 			>
-				<ResizablePanel defaultSize={45} minSize={30}>
-					<LeftColumn />
-				</ResizablePanel>
-				{visibility.learn ? (
-					<>
-						<ResizableHandle className="bg-transparent" />
-						<ResizablePanel 
-							defaultSize={55} 
-							minSize={30}
-							collapsible={true}
-							onCollapse={() => {
-								onVisibilityChange({ ...visibility, learn: false })
-							}}
-							onExpand={() => {
-								onVisibilityChange({ ...visibility, learn: true })
-							}}
-						>
-							<RightColumn />
-						</ResizablePanel>
-					</>
-				) : null}
+				{visibility.home && (
+					<ResizablePanel 
+						defaultSize={45} 
+						minSize={30}
+						collapsible={true}
+						onCollapse={() => {
+							onVisibilityChange({ ...visibility, home: false })
+						}}
+						onExpand={() => {
+							onVisibilityChange({ ...visibility, home: true })
+						}}
+					>
+						<LeftColumn />
+					</ResizablePanel>
+				)}
+
+				{visibility.home && visibility.learn && (
+					<ResizableHandle className="bg-transparent" />
+				)}
+				
+				{visibility.learn && (
+					<ResizablePanel 
+						defaultSize={55} 
+						minSize={30}
+						collapsible={true}
+						onCollapse={() => {
+							onVisibilityChange({ ...visibility, learn: false })
+						}}
+						onExpand={() => {
+							onVisibilityChange({ ...visibility, learn: true })
+						}}
+					>
+						<RightColumn />
+					</ResizablePanel>
+				)}
 			</ResizablePanelGroup>
 		</main>
 	)
