@@ -367,8 +367,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setLanguage(savedLanguage)
 		setModel(savedModel)
 		
-		// Visibility is now primarily controlled by the resizable panel's auto-save.
-		// We still load it from DB for other components, but the panel state itself is from localStorage.
 		if (savedVisibility) {
 			setVisibility(savedVisibility);
 		}
@@ -925,11 +923,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	const onVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
-			setVisibility(newVisibility);
-			// We no longer save this to DB, as localStorage is handled by the panel library
+			setVisibility(newVisibility)
+			const db = await getDb()
+			await db.put("data", { id: "visibility", data: newVisibility })
 		},
 		[]
-	);
+	)
 
 	// --- Learning UI Callbacks ---
 	const onViewChange = useCallback(

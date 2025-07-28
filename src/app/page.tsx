@@ -32,18 +32,24 @@ function HomePageContent() {
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
 
 	const handleOpenLeft = () => {
-		onVisibilityChange({ ...visibility, home: true })
-		const layout = panelGroupRef.current?.getLayout()
-		if (layout) {
-			panelGroupRef.current?.setLayout(visibility.learn ? [45, 55] : [100, 0])
+		const panelGroup = panelGroupRef.current
+		if (panelGroup) {
+			const layout = panelGroup.getLayout()
+			// If right panel is collapsed, give left 45, else restore previous balance
+			const newLayout = layout[1] === 0 ? [100, 0] : [45, 55]
+			panelGroup.setLayout(newLayout)
+			onVisibilityChange({ ...visibility, home: true })
 		}
 	}
 	
 	const handleOpenRight = () => {
-		onVisibilityChange({ ...visibility, learn: true })
-		const layout = panelGroupRef.current?.getLayout()
-		if (layout) {
-			panelGroupRef.current?.setLayout(visibility.home ? [45, 55] : [0, 100])
+		const panelGroup = panelGroupRef.current
+		if (panelGroup) {
+			const layout = panelGroup.getLayout()
+			// If left panel is collapsed, give right 45, else restore previous balance
+			const newLayout = layout[0] === 0 ? [0, 100] : [45, 55]
+			panelGroup.setLayout(newLayout)
+			onVisibilityChange({ ...visibility, learn: true })
 		}
 	}
 
@@ -102,10 +108,16 @@ function HomePageContent() {
 				className="relative min-h-screen w-full"
 				autoSaveId="newtab-ai-layout"
 				onLayout={(sizes: number[]) => {
+					// This is the most reliable way to sync state after mount and on user interaction
 					onVisibilityChange({
-						...visibility,
 						home: sizes[0] > 0,
 						learn: sizes[1] > 0,
+						// Preserve other visibility settings
+						clock: visibility.clock,
+						greeting: visibility.greeting,
+						search: visibility.search,
+						quickLinks: visibility.quickLinks,
+						advancedVoiceChat: visibility.advancedVoiceChat,
 					});
 				}}
 			>
