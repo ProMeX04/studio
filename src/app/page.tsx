@@ -58,8 +58,11 @@ function HomePageContent() {
 				className="relative min-h-screen w-full"
 				onLayout={(sizes: number[]) => {
 					if (sizes.length === 2) {
-						if (sizes[0] === 0) onVisibilityChange({ ...visibility, home: false, learn: true });
-						if (sizes[1] === 0) onVisibilityChange({ ...visibility, home: true, learn: false });
+						const homeVisible = sizes[0] > 0;
+						const learnVisible = sizes[1] > 0;
+						if (visibility.home !== homeVisible || visibility.learn !== learnVisible) {
+							onVisibilityChange({ ...visibility, home: homeVisible, learn: learnVisible });
+						}
 					}
 				}}
 			>
