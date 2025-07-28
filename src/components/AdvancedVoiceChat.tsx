@@ -2,12 +2,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { GoogleGenerativeAI, Session, LiveServerMessage } from '@google/generative-ai';
 import { Mic, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
-// This component now interacts with our own backend API route, not directly with Google AI.
 
 type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'processing';
 
@@ -15,18 +14,19 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
     const { toast } = useToast();
     const [status, setStatus] = useState<SessionStatus>('disconnected');
     const [isMounted, setIsMounted] = useState(false);
-    
+
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioQueueRef = useRef<ArrayBuffer[]>([]);
     const isPlayingRef = useRef(false);
-    const sessionRef = useRef<{ id: string } | null>(null);
+    const sessionRef = useRef<Session | null>(null);
+    const aiRef = useRef<GoogleGenerativeAI | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
         return () => {
             if (sessionRef.current) {
-                disconnectSession();
+                sessionRef.current.close();
             }
             if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
@@ -60,44 +60,36 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             isPlayingRef.current = false;
         }
     }, []);
-    
-    const pollForMessages = useCallback(async () => {
-        if (status !== 'recording' && status !== 'processing') return;
-        if (!sessionRef.current) return;
-        
-        try {
-            const response = await fetch('/api/live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'poll', sessionId: sessionRef.current.id }),
-            });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Polling error:', errorData.error);
-                return;
-            }
-
-            const { audioData } = await response.json();
-
-            if (audioData) {
+    const handleServerMessage = useCallback((message: LiveServerMessage) => {
+        if (message.serverContent?.modelTurn?.parts) {
+            const part = message.serverContent.modelTurn.parts[0];
+            if (part?.inlineData?.data) {
                 if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
                     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
                 }
-                const buffer = Buffer.from(audioData, 'base64').buffer;
+                const buffer = Buffer.from(part.inlineData.data, 'base64').buffer;
                 audioQueueRef.current.push(buffer);
                 if (!isPlayingRef.current) {
                     playNextInQueue();
                 }
             }
-        } catch (error) {
-            console.error('Failed to poll for messages:', error);
-        } finally {
-            if (sessionRef.current) { // Check if still connected
-                setTimeout(pollForMessages, 500); // Continue polling
-            }
         }
-    }, [status, playNextInQueue]);
+    }, [playNextInQueue]);
+    
+    const disconnectSession = useCallback(() => {
+        if (sessionRef.current) {
+            sessionRef.current.close();
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+        sessionRef.current = null;
+        setStatus('disconnected');
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
+    }, []);
 
 
     const connectSession = useCallback(async () => {
@@ -109,18 +101,38 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         setStatus('connecting');
         
         try {
-            const response = await fetch('/api/live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'connect', apiKey: apiKeys[apiKeyIndex] }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to connect to the session.');
+            const apiKey = apiKeys[apiKeyIndex];
+            if (!apiKey) {
+                 throw new Error("API key không hợp lệ.");
             }
             
-            const { sessionId } = await response.json();
-            sessionRef.current = { id: sessionId };
+            aiRef.current = new GoogleGenerativeAI({ apiKey });
+
+            const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
+            const config = {
+                responseModalities: ['AUDIO', 'TEXT'],
+                mediaResolution: 'MEDIA_RESOLUTION_MEDIUM',
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
+            };
+    
+            const newSession = await aiRef.current.live.connect({
+                model,
+                config,
+                callbacks: {
+                    onmessage: handleServerMessage,
+                    onerror: (e: ErrorEvent) => {
+                        console.error('Session Error:', e.message);
+                        toast({ title: "Lỗi Session", description: e.message, variant: "destructive" });
+                        disconnectSession();
+                    },
+                    onclose: () => {
+                        console.log('Session closed by server.');
+                        disconnectSession();
+                    },
+                },
+            });
+
+            sessionRef.current = newSession;
             setStatus('connected');
 
         } catch (error: any) {
@@ -128,59 +140,26 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
             toast({ title: "Lỗi kết nối", description: error.message || "Không thể bắt đầu phiên hội thoại.", variant: "destructive" });
             setStatus('disconnected');
         }
-    }, [isMounted, toast, apiKeys, apiKeyIndex]);
+    }, [isMounted, apiKeys, apiKeyIndex, toast, handleServerMessage, disconnectSession]);
 
-    const disconnectSession = useCallback(async () => {
-        if (!sessionRef.current) return;
-        
-        const sessionId = sessionRef.current.id;
-        sessionRef.current = null; // Prevent further polling
-        
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current = null;
-        setStatus('disconnected');
-        audioQueueRef.current = [];
-        isPlayingRef.current = false;
-
-        try {
-            await fetch('/api/live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'disconnect', sessionId }),
-            });
-        } catch (error) {
-             console.error("Error sending disconnect message:", error);
-        }
-
-    }, []);
 
     const startRecording = async () => {
-        if (status !== 'connected') return;
+        if (status !== 'connected' || !sessionRef.current) return;
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
-            mediaRecorderRef.current.ondataavailable = async (event) => {
+            mediaRecorderRef.current.ondataavailable = (event) => {
                 if (event.data.size > 0 && sessionRef.current) {
                    const reader = new FileReader();
                     reader.readAsDataURL(event.data);
-                    reader.onloadend = async () => {
+                    reader.onloadend = () => {
                         const base64Audio = (reader.result as string).split(',')[1];
-                        try {
-                             await fetch('/api/live', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                    action: 'send', 
-                                    sessionId: sessionRef.current?.id, 
-                                    audioData: base64Audio 
-                                }),
+                        if (sessionRef.current) {
+                            sessionRef.current.sendClientContent({
+                                audio: { inlineData: { data: base64Audio, mimeType: 'audio/webm' }}
                             });
-                        } catch (error) {
-                            console.error("Error sending audio data:", error);
                         }
                     };
                 }
@@ -188,10 +167,10 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
 
             mediaRecorderRef.current.onstart = () => {
                 setStatus('recording');
-                pollForMessages(); // Start polling for messages
             };
             
             mediaRecorderRef.current.onstop = () => {
+                // Wait for the final audio to be played before setting status back to connected
                 const checkQueue = setInterval(() => {
                     if (audioQueueRef.current.length === 0 && !isPlayingRef.current) {
                         setStatus('connected');
@@ -200,7 +179,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
                 }, 100);
             };
 
-            mediaRecorderRef.current.start(500);
+            mediaRecorderRef.current.start(500); // Send data every 500ms
 
         } catch (error) {
             console.error("Failed to get microphone access:", error);
@@ -231,7 +210,7 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
                 break;
             case 'connecting':
             case 'processing':
-                // Do nothing
+                // Do nothing, wait for the state to change
                 break;
         }
     };
