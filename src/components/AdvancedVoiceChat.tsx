@@ -3,14 +3,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import {
-	GoogleGenerativeAI,
-	HarmCategory,
-	HarmBlockThreshold,
-	ChatSession,
-	Session,
-	Modality,
-	LiveServerMessage,
-} from "@google/generative-ai"
+  GoogleGenAI,
+  Session,
+  Modality,
+  LiveServerMessage,
+} from "@google/genai"
 import { Mic, Loader, Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -29,10 +26,14 @@ export function AdvancedVoiceChat({
 	onApiKeyIndexChange: (index: number) => void
 }) {
 	const { toast } = useToast()
-	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "processing">("idle")
+	// Mutable ref to reflect current recording state inside callbacks
+const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "processing">("idle")
+const recordingRef = useRef(false);
+const [inputLevel, setInputLevel] = useState(0);
+const [outputLevel, setOutputLevel] = useState(0);
 	const [isMounted, setIsMounted] = useState(false)
 
-	const aiRef = useRef<GoogleGenerativeAI | null>(null)
+	const aiRef = useRef<GoogleGenAI | null>(null)
 	const sessionRef = useRef<Session | null>(null)
 	const inputAudioContextRef = useRef<AudioContext | null>(null)
 	const outputAudioContextRef = useRef<AudioContext | null>(null)
@@ -75,7 +76,8 @@ export function AdvancedVoiceChat({
             outputAudioContextRef.current?.close().catch(console.error)
         }
 
-		setStatus("idle")
+		setStatus("idle");
+recordingRef.current = false;
 	}, [])
 
 	const startSession = useCallback(async () => {
@@ -96,7 +98,7 @@ export function AdvancedVoiceChat({
 			const apiKey = apiKeys[apiKeyIndex]
 			if (!apiKey) throw new Error("API key không hợp lệ.")
 
-			aiRef.current = new GoogleGenerativeAI(apiKey)
+			aiRef.current = new GoogleGenAI({ apiKey })
             
             // Initialize AudioContexts if they don't exist or are closed
 			if (!inputAudioContextRef.current || inputAudioContextRef.current.state === "closed") {
@@ -128,12 +130,17 @@ export function AdvancedVoiceChat({
                             const outputContext = outputAudioContextRef.current;
 							nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputContext.currentTime);
 							
-                            const audioBuffer = await decodeAudioData(
-								decode(audio.data),
-								outputContext,
-								24000,
-								1
-							);
+                            // compute output RMS for visualization
+const decoded = decode(audio.data);
+const int16 = new Int16Array(decoded.buffer, decoded.byteOffset, decoded.length/2);
+let sum2=0; for(let i=0;i<int16.length;i++){const v=int16[i]/32768; sum2+=v*v;}
+setOutputLevel(Math.sqrt(sum2/int16.length));
+const audioBuffer = await decodeAudioData(
+  decoded,
+  outputContext,
+  24000,
+  1
+);
 
 							const source = outputContext.createBufferSource();
 							source.buffer = audioBuffer;
@@ -183,16 +190,22 @@ export function AdvancedVoiceChat({
 			scriptProcessorNodeRef.current = inputAudioContextRef.current.createScriptProcessor(bufferSize, 1, 1);
 			
 			scriptProcessorNodeRef.current.onaudioprocess = (event) => {
-				if (status !== 'recording' || !sessionRef.current) return;
+				if (!recordingRef.current || !sessionRef.current) return;
 				const inputBuffer = event.inputBuffer;
 				const pcmData = inputBuffer.getChannelData(0);
-				sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
+				// compute RMS for visualization
+let sum = 0;
+for(let i=0;i<pcmData.length;i++){const v=pcmData[i]; sum += v*v;}
+const rms = Math.sqrt(sum/pcmData.length);
+setInputLevel(rms);
+sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
 			};
 			
 			sourceNodeRef.current.connect(scriptProcessorNodeRef.current);
 			scriptProcessorNodeRef.current.connect(inputAudioContextRef.current.destination);
 
-			setStatus("recording")
+			setStatus("recording");
+recordingRef.current = true;
 
 		} catch (error: any) {
 			console.error("Failed to start session:", error)
@@ -218,26 +231,36 @@ export function AdvancedVoiceChat({
 	}
 
 	const getButtonContent = () => {
-		switch (status) {
-			case "connecting":
-			case "processing":
-				return <Loader className="w-8 h-8 animate-spin" />
-			case "recording":
-				return (
-					<>
-						<Power className="w-8 h-8" />
-						<div className="absolute inset-0 rounded-full border-2 border-destructive animate-pulse"></div>
-					</>
-				)
-			case "idle":
-				return (
-					<div className="flex flex-col items-center">
-						<Mic className="w-8 h-8" />
-						<span className="text-xs mt-1">Bắt đầu</span>
-					</div>
-				)
-		}
-	}
+  switch (status) {
+    case "connecting":
+    case "processing":
+      return <Loader className="w-8 h-8 animate-spin" />;
+    case "recording": {
+      const level = Math.max(inputLevel, outputLevel);
+      return (
+        <>
+          <Power className="w-8 h-8" />
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              boxShadow: `0 0 0 4px rgba(239,68,68,${level})`,
+              transform: `scale(${1 + level * 0.5})`,
+              transition: "transform 50ms linear, box-shadow 50ms linear",
+            }}
+          ></div>
+        </>
+      );
+    }
+    case "idle":
+    default:
+      return (
+        <div className="flex flex-col items-center">
+          <Mic className="w-8 h-8" />
+          <span className="text-xs mt-1">Bắt đầu</span>
+        </div>
+      );
+  }
+};
 
 	if (!isMounted) return null
 
