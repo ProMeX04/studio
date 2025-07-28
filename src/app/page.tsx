@@ -56,51 +56,40 @@ function HomePageContent() {
 			<ResizablePanelGroup 
 				direction="horizontal" 
 				className="relative min-h-screen w-full"
-				onLayout={(sizes: number[]) => {
-					if (sizes.length === 2) {
-						const homeVisible = sizes[0] > 0;
-						const learnVisible = sizes[1] > 0;
-						if (visibility.home !== homeVisible || visibility.learn !== learnVisible) {
-							onVisibilityChange({ ...visibility, home: homeVisible, learn: learnVisible });
-						}
-					}
-				}}
 			>
-				{visibility.home && (
-					<ResizablePanel 
-						defaultSize={45} 
-						minSize={30}
-						collapsible={true}
-						onCollapse={() => {
-							onVisibilityChange({ ...visibility, home: false })
-						}}
-						onExpand={() => {
-							onVisibilityChange({ ...visibility, home: true })
-						}}
-					>
-						<LeftColumn />
-					</ResizablePanel>
-				)}
+				<ResizablePanel 
+					defaultSize={visibility.home ? 45 : 0}
+					minSize={30}
+					collapsible={true}
+					collapsed={!visibility.home}
+					onCollapse={() => {
+						onVisibilityChange({ ...visibility, home: false })
+					}}
+					onExpand={() => {
+						onVisibilityChange({ ...visibility, home: true })
+					}}
+					className={cn(!visibility.home && "hidden")}
+				>
+					<LeftColumn />
+				</ResizablePanel>
 
-				{visibility.home && visibility.learn && (
-					<ResizableHandle className="bg-transparent" />
-				)}
+				<ResizableHandle className="bg-transparent" />
 				
-				{visibility.learn && (
-					<ResizablePanel 
-						defaultSize={55} 
-						minSize={30}
-						collapsible={true}
-						onCollapse={() => {
-							onVisibilityChange({ ...visibility, learn: false })
-						}}
-						onExpand={() => {
-							onVisibilityChange({ ...visibility, learn: true })
-						}}
-					>
-						<RightColumn />
-					</ResizablePanel>
-				)}
+				<ResizablePanel 
+					defaultSize={visibility.learn ? 55 : 0}
+					minSize={30}
+					collapsible={true}
+					collapsed={!visibility.learn}
+					onCollapse={() => {
+						onVisibilityChange({ ...visibility, learn: false })
+					}}
+					onExpand={() => {
+						onVisibilityChange({ ...visibility, learn: true })
+					}}
+					className={cn(!visibility.learn && "hidden")}
+				>
+					<RightColumn />
+				</ResizablePanel>
 			</ResizablePanelGroup>
 		</main>
 	)
