@@ -1,10 +1,9 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Blob } from '@google/genai';
+import { Blob } from '@google/generative-ai';
 
 function encode(bytes: Uint8Array): string {
   let binary = '';
