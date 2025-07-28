@@ -37,7 +37,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
-import type { ComponentVisibility, ViewType } from "@/app/page"
+import type { ComponentVisibility } from "@/app/page"
 import { Switch } from "./ui/switch"
 import {
 	Select,
@@ -585,8 +585,12 @@ export function Settings(props: SettingsProps) {
 					<Label className="font-medium text-foreground">
 						Thành phần hiển thị
 					</Label>
-					<div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
-						<div className="flex items-center space-x-2">
+					<div className="space-y-3">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="advanced-voice-chat-visible" className="flex items-center gap-2">
+								<Mic className="w-4 h-4"/>
+								<span>Chat thoại</span>
+							</Label>
 							<Switch
 								id="advanced-voice-chat-visible"
 								checked={globalProps.visibility.advancedVoiceChat}
@@ -597,9 +601,9 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="advanced-voice-chat-visible">Chat thoại</Label>
 						</div>
-						<div className="flex items-center space-x-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="clock-visible">Đồng hồ</Label>
 							<Switch
 								id="clock-visible"
 								checked={globalProps.visibility.clock}
@@ -610,9 +614,9 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="clock-visible">Đồng hồ</Label>
 						</div>
-						<div className="flex items-center space-x-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="greeting-visible">Lời chào</Label>
 							<Switch
 								id="greeting-visible"
 								checked={globalProps.visibility.greeting}
@@ -623,9 +627,9 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="greeting-visible">Lời chào</Label>
 						</div>
-						<div className="flex items-center space-x-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="search-visible">Tìm kiếm</Label>
 							<Switch
 								id="search-visible"
 								checked={globalProps.visibility.search}
@@ -636,9 +640,11 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="search-visible">Tìm kiếm</Label>
 						</div>
-						<div className="flex items-center space-x-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="quicklinks-visible">
+								Liên kết nhanh
+							</Label>
 							<Switch
 								id="quicklinks-visible"
 								checked={globalProps.visibility.quickLinks}
@@ -649,11 +655,9 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="quicklinks-visible">
-								Liên kết nhanh
-							</Label>
 						</div>
-						<div className="flex items-center space-x-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="learn-visible">Phần học tập</Label>
 							<Switch
 								id="learn-visible"
 								checked={globalProps.visibility.learn}
@@ -664,7 +668,6 @@ export function Settings(props: SettingsProps) {
 									})
 								}
 							/>
-							<Label htmlFor="learn-visible">Phần học tập</Label>
 						</div>
 					</div>
 				</div>

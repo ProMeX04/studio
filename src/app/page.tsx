@@ -1381,7 +1381,9 @@ export default function Home() {
 				visibility.clock === newVisibility.clock &&
 				visibility.greeting === newVisibility.greeting &&
 				visibility.search === newVisibility.search &&
-				visibility.quickLinks === newVisibility.quickLinks
+				visibility.quickLinks === newVisibility.quickLinks &&
+				visibility.learn === newVisibility.learn &&
+				visibility.advancedVoiceChat === newVisibility.advancedVoiceChat
 			)
 				return
 
