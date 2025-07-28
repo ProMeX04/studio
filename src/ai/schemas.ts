@@ -83,31 +83,6 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
-export const GenerateMindMapJsonSchema: Schema = {
-  type: "OBJECT",
-  properties: {
-    edges: {
-      type: "ARRAY",
-      description: "An array of parent-child relationships.",
-      items: {
-        type: "OBJECT",
-        properties: {
-          parent: {
-            type: "STRING",
-            description: "The label of the parent node."
-          },
-          child: {
-            type: "STRING",
-            description: "The label of the child node."
-          }
-        },
-        required: ["parent", "child"]
-      }
-    }
-  },
-  required: ["edges"]
-};
-
 
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
@@ -248,41 +223,11 @@ export const GenerateAudioOutputSchema = z.object({
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
-// Mind Map
-export const MindMapEdgeSchema = z.object({
-  parent: z.string(),
-  child: z.string(),
-});
-export type MindMapEdge = z.infer<typeof MindMapEdgeSchema>;
-
-export const GenerateMindMapOutputSchema = z.object({
-  edges: z.array(MindMapEdgeSchema),
-});
-export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
-
-export const GenerateMindMapInputSchema = z.object({
-    topic: z.string().describe('The overall topic.'),
-    chapterTitle: z.string().describe('The title of the chapter for the mind map.'),
-    theoryContent: z.string().describe('The theory content to build the mind map from.'),
-    language: z.string().describe('The language for the mind map content.'),
-    model: z.string().describe('The Generative AI model to use.'),
-});
-export type GenerateMindMapInput = z.infer<typeof GenerateMindMapInputSchema>;
-
-// This is a client-side only type, not used for AI generation schema
-export type MindMapNode = {
-  id: string;
-  label: string;
-  children: MindMapNode[];
-};
-
-
 export interface TheoryChapter {
   title: string;
   content: string | null; // Null while generating
   podcastScript: string | null;
   audioDataUri: string | null;
-  mindMap: GenerateMindMapOutput | null;
 }
 export interface TheorySet {
   id: string;
