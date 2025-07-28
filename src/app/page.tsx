@@ -27,7 +27,6 @@ import {
 	DataKey,
 } from "@/lib/idb"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AIOperationError } from "@/lib/ai-utils"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
@@ -605,18 +604,20 @@ function Learn({
 			{/* Sticky Toolbar */}
 			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2">
 				<div className="flex flex-wrap items-center justify-center gap-4 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-2xl">
-						<Tabs
+						<Select
 							value={view}
 							onValueChange={(value) => onViewChange(value as ViewType)}
-							className="w-auto"
 						>
-							<TabsList>
-								<TabsTrigger value="theory">Lý thuyết</TabsTrigger>
-								<TabsTrigger value="flashcards">Flashcard</TabsTrigger>
-								<TabsTrigger value="quiz">Trắc nghiệm</TabsTrigger>
-							</TabsList>
-						</Tabs>
-
+							<SelectTrigger className="w-[180px]">
+								<SelectValue placeholder="Chọn chế độ" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="theory">Lý thuyết</SelectItem>
+								<SelectItem value="flashcards">Flashcard</SelectItem>
+								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+							</SelectContent>
+						</Select>
+						
 						<div className="flex items-center gap-2">
 							<Button
 								onClick={handlePrev}
