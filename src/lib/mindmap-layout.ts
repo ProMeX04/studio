@@ -5,7 +5,7 @@ import { Edge, Node, Position } from 'reactflow';
 export class DagreLayout {
   private dagreGraph: dagre.graphlib.Graph;
   private nodeWidth: number = 172;
-  private nodeHeight: number = 36;
+  private nodeHeight: number = 52; // Increased height for custom node
 
   constructor() {
     this.dagreGraph = new dagre.graphlib.Graph();
@@ -13,7 +13,11 @@ export class DagreLayout {
   }
 
   private setGraphRankdir(direction: 'TB' | 'LR'): void {
-    this.dagreGraph.setGraph({ rankdir: direction });
+    this.dagreGraph.setGraph({ 
+        rankdir: direction,
+        ranksep: 80,  // Increased space between levels
+        nodesep: 40,  // Increased space between nodes on the same level
+    });
   }
 
   private setNodes(nodes: Node[]): void {
@@ -39,6 +43,8 @@ export class DagreLayout {
       node.targetPosition = direction === 'TB' ? Position.Top : Position.Left;
       node.sourcePosition = direction === 'TB' ? Position.Bottom : Position.Right;
 
+      // We are shifting the dagre node position (anchor=center center) to the top left
+      // so it matches the React Flow node anchor point (top left).
       node.position = {
         x: nodeWithPosition.x - this.nodeWidth / 2,
         y: nodeWithPosition.y - this.nodeHeight / 2,
