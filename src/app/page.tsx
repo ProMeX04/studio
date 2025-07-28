@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/resizable"
 import { Settings } from "@/components/Settings"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { PanelLeftOpen, PanelRightOpen } from "lucide-react"
 
 function HomePageContent() {
 	const { 
@@ -54,6 +56,26 @@ function HomePageContent() {
                 <Settings {...globalSettingsProps} scope="global" />
             </div>
 
+			{!visibility.home && (
+				<Button
+					variant="outline"
+					className="absolute left-4 top-1/2 -translate-y-1/2 z-30"
+					onClick={() => onVisibilityChange({ ...visibility, home: true })}
+				>
+					<PanelLeftOpen className="h-4 w-4" />
+				</Button>
+			)}
+
+			{!visibility.learn && (
+				<Button
+					variant="outline"
+					className="absolute right-4 top-1/2 -translate-y-1/2 z-30"
+					onClick={() => onVisibilityChange({ ...visibility, learn: true })}
+				>
+					<PanelRightOpen className="h-4 w-4" />
+				</Button>
+			)}
+
 			<ResizablePanelGroup 
 				direction="horizontal" 
 				className="relative min-h-screen w-full"
@@ -62,6 +84,7 @@ function HomePageContent() {
 					defaultSize={visibility.home ? 45 : 0}
 					minSize={30}
 					collapsible={true}
+					collapsedSize={0}
 					collapsed={!visibility.home}
 					onCollapse={() => {
 						onVisibilityChange({ ...visibility, home: false })
@@ -69,7 +92,7 @@ function HomePageContent() {
 					onExpand={() => {
 						onVisibilityChange({ ...visibility, home: true })
 					}}
-					className={cn(!visibility.home && "hidden")}
+					className={cn(!visibility.home && "min-w-0")}
 				>
 					<LeftColumn />
 				</ResizablePanel>
@@ -80,6 +103,7 @@ function HomePageContent() {
 					defaultSize={visibility.learn ? 55 : 0}
 					minSize={30}
 					collapsible={true}
+					collapsedSize={0}
 					collapsed={!visibility.learn}
 					onCollapse={() => {
 						onVisibilityChange({ ...visibility, learn: false })
@@ -87,7 +111,7 @@ function HomePageContent() {
 					onExpand={() => {
 						onVisibilityChange({ ...visibility, learn: true })
 					}}
-					className={cn(!visibility.learn && "hidden")}
+					className={cn(!visibility.learn && "min-w-0")}
 				>
 					<RightColumn />
 				</ResizablePanel>
