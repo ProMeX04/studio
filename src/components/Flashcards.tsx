@@ -30,6 +30,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { CardData, CardSet } from "@/ai/schemas"
+import { useAppContext } from "@/contexts/AppContext"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,6 +142,7 @@ export function Flashcards({
 	topic,
 	isCurrentUnderstood,
 }: FlashcardsProps) {
+	const { handleGenerate, isLoading } = useAppContext();
 	
 	const totalCards = flashcardSet?.cards.length ?? 0
 	const currentCard = flashcardSet?.cards[flashcardIndex];
@@ -161,12 +163,20 @@ export function Flashcards({
 							<div className="mx-auto bg-primary/10 p-4 rounded-full">
 								<BookOpen className="w-12 h-12 text-primary" />
 							</div>
-							<CardTitle className="mt-4 text-2xl">Bắt đầu học với Flashcard</CardTitle>
+							<CardTitle className="mt-4 text-2xl">Bắt đầu học chủ đề "{topic}"</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Flashcard để AI tạo thẻ ghi nhớ cho bạn.
+							<p className="text-muted-foreground mb-4">
+								AI sẽ tạo một bộ flashcards đầy đủ dựa trên chủ đề bạn đã chọn.
 							</p>
+							<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+                                {isLoading ? (
+                                    <Loader className="animate-spin mr-2 h-4 w-4" />
+                                ) : (
+                                    <Plus className="mr-2 h-4 w-4" />
+                                )}
+                                {isLoading ? "Đang tạo..." : "Bắt đầu học"}
+                            </Button>
 						</CardContent>
 					</Card>
 				)}

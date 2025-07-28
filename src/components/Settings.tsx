@@ -435,7 +435,7 @@ export function Settings(props: SettingsProps) {
 						) : (
 							<Plus className="h-4 w-4 mr-2" />
 						)}
-						{isCompleted ? "Đã hoàn tất" : (isLoading ? "Đang tạo..." : "Tạo / Tiếp tục")}
+						{isCompleted ? "Đã hoàn tất" : (isLoading ? "Đang tạo..." : "Tiếp tục tạo nội dung")}
 					</Button>
 				</div>
 			</div>

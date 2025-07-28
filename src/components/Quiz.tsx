@@ -41,6 +41,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { QuizSummary } from "./QuizSummary"
 import { AIOperationError } from "@/lib/ai-utils"
 import { ScrollArea } from "./ui/scroll-area"
+import { useAppContext } from "@/contexts/AppContext"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -127,6 +128,7 @@ export function Quiz({
 	apiKeyIndex,
 	onApiKeyIndexChange,
 }: QuizProps) {
+	const { handleGenerate, isLoading } = useAppContext();
 	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
 	const [visibleExplanations, setVisibleExplanations] = useState<
@@ -401,18 +403,23 @@ export function Quiz({
 						<div className="mx-auto bg-primary/10 p-4 rounded-full">
 							<HelpCircle className="w-12 h-12 text-primary" />
 						</div>
-						<CardTitle className="mt-4 text-2xl">Kiểm tra kiến thức của bạn</CardTitle>
+						<CardTitle className="mt-4 text-2xl">Kiểm tra kiến thức về "{topic}"</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-muted-foreground">
-							Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Trắc nghiệm để AI tạo câu hỏi cho bạn.
+						<p className="text-muted-foreground mb-4">
+							AI sẽ tạo một bài trắc nghiệm đầy đủ dựa trên chủ đề bạn đã chọn.
 						</p>
+						<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+							{isLoading ? (
+								<Loader className="animate-spin mr-2 h-4 w-4" />
+							) : (
+								<Plus className="mr-2 h-4 w-4" />
+							)}
+							{isLoading ? "Đang tạo..." : "Bắt đầu học"}
+						</Button>
 					</CardContent>
 				</Card>
 			)}
 		</div>
 	)
 }
-
-
-    

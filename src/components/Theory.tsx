@@ -13,7 +13,9 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, BookOpen, Menu, Plus } from "lucide-react"
+import { CheckCircle, BookOpen, Menu, Plus, Loader } from "lucide-react"
+import { useAppContext } from "@/contexts/AppContext"
+import { Button } from "./ui/button"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,7 +81,8 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryProps) {
+export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic }: TheoryProps) {
+	const { handleGenerate, isLoading } = useAppContext();
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
 
@@ -114,12 +117,20 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood }: TheoryP
 							<div className="mx-auto bg-primary/10 p-4 rounded-full">
 								<BookOpen className="w-12 h-12 text-primary" />
 							</div>
-							<CardTitle className="mt-4 text-2xl">Xây dựng nền tảng kiến thức</CardTitle>
+							<CardTitle className="mt-4 text-2xl">Bắt đầu học chủ đề "{topic}"</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> bên cạnh mục Lý thuyết để AI tạo dàn bài và nội dung cho bạn.
+							<p className="text-muted-foreground mb-4">
+								AI sẽ tạo một dàn bài chi tiết, nội dung lý thuyết, flashcard và bài trắc nghiệm cho bạn.
 							</p>
+							<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+                                {isLoading ? (
+                                    <Loader className="animate-spin mr-2 h-4 w-4" />
+                                ) : (
+                                    <Plus className="mr-2 h-4 w-4" />
+                                )}
+                                {isLoading ? "Đang tạo..." : "Bắt đầu học"}
+                            </Button>
 						</CardContent>
 					</Card>
 				)}
