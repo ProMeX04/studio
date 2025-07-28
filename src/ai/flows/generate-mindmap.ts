@@ -41,7 +41,7 @@ export async function generateMindmap(
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ model: modelName });
 
-          const promptText = `Bạn là một chuyên gia về sơ đồ tư duy. Dựa vào nội dung lý thuyết được cung cấp cho chương "${promptInput.chapterTitle}" thuộc chủ đề "${promptInput.topic}", hãy tạo một sơ đồ tư duy (mind map).
+          const promptText = `Bạn là một chuyên gia về sơ đồ tư duy. Dựa vào nội dung lý thuyết được cung cấp cho chương "${promptInput.chapterTitle}" thuộc chủ đề "${promptInput.topic}", hãy tạo một danh sách các mối quan hệ cha-con để xây dựng sơ đồ tư duy.
 
 Nội dung lý thuyết:
 ---
@@ -49,12 +49,13 @@ ${promptInput.theoryContent}
 ---
 
 Yêu cầu:
-1. Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ, tạo thành một cấu trúc cây phân cấp.
-2. Trả về một đối tượng JSON duy nhất.
-3. Đối tượng này phải là nút gốc, có thuộc tính "label" (tên của chương) và một thuộc tính "children" là một mảng các đối tượng nút con.
-4. Mỗi nút con cũng có "label" và có thể có một mảng "children" của riêng nó.
-5. Cấu trúc phải được lồng nhau một cách chính xác để thể hiện mối quan hệ cha-con.
-6. Sử dụng ngôn ngữ: ${promptInput.language}.
+1.  Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ.
+2.  Nút gốc của sơ đồ phải có tên chính xác là "${promptInput.chapterTitle}".
+3.  Tạo một mảng JSON chứa các đối tượng, mỗi đối tượng biểu diễn một cạnh (mối quan hệ) trong sơ đồ.
+4.  Mỗi đối tượng phải có hai thuộc tính: "parent" (tên của nút cha) và "child" (tên của nút con).
+5.  Ví dụ: nếu "Khái niệm A" là chủ đề chính và có "Mục 1" và "Mục 2", bạn sẽ tạo các đối tượng: { "parent": "Khái niệm A", "child": "Mục 1" } và { "parent": "Khái niệm A", "child": "Mục 2" }.
+6.  Toàn bộ đầu ra phải tuân thủ nghiêm ngặt schema JSON đã cho.
+7.  Sử dụng ngôn ngữ: ${promptInput.language}.
 `;
 
           const generationConfig: GenerationConfig = {
@@ -88,27 +89,24 @@ Yêu cầu:
 
             console.warn(`API Key at index ${currentKeyIndex} failed on attempt ${attempt}. Reason: ${errorMessage}`);
             
-            // Prioritize retrying for invalid format errors
             if (isInvalidFormatError && attempt < maxRetries) {
                 console.log(`Invalid format received. Retrying... (${attempt}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // wait before retrying
-                continue; // retry with the same key
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); 
+                continue; 
             }
 
-            // Handle API key errors (quota, invalid) by switching keys
             if (isQuotaError) quotaErrorCount++;
             if (isBadApiKeyError) invalidKeyCount++;
 
             if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
                 currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
                 console.log(`Trying next API Key at index ${currentKeyIndex}.`);
-                break; // Break from retry loop to switch key
+                break; 
             } 
             
-            // If all retries/keys fail, throw the final error
             console.error('❌ Mind Map generation error:', error);
             if (isInvalidFormatError) {
-                throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
+                throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ ngay cả sau khi thử lại. Vui lòng thử lại sau.', 'AI_INVALID_FORMAT');
             }
             if (invalidKeyCount === apiKeys.length) {
                 throw new AIOperationError('Tất cả API key đều không hợp lệ. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
@@ -121,6 +119,5 @@ Yêu cầu:
     }
   }
 
-  // If all keys failed
   throw new AIOperationError('Tất cả các API key đều không thành công. Vui lòng kiểm tra lại.', 'ALL_KEYS_FAILED');
 }

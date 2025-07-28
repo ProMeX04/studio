@@ -85,40 +85,27 @@ export const ExplainQuizOptionJsonSchema: Schema = {
 
 export const GenerateMindMapJsonSchema: Schema = {
   type: "OBJECT",
-  description: "The root node of the mind map tree.",
   properties: {
-    label: {
-      type: "STRING",
-      description: "The text label for the node."
-    },
-    children: {
+    edges: {
       type: "ARRAY",
-      description: "An array of child nodes, which can themselves have children.",
+      description: "An array of parent-child relationships.",
       items: {
-        $ref: "#/definitions/mindMapNode"
+        type: "OBJECT",
+        properties: {
+          parent: {
+            type: "STRING",
+            description: "The label of the parent node."
+          },
+          child: {
+            type: "STRING",
+            description: "The label of the child node."
+          }
+        },
+        required: ["parent", "child"]
       }
     }
   },
-  required: ["label"],
-  definitions: {
-    mindMapNode: {
-      type: "OBJECT",
-      properties: {
-        label: {
-          type: "STRING",
-          description: "The text label for the node."
-        },
-        children: {
-          type: "ARRAY",
-          description: "An array of child nodes.",
-          items: {
-            $ref: "#/definitions/mindMapNode"
-          }
-        }
-      },
-      required: ["label"]
-    }
-  }
+  required: ["edges"]
 };
 
 
@@ -262,21 +249,17 @@ export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
 // Mind Map
-type MindMapNode = {
-  label: string;
-  children?: MindMapNode[];
-};
+export const MindMapEdgeSchema = z.object({
+  parent: z.string(),
+  child: z.string(),
+});
+export type MindMapEdge = z.infer<typeof MindMapEdgeSchema>;
 
-export const MindMapNodeSchema: z.ZodType<MindMapNode> = z.lazy(() => 
-  z.object({
-    label: z.string(),
-    children: z.array(MindMapNodeSchema).optional(),
-  })
-);
-
-export const GenerateMindMapOutputSchema = MindMapNodeSchema;
+export const GenerateMindMapOutputSchema = z.object({
+  edges: z.array(MindMapEdgeSchema),
+});
 export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
-  
+
 export const GenerateMindMapInputSchema = z.object({
     topic: z.string().describe('The overall topic.'),
     chapterTitle: z.string().describe('The title of the chapter for the mind map.'),
@@ -285,6 +268,13 @@ export const GenerateMindMapInputSchema = z.object({
     model: z.string().describe('The Generative AI model to use.'),
 });
 export type GenerateMindMapInput = z.infer<typeof GenerateMindMapInputSchema>;
+
+// This is a client-side only type, not used for AI generation schema
+export type MindMapNode = {
+  id: string;
+  label: string;
+  children: MindMapNode[];
+};
 
 
 export interface TheoryChapter {
