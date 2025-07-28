@@ -39,6 +39,7 @@ import { TheorySummary } from "@/components/TheorySummary"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AdvancedVoiceChat } from "@/components/AdvancedVoiceChat"
 
 const FLASHCARDS_PER_CHAPTER = 5;
 const QUIZ_QUESTIONS_PER_CHAPTER = 4;
@@ -735,6 +736,7 @@ export interface ComponentVisibility {
 	search: boolean
 	quickLinks: boolean
 	learn: boolean
+	advancedVoiceChat: boolean;
 }
 
 export default function Home() {
@@ -757,6 +759,7 @@ export default function Home() {
 		search: true,
 		quickLinks: true,
 		learn: true,
+		advancedVoiceChat: true,
 	})
 	const [backgroundImage, setBackgroundImage] = useState("")
 	const [uploadedBackgrounds, setUploadedBackgrounds] = useState<string[]>([])
@@ -1131,6 +1134,7 @@ export default function Home() {
 				search: true,
 				quickLinks: true,
 				learn: true,
+				advancedVoiceChat: true,
 			}
 		);
 	
@@ -1250,7 +1254,7 @@ export default function Home() {
 			setLanguage("Vietnamese");
 			setModel("gemini-1.5-flash-latest");
 			setView("theory");
-			setVisibility({ clock: true, greeting: true, search: true, quickLinks: true, learn: true });
+			setVisibility({ clock: true, greeting: true, search: true, quickLinks: true, learn: true, advancedVoiceChat: true });
 			setBackgroundImage("");
 			setUploadedBackgrounds([]);
 			setApiKeys([]);
@@ -1561,17 +1565,21 @@ export default function Home() {
 			)}
 
 			{/* Left Column */}
-			<div className="relative flex h-full flex-col justify-center">
+			<div className="relative flex h-screen flex-col justify-center overflow-hidden">
 				<div className="absolute top-0 left-0 right-0 p-4 sm:p-8 md:p-12 flex justify-start items-center gap-4">
 					<Settings {...globalSettingsProps} scope="global" />
 					{visibility.greeting && <Greeting />}
 				</div>
 
-				<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto p-4 sm:p-8 md:p-12">
-					{visibility.clock && <Clock />}
-					{visibility.search && <Search />}
-					{visibility.quickLinks && <QuickLinks />}
-				</div>
+				{visibility.advancedVoiceChat ? (
+					<AdvancedVoiceChat apiKeys={apiKeys} apiKeyIndex={apiKeyIndex} onApiKeyIndexChange={handleApiKeyIndexChange} />
+				) : (
+					<div className="flex flex-col items-center justify-center space-y-8 w-full max-w-xl mx-auto p-4 sm:p-8 md:p-12">
+						{visibility.clock && <Clock />}
+						{visibility.search && <Search />}
+						{visibility.quickLinks && <QuickLinks />}
+					</div>
+				)}
 			</div>
 
 

@@ -235,3 +235,23 @@ export interface TheorySet {
   outline: string[];
   chapters: TheoryChapter[];
 }
+
+// Live Dialog
+export const LiveDialogResponsePartSchema = z.object({
+  text: z.string().optional(),
+  audio: z.string().optional().describe("Base64 encoded audio data"),
+});
+export type LiveDialogResponsePart = z.infer<typeof LiveDialogResponsePartSchema>;
+
+export const LiveDialogResponseSchema = z.object({
+  parts: z.array(LiveDialogResponsePartSchema),
+});
+export type LiveDialogResponse = z.infer<typeof LiveDialogResponseSchema>;
+
+export type DialogTurn = {
+  id: number;
+  speaker: 'user' | 'model';
+  text: string;
+  audioDataUri?: string;
+  isProcessing?: boolean;
+};

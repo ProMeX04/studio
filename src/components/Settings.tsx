@@ -22,6 +22,7 @@ import {
 	Save,
 	BrainCircuit,
 	Minus,
+	Mic,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -585,6 +586,19 @@ export function Settings(props: SettingsProps) {
 						Thành phần hiển thị
 					</Label>
 					<div className="grid grid-cols-2 gap-x-4 gap-y-4 pl-10">
+						<div className="flex items-center space-x-2">
+							<Switch
+								id="advanced-voice-chat-visible"
+								checked={globalProps.visibility.advancedVoiceChat}
+								onCheckedChange={(checked) =>
+									globalProps.onVisibilityChange({
+										...globalProps.visibility,
+										advancedVoiceChat: checked,
+									})
+								}
+							/>
+							<Label htmlFor="advanced-voice-chat-visible">Chat thoại</Label>
+						</div>
 						<div className="flex items-center space-x-2">
 							<Switch
 								id="clock-visible"
