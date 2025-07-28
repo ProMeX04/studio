@@ -7,16 +7,16 @@ import { Greeting } from "@/components/Greeting"
 import { Clock } from "@/components/Clock"
 import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
+import { Settings } from './Settings';
 
 export default function LeftColumn() {
     const { 
-        visibility, 
+        visibility,
     } = useAppContext();
 
     return (
         <div className="relative flex h-screen flex-col justify-center overflow-hidden p-4 sm:p-8 md:p-12">
             <div className="absolute top-0 left-0 right-0 p-4 sm:p-8 md:p-12 flex justify-start items-center gap-4">
-                {/* Global Settings button is now in page.tsx */}
                 {visibility.greeting && <Greeting />}
             </div>
 
