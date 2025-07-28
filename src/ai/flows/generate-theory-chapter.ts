@@ -1,6 +1,4 @@
 
-'use server';
-
 /**
  * @fileOverview Flow to generate content for a specific chapter of a theory document.
  */
