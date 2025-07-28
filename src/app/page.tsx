@@ -29,6 +29,7 @@ import {
 	LabeledData,
 	AppData,
 	DataKey,
+	closeDb,
 } from "@/lib/idb"
 import { Button } from "@/components/ui/button"
 import { AIOperationError } from "@/lib/ai-utils"
@@ -916,8 +917,8 @@ export default function Home() {
 						}
 					}
 
-					// C. Generate Audio if it doesn't exist and model supports it
-					if (currentModel.includes("tts") && chapter.podcastScript && !chapter.audioDataUri) {
+					// C. Generate Audio if it doesn't exist and a script is available
+					if (chapter.podcastScript && !chapter.audioDataUri) {
 						const { result: audioResult, newApiKeyIndex } = await generateAudio({
 							apiKeys, apiKeyIndex: currentKeyIndex,
 							script: chapter.podcastScript, model: ttsModel
@@ -1578,5 +1579,3 @@ export default function Home() {
     
 
     
-
-
