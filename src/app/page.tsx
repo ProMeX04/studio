@@ -808,6 +808,16 @@ export default function Home() {
 				return
 			}
 
+			// Dependency Check: Flashcards and Quiz depend on Theory
+			if ((genType === 'flashcards' || genType === 'quiz') && (!theorySet || theorySet.chapters.length === 0 || !theorySet.chapters.some(c => c.content))) {
+				toast({
+					title: "Yêu cầu nội dung Lý thuyết",
+					description: "Vui lòng tạo nội dung Lý thuyết trước khi tạo Flashcard hoặc Trắc nghiệm.",
+					variant: "destructive",
+				});
+				return;
+			}
+
 			isGeneratingRef.current = true
 			setIsLoading(true)
 
@@ -838,6 +848,8 @@ export default function Home() {
 						setFlashcardState({ understoodIndices: [] });
 					}
 
+					const theoryContent = theorySet?.chapters.map(c => c.content).join('\n\n') || '';
+
 					let itemsNeeded = flashcardMax - currentSet.cards.length
 					if (itemsNeeded <= 0) {
 						setIsLoading(false)
@@ -856,6 +868,7 @@ export default function Home() {
 							language: currentLanguage,
 							model: currentModel,
 							existingCards: currentSet.cards,
+							theoryContent: theoryContent,
 						});
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
@@ -904,6 +917,8 @@ export default function Home() {
 						setQuizState({ currentQuestionIndex: 0, answers: {} });
 					}
 
+					const theoryContent = theorySet?.chapters.map(c => c.content).join('\n\n') || '';
+
 					let quizNeeded = quizMax - currentQuiz.questions.length
 					if (quizNeeded <= 0) {
 						setIsLoading(false)
@@ -922,6 +937,7 @@ export default function Home() {
 								language: currentLanguage,
 								model: currentModel,
 								existingQuestions: currentQuiz.questions,
+								theoryContent: theoryContent,
 						});
 
 						await handleApiKeyIndexChange(newApiKeyIndex);
@@ -1053,7 +1069,7 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange]
+		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange, theorySet]
 	)
 	
 	const loadInitialData = useCallback(async () => {

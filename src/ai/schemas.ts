@@ -97,6 +97,7 @@ export const GenerateCardsInputSchema = z.object({
   language: z.string().describe('The language for the content.'),
   model: z.string().describe('The Generative AI model to use.'),
   existingCards: z.array(CardSchema).optional().describe('An array of existing items to avoid duplication.'),
+  theoryContent: z.string().optional().describe('The theory content to base the generation on.'),
 });
 export type GenerateCardsInput = z.infer<typeof GenerateCardsInputSchema>;
 
@@ -130,6 +131,7 @@ export const GenerateQuizInputSchema = z.object({
   language: z.string().describe('The language for the quiz.'),
   model: z.string().describe('The Generative AI model to use.'),
   existingQuestions: z.array(QuizQuestionSchema).optional().describe('An array of existing questions to avoid duplication.'),
+  theoryContent: z.string().optional().describe('The theory content to base the generation on.'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 

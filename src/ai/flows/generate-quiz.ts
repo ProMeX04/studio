@@ -42,8 +42,22 @@ export async function generateQuiz(
       ${promptInput.existingQuestions.map(q => `- "${q.question}"`).join('\n')}
       `
         : '';
+        
+      const theoryContextPrompt = promptInput.theoryContent
+        ? `
+      Base the quiz questions EXCLUSIVELY on the following theory content. Do not introduce outside information.
+      Theory Content:
+      ---
+      ${promptInput.theoryContent}
+      ---
+      `
+        : `Generate a quiz for the topic: ${promptInput.topic}.`;
 
-      const promptText = `You are a quiz generator. Generate a ${promptInput.count}-question multiple-choice quiz for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
+      const promptText = `You are a quiz generator. Generate a ${promptInput.count}-question multiple-choice quiz in the language: ${promptInput.language}. 
+      
+      ${theoryContextPrompt}
+      
+      Populate the "questions" array in the JSON object. Each question should have between 2 and 4 options, a single correct answer, and an explanation for the answer.
 
       For the "options" array:
       - Each option must be plain text **without any leading labels** such as "A)", "B.", "C -", or similar. Simply provide the option content itself.

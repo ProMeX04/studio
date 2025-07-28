@@ -46,7 +46,20 @@ export async function generateFlashcards(
       ` 
         : '';
 
-      const promptText = `You are a flashcard generator. Generate a set of ${promptInput.count} new, unique flashcards for the topic: ${promptInput.topic} in the language: ${promptInput.language}. Populate the "cards" array in the JSON object. Each flashcard should have a "front" (a question or term) and a "back" (the answer or definition).
+      const theoryContextPrompt = promptInput.theoryContent
+        ? `
+      Base the flashcards EXCLUSIVELY on the following theory content. Do not introduce outside information.
+      Theory Content:
+      ---
+      ${promptInput.theoryContent}
+      ---
+      `
+        : `Generate flashcards for the topic: ${promptInput.topic}.`;
+
+      const promptText = `You are a flashcard generator. Generate a set of ${promptInput.count} new, unique flashcards in the language: ${promptInput.language}.
+      ${theoryContextPrompt}
+      
+      Populate the "cards" array in the JSON object. Each flashcard should have a "front" (a question or term) and a "back" (the answer or definition).
       ${existingCardsPrompt}
       The "front" and "back" fields MUST contain valid standard Markdown.
       - Use standard backticks (\`) for inline code blocks.
