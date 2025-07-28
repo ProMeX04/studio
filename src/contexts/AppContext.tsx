@@ -112,6 +112,9 @@ interface AppContextType {
 		language: string,
 		model: string
 	) => void
+	onSettingsSave: (settings: { topic: string; language: string; }) => void;
+	handleClearLearningData: () => Promise<void>;
+	onGenerate: (forceNew: boolean) => void;
 	handleResetOnboarding: () => void
 }
 
@@ -1035,10 +1038,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		[]
 	)
 
+	const onSettingsSave = useCallback(
+		async (settings: { topic: string; language: string; }) => {
+			setTopic(settings.topic)
+			setLanguage(settings.language)
+			const db = await getDb()
+			await db.put("data", { id: "topic", data: settings.topic })
+			await db.put("data", { id: "language", data: settings.language })
+		},
+		[]
+	)
+
 	const handleResetOnboarding = useCallback(async () => {
-		await onClearAllData();
+		await handleClearLearningData();
+		const db = await getDb()
+		await db.put("data", { id: "hasCompletedOnboarding", data: false });
+		setHasCompletedOnboarding(false);
 		window.location.reload();
-	}, [onClearAllData])
+	}, [handleClearLearningData]);
+	
+
+	const onGenerate = useCallback(
+		(forceNew: boolean) => {
+			handleGenerate(forceNew);
+		},
+		[handleGenerate]
+	);
+
 
 	const value: AppContextType = {
 		isMounted,
@@ -1088,6 +1114,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		onTheoryStateChange,
 		onTheoryReset,
 		onOnboardingComplete,
+		onSettingsSave,
+		handleClearLearningData,
+		onGenerate,
 		handleResetOnboarding,
 	}
 

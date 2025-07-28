@@ -78,7 +78,6 @@ interface CommonSettingsProps {
 
 interface AllSettingsProps {
 	scope: "all"
-	onClearAllData: () => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
@@ -91,6 +90,14 @@ interface AllSettingsProps {
 	isLoading: boolean
 	apiKeys: string[]
 	theorySet: TheorySet | null
+	flashcardSet: CardSet | null;
+	quizSet: QuizSet | null;
+	onSettingsChange: (settings: { topic: string; language: string; model: string; }) => void;
+	topic: string;
+	language: string;
+	model: string;
+	onModelChange: (model: string) => void;
+	onClearLearningData: () => void;
 }
 
 
@@ -305,9 +312,19 @@ export function Settings(props: SettingsProps) {
 		
 		const currentProps = props as AllSettingsProps | LearnOnboardingSettingsProps;
 		const { isLoading } = currentProps;
+		
+		let theoryCount = 0;
+		let theoryMax = 0;
+		let flashcardCount = 0;
+		let quizCount = 0;
 
-		const theoryCount = scope === 'all' ? (props as AllSettingsProps).theorySet?.chapters.filter(c => c.content).length ?? 0 : 0;
-		const theoryMax = scope === 'all' ? (props as AllSettingsProps).theorySet?.outline.length ?? 0 : 0;
+		if (scope === 'all') {
+			const allProps = props as AllSettingsProps;
+			theoryCount = allProps.theorySet?.chapters.filter(c => c.content).length ?? 0;
+			theoryMax = allProps.theorySet?.outline.length ?? 0;
+			flashcardCount = allProps.flashcardSet?.cards.length ?? 0;
+			quizCount = allProps.quizSet?.questions.length ?? 0;
+		}
 	
 		const isCompleted = theoryMax > 0 && theoryCount === theoryMax;
 		
@@ -321,9 +338,9 @@ export function Settings(props: SettingsProps) {
 
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
 					<div className="flex justify-between items-center">
-						<Label htmlFor="theory-progress">Tiến độ</Label>
+						<Label htmlFor="theory-progress" className="text-sm">Lý thuyết</Label>
 						<span className="text-sm text-muted-foreground">
-							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} Chương
+							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"}
 						</span>
 					</div>
 					<Progress
@@ -334,6 +351,16 @@ export function Settings(props: SettingsProps) {
 						}
 						id="theory-progress"
 					/>
+					
+					<div className="flex justify-between items-center text-sm">
+						<Label>Flashcard</Label>
+						<span className="text-muted-foreground">{flashcardCount} thẻ</span>
+					</div>
+					<div className="flex justify-between items-center text-sm">
+						<Label>Trắc nghiệm</Label>
+						<span className="text-muted-foreground">{quizCount} câu</span>
+					</div>
+
 					<Button
 						className="w-full"
 						onClick={() => handleGenerate(false)}
@@ -569,7 +596,7 @@ export function Settings(props: SettingsProps) {
 				<SheetFooter className="mt-auto pt-4 border-t">
 					<AlertDialog>
 						<AlertDialogTrigger asChild>
-							<Button variant="outline" className="w-full">
+							<Button variant="destructive" className="w-full">
 								<RefreshCw className="mr-2 h-4 w-4" />
 								Tạo chủ đề mới
 							</Button>
@@ -583,14 +610,15 @@ export function Settings(props: SettingsProps) {
 									</div>
 								</AlertDialogTitle>
 								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả dữ liệu hiện tại
-									(chủ đề, nội dung học, cài đặt giao diện) và bắt đầu
-									lại từ đầu. Bạn có chắc chắn muốn tiếp tục không?
+									Hành động này sẽ xóa vĩnh viễn tất cả dữ liệu học tập hiện tại
+									(lý thuyết, flashcard, trắc nghiệm) và bắt đầu
+									lại quá trình tạo chủ đề mới. Cài đặt chung của bạn sẽ được giữ lại.
+									Bạn có chắc chắn muốn tiếp tục không?
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction onClick={handleResetOnboarding}>
+								<AlertDialogAction onClick={handleResetOnboarding} className={cn(buttonVariants({variant: "destructive"}))}>
 									Vâng, tạo mới
 								</AlertDialogAction>
 							</AlertDialogFooter>
