@@ -20,7 +20,16 @@ type ClientInput = z.infer<typeof ClientInputSchema>;
 
 function extractJson(text: string): string | null {
   const match = text.match(/```json\s*([\s\S]*?)\s*```/);
-  return match ? match[1].trim() : text;
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  // Fallback for cases where AI might return raw JSON without backticks
+  try {
+    JSON.parse(text);
+    return text.trim();
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function generateMindmap(
