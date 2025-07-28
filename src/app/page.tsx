@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const FLASHCARDS_PER_CHAPTER = 5;
-const QUIZ_QUESTIONS_PER_CHAPTER = 2;
+const QUIZ_QUESTIONS_PER_CHAPTER = 4;
 
 type ViewType = "flashcards" | "quiz" | "theory";
 
@@ -1526,3 +1526,4 @@ export default function Home() {
     
 
     
+
