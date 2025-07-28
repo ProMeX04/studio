@@ -7,21 +7,23 @@ import { randomUUID } from 'crypto';
 // In a real production app, you would use a more robust solution like Redis or a database.
 const sessions = new Map<string, { session: Session; messageQueue: LiveServerMessage[] }>();
 
-async function getAiInstance() {
-    const apiKey = process.env.GEMINI_API_KEY;
+async function getAiInstance(apiKey: string) {
     if (!apiKey) {
-        throw new Error("GEMINI_API_KEY environment variable not set.");
+        throw new Error("API key is required.");
     }
     return new GoogleGenerativeAI({ apiKey });
 }
 
 export async function POST(req: NextRequest) {
     try {
-        const { action, sessionId, audioData } = await req.json();
-        const ai = await getAiInstance();
+        const { action, sessionId, audioData, apiKey } = await req.json();
 
         switch (action) {
             case 'connect': {
+                if (!apiKey) {
+                    return NextResponse.json({ error: 'API Key is required to connect.' }, { status: 400 });
+                }
+                const ai = await getAiInstance(apiKey);
                 const model = 'models/gemini-2.5-flash-preview-native-audio-dialog';
                 const config = {
                     responseModalities: ['AUDIO', 'TEXT'],

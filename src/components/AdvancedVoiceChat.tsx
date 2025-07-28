@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'processing';
 
-export function AdvancedVoiceChat() {
+export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }: { apiKeys: string[]; apiKeyIndex: number; onApiKeyIndexChange: (index: number) => void; }) {
     const { toast } = useToast();
     const [status, setStatus] = useState<SessionStatus>('disconnected');
     const [isMounted, setIsMounted] = useState(false);
@@ -102,13 +102,17 @@ export function AdvancedVoiceChat() {
 
     const connectSession = useCallback(async () => {
         if (!isMounted || sessionRef.current) return;
+        if (!apiKeys || apiKeys.length === 0) {
+            toast({ title: "Thiếu API Key", description: "Vui lòng thêm API key trong Cài đặt.", variant: "destructive" });
+            return;
+        }
         setStatus('connecting');
         
         try {
             const response = await fetch('/api/live', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'connect' }),
+                body: JSON.stringify({ action: 'connect', apiKey: apiKeys[apiKeyIndex] }),
             });
 
             if (!response.ok) {
@@ -124,7 +128,7 @@ export function AdvancedVoiceChat() {
             toast({ title: "Lỗi kết nối", description: error.message || "Không thể bắt đầu phiên hội thoại.", variant: "destructive" });
             setStatus('disconnected');
         }
-    }, [isMounted, toast]);
+    }, [isMounted, toast, apiKeys, apiKeyIndex]);
 
     const disconnectSession = useCallback(async () => {
         if (!sessionRef.current) return;
