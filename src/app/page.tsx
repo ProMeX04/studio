@@ -37,7 +37,7 @@ function HomePageContent() {
 				</ResizablePanel>
 				{visibility.learn && (
 					<>
-						<ResizableHandle withHandle />
+						<ResizableHandle />
 						<ResizablePanel defaultSize={55} minSize={30}>
 							<RightColumn />
 						</ResizablePanel>
