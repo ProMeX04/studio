@@ -30,7 +30,9 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
     useEffect(() => {
         setIsMounted(true);
         return () => {
-            disconnectSession();
+            if (sessionRef.current) {
+                sessionRef.current.close();
+            }
             if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
             }
@@ -82,6 +84,20 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         }
     }, [playNextInQueue]);
 
+    const disconnectSession = useCallback(() => {
+        if (sessionRef.current) {
+            sessionRef.current.close();
+            sessionRef.current = null;
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+        setStatus('disconnected');
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
+    }, []);
+
 
     const connectSession = useCallback(async () => {
         if (!isMounted || sessionRef.current) return;
@@ -126,20 +142,6 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         }
     }, [isMounted, apiKeys, apiKeyIndex, toast, handleServerMessage, disconnectSession]);
     
-    const disconnectSession = useCallback(() => {
-        if (sessionRef.current) {
-            sessionRef.current.close();
-            sessionRef.current = null;
-        }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current = null;
-        setStatus('disconnected');
-        audioQueueRef.current = [];
-        isPlayingRef.current = false;
-    }, []);
-
     const startRecording = async () => {
         if (status !== 'connected') return;
 
@@ -260,5 +262,3 @@ export function AdvancedVoiceChat({ apiKeys, apiKeyIndex, onApiKeyIndexChange }:
         </div>
     );
 }
-
-    
