@@ -2,7 +2,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 12; // Incremented version
+const DB_VERSION = 13; // Incremented version
 const STORE_NAME = 'data';
 
 export type DataKey =

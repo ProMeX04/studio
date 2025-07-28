@@ -22,6 +22,7 @@ import {
 	Save,
 	BrainCircuit,
 	Minus,
+	Map,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -136,7 +137,6 @@ export const models = [
 		label: "Gemini 1.5 Flash (Nhanh, Hiệu quả)",
 	},
 	{ value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ, Chính xác)" },
-	{ value: "gemini-1.5-flash-latest-tts", label: "Gemini 1.5 Flash + Podcast (TTS)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
@@ -406,10 +406,8 @@ export function Settings(props: SettingsProps) {
 
 		const theoryCount = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.chapters.filter(c => c.content).length ?? 0 : 0;
 		const theoryMax = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.outline.length ?? 0 : 0;
-		const flashcardCount = scope === 'learn' ? (props as LearnSettingsProps).flashcardSet?.cards.length ?? 0 : 0;
-		const quizCount = scope === 'learn' ? (props as LearnSettingsProps).quizSet?.questions.length ?? 0 : 0;
 	
-		const isCompleted = theoryMax > 0 && theoryCount === theoryMax && flashcardCount > 0 && quizCount > 0;
+		const isCompleted = theoryMax > 0 && theoryCount === theoryMax;
 		
 		return (
 			<div className="space-y-4">
@@ -884,4 +882,3 @@ export function Settings(props: SettingsProps) {
 }
 
     
-

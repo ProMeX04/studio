@@ -8,10 +8,11 @@ import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
 import { Clock } from "@/components/Clock"
 import { Flashcards } from "@/components/Flashcards"
-import type { CardData, CardSet, TheorySet } from "@/ai/schemas"
+import type { CardData, CardSet, TheorySet, MindMapNode } from "@/ai/schemas"
 import { Quiz } from "@/components/Quiz"
 import { Theory } from "@/components/Theory"
 import { Podcast } from "@/components/Podcast"
+import { Mindmap } from "@/components/Mindmap"
 import type { QuizSet, QuizQuestion } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
@@ -21,7 +22,8 @@ import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
 import { generateAudio } from "@/ai/flows/generate-audio";
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, AudioLines, Podcast as PodcastIcon } from "lucide-react"
+import { generateMindmap } from "@/ai/flows/generate-mindmap"
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, AudioLines, Podcast as PodcastIcon, Map } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages, models } from "@/components/Settings"
 import {
@@ -43,7 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const FLASHCARDS_PER_CHAPTER = 5;
 const QUIZ_QUESTIONS_PER_CHAPTER = 4;
 
-type ViewType = "flashcards" | "quiz" | "theory" | "podcast";
+type ViewType = "flashcards" | "quiz" | "theory" | "podcast" | "mindmap";
 
 const ApiKeyGuide = ({ 
 	settingsProps, 
@@ -426,7 +428,7 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: (view === "theory" || view === "podcast")
+		: (view === "theory" || view === "podcast" || view === "mindmap")
 		? theorySet?.chapters?.filter(c => c.content).length ?? 0
 		: 0;
 			
@@ -448,7 +450,7 @@ function Learn({
 		if (currentIndex < totalItems - 1) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex + 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
-			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex + 1);
+			else onTheoryChapterIndexChange(theoryChapterIndex + 1);
 		}
 	};
 	
@@ -456,7 +458,7 @@ function Learn({
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
-			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex - 1);
+			else onTheoryChapterIndexChange(theoryChapterIndex - 1);
 		}
 	};
 
@@ -509,7 +511,7 @@ function Learn({
     const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === 'flashcards';
 
 	const allTheoryChaptersMarked = theorySet && (theoryUnderstood === theorySet.chapters.length);
-    const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && (view === 'theory' || view === 'podcast');
+    const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && (view === 'theory' || view === 'podcast' || view === "mindmap");
 
 	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary || shouldShowTheorySummary;
 	const isNavDisabled = isSummaryActive;
@@ -522,7 +524,7 @@ function Learn({
 			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1);
 			else newUnderstoodIndices.push(flashcardIndex);
 			onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
-		} else if (view === 'theory' || view === 'podcast') {
+		} else if (view === 'theory' || view === 'podcast' || view === 'mindmap') {
 			if (!theoryState || !theorySet) return;
 			const newUnderstoodIndices = [...theoryState.understoodIndices];
 			const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex);
@@ -537,7 +539,7 @@ function Learn({
 			if (!flashcardState || !flashcardSet) return false;
 			return flashcardState.understoodIndices.includes(flashcardIndex);
 		}
-		if (view === 'theory' || view === 'podcast') {
+		if (view === 'theory' || view === 'podcast' || view === 'mindmap') {
 			if (!theoryState || !theorySet) return false;
 			return theoryState.understoodIndices.includes(theoryChapterIndex);
 		}
@@ -626,6 +628,8 @@ function Learn({
 					onGeneratePodcast={handleGeneratePodcastForChapter}
 					isGenerating={isGeneratingPodcast}
 				/>;
+			case 'mindmap':
+				return <Mindmap theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
 			default:
 				return <Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
 		}
@@ -650,6 +654,7 @@ function Learn({
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="theory">Lý thuyết</SelectItem>
+								<SelectItem value="mindmap">Sơ đồ tư duy</SelectItem>
 								<SelectItem value="podcast">Podcast</SelectItem>
 								<SelectItem value="flashcards">Flashcard</SelectItem>
 								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
@@ -681,7 +686,7 @@ function Learn({
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 							
-							{(view === 'flashcards' || view === 'theory' || view === 'podcast') && (
+							{(view === 'flashcards' || view === 'theory' || view === 'podcast' || view === 'mindmap') && (
 								<>
 									<Button
 										onClick={handleToggleUnderstood}
@@ -695,7 +700,7 @@ function Learn({
 									<Button
 										onClick={() => {
 											if (view === 'flashcards') setShowFlashcardSummary(true);
-											else if (view === 'theory' || view === 'podcast') setShowTheorySummary(true);
+											else setShowTheorySummary(true);
 										}}
 										disabled={!hasContent || isSummaryActive}
 										variant="outline"
@@ -819,6 +824,7 @@ export default function Home() {
 
 			// Generate Script if it doesn't exist
 			if (!chapter.podcastScript) {
+				toast({ title: "Đang tạo kịch bản...", description: `Bắt đầu tạo kịch bản cho chương "${chapter.title}".` });
 				const { result, newApiKeyIndex } = await generatePodcastScript({
 					apiKeys, apiKeyIndex: currentKeyIndex,
 					topic, chapterTitle: chapter.title,
@@ -834,6 +840,7 @@ export default function Home() {
 
 			// Generate Audio if it doesn't exist
 			if (tempTheorySet.chapters[chapterIndex].podcastScript && !tempTheorySet.chapters[chapterIndex].audioDataUri) {
+				toast({ title: "Đang tạo âm thanh...", description: `Bắt đầu tạo file âm thanh cho chương "${chapter.title}".` });
 				const { result, newApiKeyIndex } = await generateAudio({
 					apiKeys, apiKeyIndex: currentKeyIndex,
 					script: tempTheorySet.chapters[chapterIndex].podcastScript!, model: ttsModel
@@ -930,7 +937,7 @@ export default function Home() {
 						id: 'idb-theory',
 						topic: currentTopic,
 						outline: outlineResult.outline,
-						chapters: outlineResult.outline.map(title => ({ title, content: null, podcastScript: null, audioDataUri: null })),
+						chapters: outlineResult.outline.map(title => ({ title, content: null, podcastScript: null, audioDataUri: null, mindMap: null })),
 					};
 					currentFlashcardSet = { id: "idb-flashcards", topic: currentTopic, cards: [] };
 					currentQuizSet = { id: "idb-quiz", topic: currentTopic, questions: [] };
@@ -1017,6 +1024,27 @@ export default function Home() {
 							await db.put("data", { id: "quiz", topic: currentTopic, data: currentQuizSet });
 						}
 					}
+
+					// D. Generate Mindmap for the chapter if it doesn't exist
+					if (!chapter.mindMap) {
+						const { result: mindMapResult, newApiKeyIndex } = await generateMindmap({
+							apiKeys,
+							apiKeyIndex: currentKeyIndex,
+							topic: currentTopic,
+							chapterTitle: chapter.title,
+							language: currentLanguage,
+							model: currentModel,
+							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`
+						});
+						currentKeyIndex = newApiKeyIndex;
+
+						if (mindMapResult) {
+							currentTheorySet.chapters[i].mindMap = mindMapResult;
+							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
+							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
+						}
+					}
+
 
 					await handleApiKeyIndexChange(currentKeyIndex);
 					if (!isMountedRef.current) break;
@@ -1630,5 +1658,3 @@ export default function Home() {
     
 
     
-
-

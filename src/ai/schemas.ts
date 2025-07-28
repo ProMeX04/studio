@@ -83,6 +83,29 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
+const MindMapNodeJsonSchema: Schema = {
+    type: "OBJECT",
+    properties: {
+        name: {
+            type: "STRING",
+            description: "The name or content of this node."
+        },
+        children: {
+            type: "ARRAY",
+            description: "An array of child nodes.",
+            items: {
+                // Recursive definition
+            }
+        }
+    },
+    required: ["name"]
+};
+// Add the recursive part
+MindMapNodeJsonSchema.properties!.children.items = MindMapNodeJsonSchema;
+
+export const GenerateMindMapJsonSchema: Schema = MindMapNodeJsonSchema;
+
+
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
 // Generic Card / Typing
@@ -221,11 +244,36 @@ export const GenerateAudioOutputSchema = z.object({
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
+// Mind Map
+export interface MindMapNode {
+    name: string;
+    children?: MindMapNode[];
+}
+
+export const MindMapNodeSchema: z.ZodType<MindMapNode> = z.object({
+    name: z.string(),
+    children: z.lazy(() => z.array(MindMapNodeSchema)).optional(),
+});
+  
+export const GenerateMindMapInputSchema = z.object({
+    topic: z.string().describe('The overall topic.'),
+    chapterTitle: z.string().describe('The title of the chapter for the mind map.'),
+    theoryContent: z.string().describe('The theory content to build the mind map from.'),
+    language: z.string().describe('The language for the mind map content.'),
+    model: z.string().describe('The Generative AI model to use.'),
+});
+export type GenerateMindMapInput = z.infer<typeof GenerateMindMapInputSchema>;
+
+export const GenerateMindMapOutputSchema = MindMapNodeSchema;
+export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
+
+
 export interface TheoryChapter {
   title: string;
   content: string | null; // Null while generating
   podcastScript: string | null;
   audioDataUri: string | null;
+  mindMap: MindMapNode | null;
 }
 export interface TheorySet {
   id: string;
