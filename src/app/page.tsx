@@ -92,8 +92,13 @@ function HomePageContent() {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
 			const layout = panelGroup.getLayout()
-			const newLayout = [45, 55]
-			panelGroup.setLayout(newLayout)
+			// If both are closed, open left to a reasonable size
+			if (layout[0] === 0 && layout[1] === 0) {
+				panelGroup.setLayout([45, 55])
+			} else {
+				// Otherwise, just ensure left is open
+				panelGroup.setLayout([45, layout[1]])
+			}
 			onVisibilityChange({ ...visibility, home: true })
 		}
 	}
@@ -102,8 +107,13 @@ function HomePageContent() {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
 			const layout = panelGroup.getLayout()
-			const newLayout = [45, 55]
-			panelGroup.setLayout(newLayout)
+			// If both are closed, open right to a reasonable size
+			if (layout[0] === 0 && layout[1] === 0) {
+				panelGroup.setLayout([45, 55])
+			} else {
+				// Otherwise, just ensure right is open
+				panelGroup.setLayout([layout[0], 55])
+			}
 			onVisibilityChange({ ...visibility, learn: true })
 		}
 	}
@@ -338,31 +348,35 @@ function HomePageContent() {
 				</ResizablePanelGroup>
 			</div>
 			
-			{/* Floating buttons to re-open panels */}
-			{!visibility.home && (
-				<Button
-					variant="outline"
-					className="absolute left-4 top-1/2 -translate-y-1/2 z-30"
-					onClick={handleOpenLeft}
-				>
-					<PanelLeftOpen className="h-4 w-4" />
-				</Button>
-			)}
-
-			{!visibility.learn && (
-				<Button
-					variant="outline"
-					className="absolute right-4 top-1/2 -translate-y-1/2 z-30"
-					onClick={handleOpenRight}
-				>
-					<PanelRightOpen className="h-4 w-4" />
-				</Button>
-			)}
-
 			{/* Unified Toolbar */}
 			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2 z-40">
-				<div className="flex flex-wrap items-center justify-center gap-2 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-4xl">
+				<div className="flex flex-wrap items-center justify-center gap-2 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-max">
 					
+					{/* Re-open Panel Buttons */}
+					{!visibility.home && (
+						<Button
+							variant="outline"
+							size="icon"
+							className="h-9 w-9"
+							onClick={handleOpenLeft}
+						>
+							<PanelLeftOpen className="h-4 w-4" />
+						</Button>
+					)}
+					{!visibility.learn && (
+						<Button
+							variant="outline"
+							size="icon"
+							className="h-9 w-9"
+							onClick={handleOpenRight}
+						>
+							<PanelRightOpen className="h-4 w-4" />
+						</Button>
+					)}
+					{(!visibility.home || !visibility.learn) && visibility.home !== visibility.learn && (
+						<Separator orientation="vertical" className="h-8" />
+					)}
+
 					{/* Learning Mode Selector */}
 					<Select
 						value={view}
