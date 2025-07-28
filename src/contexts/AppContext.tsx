@@ -239,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			await tx.done
 			
 			// Also clear the layout from localStorage
-			localStorage.removeItem("newtab-ai-layout");
+			localStorage.removeItem("newtab-ai-layout-v2");
 
 
 			// Reset state in memory
@@ -1126,3 +1126,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
+
+    
