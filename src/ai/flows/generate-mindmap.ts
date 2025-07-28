@@ -9,7 +9,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateMindMapInputSchema, GenerateMindMapOutputSchema, GenerateMindMapOutput } from '@/ai/schemas';
+import { GenerateMindMapInputSchema, GenerateMindMapOutputSchema, GenerateMindMapOutput, GenerateMindMapJsonSchema } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ClientInputSchema = GenerateMindMapInputSchema.extend({
@@ -17,20 +17,6 @@ const ClientInputSchema = GenerateMindMapInputSchema.extend({
     apiKeyIndex: z.number(),
 });
 type ClientInput = z.infer<typeof ClientInputSchema>;
-
-function extractJson(text: string): string | null {
-  const match = text.match(/```json\s*([\s\S]*?)\s*```/);
-  if (match && match[1]) {
-    return match[1].trim();
-  }
-  // Fallback for cases where AI might return raw JSON without backticks
-  try {
-    JSON.parse(text);
-    return text.trim();
-  } catch (e) {
-    return null;
-  }
-}
 
 export async function generateMindmap(
   input: ClientInput
@@ -62,17 +48,17 @@ ${promptInput.theoryContent}
 
 Yêu cầu:
 1.  Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ.
-2.  Tạo một danh sách các "nodes" (nút) và "edges" (cạnh nối).
+2.  Tạo một danh sách các "nodes" (nút) và "edges" (cạnh nối) và trả về dưới dạng một đối tượng JSON duy nhất.
 3.  Nút gốc phải có id là 'root'.
-4.  Toàn bộ đầu ra phải là một khối mã JSON duy nhất, được bao bọc trong \`\`\`json và \`\`\`.
-5.  Đối tượng JSON phải tuân theo cấu trúc { nodes: [...], edges: [...] }:
-    - Mỗi 'node' trong 'nodes' phải có 'id' (chuỗi), 'data: { label: "tên nút" }'.
-    - Mỗi 'edge' trong 'edges' phải có 'id' (chuỗi, ví dụ: 'e-root-1'), 'source' (id nút nguồn), và 'target' (id nút đích).
+4.  Mỗi 'node' trong mảng 'nodes' phải có 'id' (chuỗi), và 'data: { label: "tên nút" }'.
+5.  Mỗi 'edge' trong mảng 'edges' phải có 'id' (chuỗi, ví dụ: 'e-root-1'), 'source' (id nút nguồn), và 'target' (id nút đích).
 6.  Sử dụng ngôn ngữ: ${promptInput.language}.
 `;
 
       const generationConfig: GenerationConfig = {
-        responseMimeType: "text/plain",
+        responseMimeType: "application/json",
+        // @ts-ignore - responseSchema is a valid property
+        responseSchema: GenerateMindMapJsonSchema,
       };
 
       const result = await model.generateContent({
@@ -86,14 +72,7 @@ Yêu cầu:
         ]
       });
       
-      const rawText = result.response.text();
-      const jsonString = extractJson(rawText);
-
-      if (!jsonString) {
-        throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Khối JSON không được tìm thấy.', 'AI_INVALID_FORMAT');
-      }
-
-      const parsedJson = JSON.parse(jsonString);
+      const parsedJson = JSON.parse(result.response.text());
       const validatedOutput = GenerateMindMapOutputSchema.parse(parsedJson);
 
       console.log(`✅ Generated Mind Map for chapter: "${promptInput.chapterTitle}"`);
@@ -114,7 +93,7 @@ Yêu cầu:
             console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             console.error('❌ Mind Map generation error:', error);
-            if (error.message.includes('JSON') || error instanceof z.ZodError || error instanceof AIOperationError) {
+            if (error.message.includes('JSON') || error instanceof z.ZodError) {
                 throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
             }
             if (invalidKeyCount === apiKeys.length) {

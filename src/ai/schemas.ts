@@ -83,6 +83,45 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
+export const GenerateMindMapJsonSchema: Schema = {
+  type: "OBJECT",
+  properties: {
+    nodes: {
+      type: "ARRAY",
+      description: "An array of mind map nodes.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          id: { type: "STRING", description: "A unique identifier for the node." },
+          data: {
+            type: "OBJECT",
+            properties: {
+              label: { type: "STRING", description: "The text label for the node." }
+            },
+            required: ["label"]
+          }
+        },
+        required: ["id", "data"]
+      }
+    },
+    edges: {
+      type: "ARRAY",
+      description: "An array of edges connecting the mind map nodes.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          id: { type: "STRING", description: "A unique identifier for the edge (e.g., 'e-source-target')." },
+          source: { type: "STRING", description: "The ID of the source node." },
+          target: { type: "STRING", description: "The ID of the target node." }
+        },
+        required: ["id", "source", "target"]
+      }
+    }
+  },
+  required: ["nodes", "edges"]
+};
+
+
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
 // Generic Card / Typing
