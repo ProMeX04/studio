@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useRef, useEffect } from "react"
@@ -6,16 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, Podcast as PodcastIcon, Menu, Plus, PlayCircle } from "lucide-react"
+import { CheckCircle, Podcast as PodcastIcon, Menu, Plus, PlayCircle, Loader } from "lucide-react"
+import { Button } from "./ui/button"
 
 interface PodcastProps {
 	theorySet: TheorySet | null
 	topic: string;
 	chapterIndex: number;
 	isCurrentUnderstood: boolean;
+	onGeneratePodcast: (chapterIndex: number) => void;
+	isGenerating: boolean;
 }
 
-export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood }: PodcastProps) {
+export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood, onGeneratePodcast, isGenerating }: PodcastProps) {
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -40,6 +44,19 @@ export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood }: Podcas
 							
                             {isCurrentUnderstood && <CheckCircle className="absolute top-0 right-0 text-success w-6 h-6" />}
 
+							{!currentChapter.audioDataUri && currentChapter.content && (
+								<div className="flex justify-center mb-6">
+									<Button onClick={() => onGeneratePodcast(chapterIndex)} disabled={isGenerating}>
+										{isGenerating ? (
+											<Loader className="animate-spin mr-2 h-4 w-4" />
+										) : (
+											<PodcastIcon className="mr-2 h-4 w-4" />
+										)}
+										{isGenerating ? "Đang tạo..." : "Tạo Podcast cho chương này"}
+									</Button>
+								</div>
+							)}
+
                             {currentChapter.audioDataUri ? (
                                 <div className="mb-8 sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg">
                                     <audio ref={audioRef} controls src={currentChapter.audioDataUri} className="w-full">
@@ -47,11 +64,19 @@ export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood }: Podcas
                                     </audio>
                                 </div>
                             ) : (
-                                <div className="mb-8 flex flex-col items-center justify-center p-4 border border-dashed rounded-lg">
-                                    <Skeleton className="h-10 w-full" />
-                                    <p className="text-sm text-muted-foreground mt-2">Đang tạo âm thanh...</p>
-                                </div>
+								currentChapter.content && !isGenerating && (
+									<div className="mb-8 flex flex-col items-center justify-center p-4 border border-dashed rounded-lg bg-secondary/30">
+										<p className="text-sm text-muted-foreground mt-2 text-center">Nhấn nút bên trên để tạo podcast.</p>
+									</div>
+								)
                             )}
+							
+							{isGenerating && (
+								<div className="mb-8 flex flex-col items-center justify-center p-4 border border-dashed rounded-lg">
+									<Skeleton className="h-10 w-full" />
+									<p className="text-sm text-muted-foreground mt-2">Đang tạo âm thanh, vui lòng đợi...</p>
+								</div>
+							)}
 
 							<div className="prose dark:prose-invert max-w-none text-lg space-y-4">
 								{currentChapter.podcastScript ? (
@@ -73,12 +98,18 @@ export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood }: Podcas
                                         );
                                     })
 								) : (
-									<div className="space-y-4 pt-4">
-										<Skeleton className="h-8 w-3/4" />
-										<Skeleton className="h-6 w-full" />
-										<Skeleton className="h-6 w-full" />
-										<Skeleton className="h-6 w-5/6" />
-									</div>
+									currentChapter.content && (
+										<div className="space-y-4 pt-4">
+											{(isGenerating) && (
+												<>
+													<Skeleton className="h-8 w-3/4" />
+													<Skeleton className="h-6 w-full" />
+													<Skeleton className="h-6 w-full" />
+													<Skeleton className="h-6 w-5/6" />
+												</>
+											)}
+										</div>
+									)
 								)}
 							</div>
 						</div>
@@ -93,7 +124,7 @@ export function Podcast({ theorySet, chapterIndex, isCurrentUnderstood }: Podcas
 						</CardHeader>
 						<CardContent>
 							<p className="text-muted-foreground">
-								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> để AI tạo nội dung lý thuyết và podcast cho bạn.
+								Nhấn vào nút <strong className="text-foreground">Menu</strong> <Menu className="inline w-4 h-4" /> trên thanh công cụ, sau đó nhấn nút <Plus className="inline w-4 h-4" /> để AI tạo nội dung lý thuyết. Sau đó, bạn có thể tạo podcast cho từng chương.
 							</p>
 						</CardContent>
 					</Card>

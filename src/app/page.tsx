@@ -377,6 +377,8 @@ interface LearnProps {
 	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	hasCompletedOnboarding: boolean;
 	handleGenerate: (forceNew: boolean) => void;
+	handleGeneratePodcastForChapter: (chapterIndex: number) => void;
+	isGeneratingPodcast: boolean;
 }
 
 function Learn({
@@ -417,6 +419,8 @@ function Learn({
 	onOnboardingComplete,
 	hasCompletedOnboarding,
 	handleGenerate,
+	handleGeneratePodcastForChapter,
+	isGeneratingPodcast
 }: LearnProps) {
 	const currentCount = view === "flashcards" 
 		? flashcardSet?.cards.length ?? 0
@@ -451,8 +455,8 @@ function Learn({
 	const handlePrev = () => {
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
-			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
-			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex - 1);
+			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
+			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex + 1);
 		}
 	};
 
@@ -614,7 +618,14 @@ function Learn({
 			case 'theory':
 				return <Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
 			case 'podcast':
-				return <Podcast theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
+				return <Podcast 
+					theorySet={theorySet} 
+					topic={topic} 
+					chapterIndex={theoryChapterIndex} 
+					isCurrentUnderstood={isCurrentItemUnderstood} 
+					onGeneratePodcast={handleGeneratePodcastForChapter}
+					isGenerating={isGeneratingPodcast}
+				/>;
 			default:
 				return <Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
 		}
@@ -732,6 +743,7 @@ export default function Home() {
 	const [language, setLanguage] = useState("Vietnamese")
 	const [model, setModel] = useState("gemini-1.5-flash-latest");
 	const [isLoading, setIsLoading] = useState(false);
+	const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
 	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
 	const [theorySet, setTheorySet] = useState<TheorySet | null>(null);
@@ -784,9 +796,76 @@ export default function Home() {
 		await db.put("data", { id: "apiKeyIndex", data: index });
 	}, [apiKeyIndex]);
 
+	const handleGeneratePodcastForChapter = useCallback(async (chapterIndex: number) => {
+		if (!theorySet || !theorySet.chapters[chapterIndex]?.content) {
+			toast({ title: "Thiếu nội dung", description: "Cần có nội dung lý thuyết để tạo podcast.", variant: "destructive" });
+			return;
+		}
+		if (isGeneratingRef.current || isGeneratingPodcast) {
+			toast({ title: "Đang bận", description: "Một quá trình tạo khác đang chạy.", variant: "destructive" });
+			return;
+		}
+
+		setIsGeneratingPodcast(true);
+		isGeneratingRef.current = true; // Block other generations
+
+		const ttsModel = 'gemini-2.5-flash-preview-tts';
+		const db = await getDb();
+		let currentKeyIndex = apiKeyIndex;
+		const chapter = theorySet.chapters[chapterIndex];
+
+		try {
+			let tempTheorySet = { ...theorySet };
+
+			// Generate Script if it doesn't exist
+			if (!chapter.podcastScript) {
+				const { result, newApiKeyIndex } = await generatePodcastScript({
+					apiKeys, apiKeyIndex: currentKeyIndex,
+					topic, chapterTitle: chapter.title,
+					theoryContent: chapter.content!, language, model
+				});
+				currentKeyIndex = newApiKeyIndex;
+				if (!result?.script) throw new Error("Không thể tạo kịch bản podcast.");
+				
+				tempTheorySet.chapters[chapterIndex].podcastScript = result.script;
+				if (isMountedRef.current) setTheorySet({ ...tempTheorySet });
+				await db.put("data", { id: "theory", topic: topic, data: tempTheorySet });
+			}
+
+			// Generate Audio if it doesn't exist
+			if (tempTheorySet.chapters[chapterIndex].podcastScript && !tempTheorySet.chapters[chapterIndex].audioDataUri) {
+				const { result, newApiKeyIndex } = await generateAudio({
+					apiKeys, apiKeyIndex: currentKeyIndex,
+					script: tempTheorySet.chapters[chapterIndex].podcastScript!, model: ttsModel
+				});
+				currentKeyIndex = newApiKeyIndex;
+				if (!result?.audioDataUri) throw new Error("Không thể tạo file âm thanh podcast.");
+
+				tempTheorySet.chapters[chapterIndex].audioDataUri = result.audioDataUri;
+				if (isMountedRef.current) setTheorySet({ ...tempTheorySet });
+				await db.put("data", { id: "theory", topic: topic, data: tempTheorySet });
+			}
+
+			await handleApiKeyIndexChange(currentKeyIndex);
+			toast({ title: "Hoàn tất!", description: `Podcast cho chương "${chapter.title}" đã được tạo.` });
+
+		} catch (error: any) {
+			console.error(`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`, error);
+			if (error instanceof AIOperationError) {
+				toast({ title: "Lỗi tạo podcast", description: error.message, variant: "destructive" });
+			} else {
+				toast({ title: "Lỗi không xác định", description: `Đã xảy ra lỗi: ${error.message}.`, variant: "destructive" });
+			}
+		} finally {
+			setIsGeneratingPodcast(false);
+			isGeneratingRef.current = false;
+		}
+
+	}, [theorySet, topic, language, model, apiKeys, apiKeyIndex, handleApiKeyIndexChange, toast, isGeneratingPodcast]);
+
+
 	const handleGenerate = useCallback(
 		async (forceNew: boolean = false) => {
-			const ttsModel = 'gemini-2.5-flash-preview-tts';
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
@@ -901,37 +980,7 @@ export default function Home() {
 					
 					const chapterContent = currentTheorySet.chapters[i].content!;
 
-					// B. Generate Podcast Script if it doesn't exist
-					if (!chapter.podcastScript) {
-						const { result: scriptResult, newApiKeyIndex } = await generatePodcastScript({
-							apiKeys, apiKeyIndex: currentKeyIndex,
-							topic: currentTopic, chapterTitle: chapter.title,
-							theoryContent: chapterContent, language: currentLanguage,
-							model: currentModel
-						});
-						currentKeyIndex = newApiKeyIndex;
-						if (scriptResult?.script) {
-							currentTheorySet.chapters[i].podcastScript = scriptResult.script;
-							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
-							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
-						}
-					}
-
-					// C. Generate Audio if it doesn't exist and a script is available
-					if (chapter.podcastScript && !chapter.audioDataUri) {
-						const { result: audioResult, newApiKeyIndex } = await generateAudio({
-							apiKeys, apiKeyIndex: currentKeyIndex,
-							script: chapter.podcastScript, model: ttsModel
-						});
-						currentKeyIndex = newApiKeyIndex;
-						if (audioResult?.audioDataUri) {
-							currentTheorySet.chapters[i].audioDataUri = audioResult.audioDataUri;
-							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
-							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
-						}
-					}
-
-					// D. Generate Flashcards for the chapter if they don't exist
+					// B. Generate Flashcards for the chapter if they don't exist
 					const flashcardsForChapterExist = currentFlashcardSet.cards.some(c => c.back.includes(`Source: ${chapter.title}`));
 					if (!flashcardsForChapterExist) {
 						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
@@ -950,7 +999,7 @@ export default function Home() {
 						}
 					}
 
-					// E. Generate Quiz questions for the chapter if they don't exist
+					// C. Generate Quiz questions for the chapter if they don't exist
 					const quizForChapterExist = currentQuizSet.questions.some(q => q.explanation.includes(`Source: ${chapter.title}`));
 					if (!quizForChapterExist) {
 						const { result: newQuestions, newApiKeyIndex } = await generateQuiz({
@@ -1566,6 +1615,8 @@ export default function Home() {
 							onOnboardingComplete={handleOnboardingComplete}
 							hasCompletedOnboarding={hasCompletedOnboarding}
 							handleGenerate={handleGenerate}
+							handleGeneratePodcastForChapter={handleGeneratePodcastForChapter}
+							isGeneratingPodcast={isGeneratingPodcast}
 						/>
 					</div>
 				</div>
@@ -1579,3 +1630,4 @@ export default function Home() {
     
 
     
+
