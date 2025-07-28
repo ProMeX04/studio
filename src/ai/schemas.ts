@@ -83,29 +83,6 @@ export const ExplainQuizOptionJsonSchema: Schema = {
     required: ["explanation"]
 };
 
-const MindMapNodeJsonSchema: Schema = {
-    type: "OBJECT",
-    properties: {
-        name: {
-            type: "STRING",
-            description: "The name or content of this node."
-        },
-        children: {
-            type: "ARRAY",
-            description: "An array of child nodes.",
-            items: {
-                // Recursive definition
-            }
-        }
-    },
-    required: ["name"]
-};
-// Add the recursive part
-MindMapNodeJsonSchema.properties!.children.items = MindMapNodeJsonSchema;
-
-export const GenerateMindMapJsonSchema: Schema = MindMapNodeJsonSchema;
-
-
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
 // Generic Card / Typing
@@ -245,15 +222,25 @@ export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
 // Mind Map
-export interface MindMapNode {
-    name: string;
-    children?: MindMapNode[];
-}
-
-export const MindMapNodeSchema: z.ZodType<MindMapNode> = z.object({
-    name: z.string(),
-    children: z.lazy(() => z.array(MindMapNodeSchema)).optional(),
+const MindMapNodeSchema = z.object({
+  id: z.string(),
+  data: z.object({
+    label: z.string(),
+  }),
+  // position is handled by layout algorithm in the frontend
 });
+
+const MindMapEdgeSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+});
+
+export const GenerateMindMapOutputSchema = z.object({
+  nodes: z.array(MindMapNodeSchema),
+  edges: z.array(MindMapEdgeSchema),
+});
+export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
   
 export const GenerateMindMapInputSchema = z.object({
     topic: z.string().describe('The overall topic.'),
@@ -264,16 +251,13 @@ export const GenerateMindMapInputSchema = z.object({
 });
 export type GenerateMindMapInput = z.infer<typeof GenerateMindMapInputSchema>;
 
-export const GenerateMindMapOutputSchema = MindMapNodeSchema;
-export type GenerateMindMapOutput = z.infer<typeof GenerateMindMapOutputSchema>;
-
 
 export interface TheoryChapter {
   title: string;
   content: string | null; // Null while generating
   podcastScript: string | null;
   audioDataUri: string | null;
-  mindMap: MindMapNode | null;
+  mindMap: GenerateMindMapOutput | null;
 }
 export interface TheorySet {
   id: string;

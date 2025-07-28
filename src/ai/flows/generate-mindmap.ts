@@ -9,7 +9,7 @@
 
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
-import { GenerateMindMapInputSchema, GenerateMindMapOutputSchema, GenerateMindMapOutput, GenerateMindMapJsonSchema } from '@/ai/schemas';
+import { GenerateMindMapInputSchema, GenerateMindMapOutputSchema, GenerateMindMapOutput } from '@/ai/schemas';
 import { AIOperationError } from '@/lib/ai-utils';
 
 const ClientInputSchema = GenerateMindMapInputSchema.extend({
@@ -20,7 +20,7 @@ type ClientInput = z.infer<typeof ClientInputSchema>;
 
 function extractJson(text: string): string | null {
   const match = text.match(/```json\s*([\s\S]*?)\s*```/);
-  return match ? match[1].trim() : null;
+  return match ? match[1].trim() : text;
 }
 
 export async function generateMindmap(
@@ -52,14 +52,14 @@ ${promptInput.theoryContent}
 ---
 
 Yêu cầu:
-1.  Phân tích nội dung để xác định các khái niệm chính và tạo các nút con (children) tương ứng.
-2.  Tiếp tục phân rã từng khái niệm chính thành các ý nhỏ hơn, chi tiết hơn dưới dạng các nút con lồng nhau.
-3.  Sơ đồ cần có độ sâu ít nhất là 2-3 cấp độ để thể hiện rõ mối quan hệ giữa các khái niệm.
-4.  Sử dụng ngôn ngữ: ${promptInput.language}.
-5.  Toàn bộ đầu ra phải là một khối mã JSON duy nhất, được bao bọc trong \`\`\`json và \`\`\`.
-6.  Đối tượng JSON phải tuân theo cấu trúc sau:
-    - Bắt đầu với một nút gốc (root node) duy nhất có thuộc tính "name" là tên của chương ("${promptInput.chapterTitle}").
-    - Mỗi nút chỉ bao gồm các thuộc tính "name" và "children" (tùy chọn).
+1.  Phân tích nội dung để xác định khái niệm chính (nút gốc) và các khái niệm phụ.
+2.  Tạo một danh sách các "nodes" (nút) và "edges" (cạnh nối).
+3.  Nút gốc phải có id là 'root'.
+4.  Toàn bộ đầu ra phải là một khối mã JSON duy nhất, được bao bọc trong \`\`\`json và \`\`\`.
+5.  Đối tượng JSON phải tuân theo cấu trúc { nodes: [...], edges: [...] }:
+    - Mỗi 'node' trong 'nodes' phải có 'id' (chuỗi), 'data: { label: "tên nút" }'.
+    - Mỗi 'edge' trong 'edges' phải có 'id' (chuỗi, ví dụ: 'e-root-1'), 'source' (id nút nguồn), và 'target' (id nút đích).
+6.  Sử dụng ngôn ngữ: ${promptInput.language}.
 `;
 
       const generationConfig: GenerationConfig = {
