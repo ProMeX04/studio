@@ -87,23 +87,15 @@ interface AppContextType {
 
 	// State Setters & Handlers
 	onViewChange: (view: "flashcards" | "quiz" | "theory" | "podcast") => void
-	setTopic: (topic: string) => void
-	setLanguage: (language: string) => void
-	setModel: (model: string) => void
-	setApiKeys: (keys: string[]) => void
-	setApiKeyIndex: (index: number) => void
 	onFlashcardIndexChange: (index: number) => void
 	onCurrentQuestionIndexChange: (index: number) => void
 	onTheoryChapterIndexChange: (index: number) => void
 	setShowQuizSummary: (show: boolean) => void
 	setShowFlashcardSummary: (show: boolean) => void
 	setShowTheorySummary: (show: boolean) => void
-	onSettingsSave: (settings: { topic: string; language: string }) => void
-	onModelChange: (model: string) => void
 	handleGenerate: (forceNew: boolean) => void
 	handleGeneratePodcastForChapter: (chapterIndex: number) => void
 	onClearAllData: () => void
-	handleClearLearningData: (isLearningReset?: boolean) => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
@@ -198,102 +190,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	// --- Data Handling Callbacks ---
 
-	const handleClearLearningData = useCallback(
-		async (isLearningReset: boolean = false) => {
-			const db = await getDb()
-			const keysToDelete: DataKey[] = isLearningReset
-				? [
-						"flashcards",
-						"flashcardState",
-						"flashcardIndex",
-						"quiz",
-						"quizState",
-						"theory",
-						"theoryState",
-						"theoryChapterIndex",
-				  ]
-				: [
-						"flashcards",
-						"flashcardState",
-						"flashcardIndex",
-						"quiz",
-						"quizState",
-						"theory",
-						"theoryState",
-						"theoryChapterIndex",
-						"topic",
-						"language",
-						"model",
-						"view",
-						"visibility",
-						"background",
-						"uploadedBackgrounds",
-						"apiKeys",
-						"apiKeyIndex",
-						"hasCompletedOnboarding",
-				  ]
+	const onClearAllData = useCallback(async () => {
+		const db = await getDb()
+		const keysToDelete: DataKey[] = [
+			"flashcards",
+			"flashcardState",
+			"flashcardIndex",
+			"quiz",
+			"quizState",
+			"theory",
+			"theoryState",
+			"theoryChapterIndex",
+			"topic",
+			"language",
+			"model",
+			"view",
+			"visibility",
+			"background",
+			"uploadedBackgrounds",
+			"apiKeys",
+			"apiKeyIndex",
+			"hasCompletedOnboarding",
+		]
 
-			const tx = db.transaction("data", "readwrite")
-			const store = tx.objectStore("data")
-			await Promise.all(keysToDelete.map((key) => store.delete(key)))
-			await tx.done
-			
-			// Also clear the layout from localStorage
-			localStorage.removeItem("newtab-ai-layout-v2");
+		const tx = db.transaction("data", "readwrite")
+		const store = tx.objectStore("data")
+		await Promise.all(keysToDelete.map((key) => store.delete(key)))
+		await tx.done
+		
+		localStorage.removeItem("newtab-ai-layout-v2");
+
+		// Reset state in memory
+		setFlashcardSet(null)
+		setFlashcardState({ understoodIndices: [] })
+		setFlashcardIndex(0)
+		setQuizSet(null)
+		setQuizState({ currentQuestionIndex: 0, answers: {} })
+		setCurrentQuestionIndex(0)
+		setTheorySet(null)
+		setTheoryState({ understoodIndices: [] })
+		setTheoryChapterIndex(0)
+		setShowFlashcardSummary(false)
+		setShowQuizSummary(false)
+		setShowTheorySummary(false)
+		setTopic("Lịch sử La Mã")
+		setLanguage("Vietnamese")
+		setModel("gemini-1.5-flash-latest")
+		setView("theory")
+		setVisibility({
+			home: true,
+			clock: true,
+			greeting: true,
+			search: true,
+			quickLinks: true,
+			learn: true,
+			advancedVoiceChat: true,
+		})
+		setBackgroundImage("")
+		setUploadedBackgrounds([])
+		setApiKeys([])
+		setApiKeyIndex(0)
+		setHasCompletedOnboarding(false)
+
+		toast({
+			title: "Đã xóa dữ liệu",
+			description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
+		})
+	}, [toast])
 
 
-			// Reset state in memory
-			setFlashcardSet(null)
-			setFlashcardState({ understoodIndices: [] })
-			setFlashcardIndex(0)
-			setQuizSet(null)
-			setQuizState({ currentQuestionIndex: 0, answers: {} })
-			setCurrentQuestionIndex(0)
-			setTheorySet(null)
-			setTheoryState({ understoodIndices: [] })
-			setTheoryChapterIndex(0)
-			setShowFlashcardSummary(false)
-			setShowQuizSummary(false)
-			setShowTheorySummary(false)
+	const handleClearLearningData = useCallback(async () => {
+		const db = await getDb()
+		const keysToDelete: DataKey[] = [
+			"flashcards",
+			"flashcardState",
+			"flashcardIndex",
+			"quiz",
+			"quizState",
+			"theory",
+			"theoryState",
+			"theoryChapterIndex",
+		]
 
-			if (!isLearningReset) {
-				setTopic("Lịch sử La Mã")
-				setLanguage("Vietnamese")
-				setModel("gemini-1.5-flash-latest")
-				setView("theory")
-				setVisibility({
-					home: true,
-					clock: true,
-					greeting: true,
-					search: true,
-					quickLinks: true,
-					learn: true,
-					advancedVoiceChat: true,
-				})
-				setBackgroundImage("")
-				setUploadedBackgrounds([])
-				setApiKeys([])
-				setApiKeyIndex(0)
-				setHasCompletedOnboarding(false)
-			} else {
-				toast({
-					title: "Đã xóa dữ liệu học tập",
-					description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
-				})
-				return
-			}
+		const tx = db.transaction("data", "readwrite")
+		const store = tx.objectStore("data")
+		await Promise.all(keysToDelete.map((key) => store.delete(key)))
+		await tx.done
 
-			toast({
-				title: "Đã xóa dữ liệu",
-				description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
-			})
-		},
-		[toast]
-	)
+		// Reset state in memory
+		setFlashcardSet(null)
+		setFlashcardState({ understoodIndices: [] })
+		setFlashcardIndex(0)
+		setQuizSet(null)
+		setQuizState({ currentQuestionIndex: 0, answers: {} })
+		setCurrentQuestionIndex(0)
+		setTheorySet(null)
+		setTheoryState({ understoodIndices: [] })
+		setTheoryChapterIndex(0)
+		setShowFlashcardSummary(false)
+		setShowQuizSummary(false)
+		setShowTheorySummary(false)
 
-	const onClearAllData = useCallback(() => {
-		handleClearLearningData(false)
-	}, [handleClearLearningData])
+		toast({
+			title: "Đã xóa dữ liệu học tập",
+			description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
+		})
+	},[toast]
+)
 
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb()
@@ -513,7 +516,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 				// Step 1: Handle new topic or forced reset
 				if (forceNew || !currentTheorySet) {
-					await handleClearLearningData(true) // Clear all learning data for the new topic
+					await handleClearLearningData() // Clear all learning data for the new topic
 
 					// Generate Outline
 					const { result: outlineResult, newApiKeyIndex } =
@@ -852,33 +855,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	// --- Settings Callbacks ---
 
-	const onSettingsSave = useCallback(
-		async (settings: { topic: string; language: string }) => {
-			const { topic: newTopic, language: newLanguage } = settings
-			const db = await getDb()
-
-			const topicChanged = topic !== newTopic
-
-			if (topicChanged) {
-				setTopic(newTopic)
-				await db.put("data", { id: "topic", data: newTopic })
-				await handleClearLearningData(true)
-			}
-			if (language !== newLanguage) {
-				setLanguage(newLanguage)
-				await db.put("data", { id: "language", data: newLanguage })
-			}
-		},
-		[topic, language, handleClearLearningData]
-	)
-
-	const onModelChange = useCallback(async (newModel: string) => {
-		if (model === newModel) return
-		setModel(newModel)
-		const db = await getDb()
-		await db.put("data", { id: "model", data: newModel })
-	}, [model])
-
 	const onApiKeysChange = useCallback(
 		async (newApiKeys: string[]) => {
 			setApiKeys(newApiKeys)
@@ -1060,10 +1036,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	)
 
 	const handleResetOnboarding = useCallback(async () => {
-		const db = await getDb()
-		await db.delete("data", "hasCompletedOnboarding")
-		window.location.reload()
-	}, [])
+		await onClearAllData();
+		window.location.reload();
+	}, [onClearAllData])
 
 	const value: AppContextType = {
 		isMounted,
@@ -1092,23 +1067,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		showTheorySummary,
 		uploadedBackgrounds,
 		onViewChange,
-		setTopic,
-		setLanguage,
-		setModel,
-		setApiKeys,
-		setApiKeyIndex,
 		onFlashcardIndexChange,
 		onCurrentQuestionIndexChange,
 		onTheoryChapterIndexChange,
 		setShowQuizSummary,
 		setShowFlashcardSummary,
 		setShowTheorySummary,
-		onSettingsSave,
-		onModelChange,
 		handleGenerate,
 		handleGeneratePodcastForChapter,
 		onClearAllData,
-		handleClearLearningData,
 		onVisibilityChange,
 		onBackgroundChange,
 		onUploadedBackgroundsChange,
@@ -1126,5 +1093,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
-
-    

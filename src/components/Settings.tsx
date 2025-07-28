@@ -85,23 +85,12 @@ interface AllSettingsProps {
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
 	currentBackgroundImage: string | null
-	onSettingsChange?: (settings: {
-		topic: string
-		language: string
-	}) => void
-	onModelChange: (model: string) => void
 	onGenerate?: (forceNew: boolean) => void
-	onClearLearningData?: () => void
 	onApiKeysChange: (apiKeys: string[]) => void
 	onResetOnboarding: () => void
 	isLoading: boolean
-	topic?: string
-	language?: string
-	model?: string
 	apiKeys: string[]
 	theorySet: TheorySet | null
-	flashcardSet: CardSet | null
-	quizSet: QuizSet | null
 }
 
 
@@ -140,27 +129,9 @@ const MAX_UPLOADED_IMAGES = 6
 
 export function Settings(props: SettingsProps) {
 	const { scope } = props
-	const isAllScope = scope === "all"
 	const isOnboardingScope = scope.startsWith("learn-onboarding")
 	const { toast } = useToast()
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
-	const [isConfirmingTopicChange, setIsConfirmingTopicChange] =
-		useState(false)
-
-	// Local state for learn settings
-	const [topic, setTopic] = useState(
-		scope === "all" ? (props as AllSettingsProps).topic ?? "" : ""
-	)
-	const [language, setLanguage] = useState(
-		scope === "all"
-			? (props as AllSettingsProps).language ?? "Vietnamese"
-			: "Vietnamese"
-	)
-	const [model, setModel] = useState(
-		scope === "all"
-			? (props as AllSettingsProps).model ?? "gemini-1.5-flash-latest"
-			: "gemini-1.5-flash-latest"
-	)
 
 	// Local state for API keys (now managed in learn settings)
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(
@@ -175,56 +146,19 @@ export function Settings(props: SettingsProps) {
 
 	const allProps =
 		scope === "all" ? (props as AllSettingsProps) : undefined
-	const topicChanged = allProps && allProps.topic !== topic
-
-	const settingsChanged =
-		allProps &&
-		(topicChanged ||
-			allProps.language !== language)
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
 		if (scope === "all") {
 			const allProps = props as AllSettingsProps
 			if (isSheetOpen) {
-				setTopic(allProps.topic ?? "")
-				setLanguage(allProps.language ?? "Vietnamese")
-				setModel(allProps.model ?? "gemini-1.5-flash-latest")
 				setLocalApiKeys(allProps.apiKeys)
-				setIsConfirmingTopicChange(false) // Reset confirmation on open
 			}
 		} else if (isOnboardingScope) {
 			const learnProps = props as LearnOnboardingSettingsProps
 			setLocalApiKeys(learnProps.apiKeys)
 		}
 	}, [props, scope, isSheetOpen, isOnboardingScope])
-
-	const handleSave = () => {
-		if (scope !== "all" || !allProps?.onSettingsChange) return
-
-		// If topic changed and we are not yet confirming, start confirmation process
-		if (topicChanged && !isConfirmingTopicChange) {
-			setIsConfirmingTopicChange(true)
-			return
-		}
-
-		// Proceed with saving
-		allProps.onSettingsChange({
-			topic,
-			language,
-		})
-
-		toast({
-			title: "Đã lưu cài đặt",
-			description: "Các thay đổi của bạn đã được lưu lại.",
-		})
-		setIsConfirmingTopicChange(false) // Reset confirmation state after saving
-		setIsSheetOpen(false) // Close sheet after saving
-	}
-
-	const handleCancelTopicChange = () => {
-		setIsConfirmingTopicChange(false)
-	}
 
 	const handleAddNewApiKey = () => {
 		if (!scope.startsWith("learn") && scope !== "all") return
@@ -256,24 +190,6 @@ export function Settings(props: SettingsProps) {
 				| LearnOnboardingSettingsProps
 			if (currentProps.onGenerate) {
 				currentProps.onGenerate(forceNew)
-			}
-		}
-	}
-
-	const handleClearData = () => {
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
-			allProps.onClearAllData()
-			setIsSheetOpen(false)
-		}
-	}
-
-	const handleClearLearningData = () => {
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
-			if (allProps.onClearLearningData) {
-				allProps.onClearLearningData()
-				setIsSheetOpen(false)
 			}
 		}
 	}
@@ -312,13 +228,6 @@ export function Settings(props: SettingsProps) {
 				}
 				reader.readAsDataURL(file)
 			}
-		}
-	}
-
-	const handleModelChange = (newModel: string) => {
-		if (scope === "all" && allProps) {
-			setModel(newModel)
-			allProps.onModelChange(newModel)
 		}
 	}
 
@@ -454,57 +363,6 @@ export function Settings(props: SettingsProps) {
 					</Label>
 					{renderApiKeyManagement()}
 				</div>
-				<Separator />
-				<div className="space-y-2">
-					<Label className="font-medium text-foreground flex items-center gap-2">
-						<BrainCircuit className="w-4 h-4" />
-						<span>Cài đặt AI</span>
-					</Label>
-					<Select value={model} onValueChange={handleModelChange}>
-						<SelectTrigger>
-							<SelectValue placeholder="Chọn một model AI" />
-						</SelectTrigger>
-						<SelectContent>
-							{models.map((m) => (
-								<SelectItem key={m.value} value={m.value}>
-									{m.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<Separator />
-				<div className="space-y-2">
-					<Label className="font-medium text-foreground flex items-center gap-2">
-						<BookOpen className="w-4 h-4" />
-						<span>Cài đặt nội dung</span>
-					</Label>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="topic">Chủ đề</Label>
-					<Input
-						id="topic"
-						value={topic}
-						onChange={(e) => setTopic(e.target.value)}
-						placeholder="ví dụ: Lịch sử La Mã"
-					/>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="language">Ngôn ngữ</Label>
-					<Select value={language} onValueChange={setLanguage}>
-						<SelectTrigger>
-							<SelectValue placeholder="Chọn một ngôn ngữ" />
-						</SelectTrigger>
-						<SelectContent>
-							{languages.map((lang) => (
-								<SelectItem key={lang.value} value={lang.value}>
-									{lang.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-
 				<Separator />
 				{renderContentGenerationControls()}
 			</div>
@@ -709,138 +567,37 @@ export function Settings(props: SettingsProps) {
                 </Tabs>
 
 				<SheetFooter className="mt-auto pt-4 border-t">
-					<div className="w-full flex justify-between items-center">
-						{isConfirmingTopicChange ? (
-							<div className="w-full space-y-2 rounded-lg border border-destructive p-4">
-								<p className="text-sm text-destructive-foreground font-medium">
-									Thay đổi chủ đề sẽ xóa tất cả dữ liệu
-									học tập cũ.
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Bạn có chắc chắn muốn tiếp tục?
-								</p>
-								<div className="flex justify-end gap-2 pt-2">
-									<Button
-										variant="ghost"
-										onClick={handleCancelTopicChange}
-									>
-										Hủy
-									</Button>
-									<Button
-										variant="destructive"
-										onClick={handleSave}
-									>
-										Xác nhận
-									</Button>
-								</div>
-							</div>
-						) : (
-							<>
-								<div className="flex gap-2">
-									<AlertDialog>
-										<AlertDialogTrigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-											>
-												<Trash2 className="mr-2 h-4 w-4" />
-												Xóa DL
-											</Button>
-										</AlertDialogTrigger>
-										<AlertDialogContent>
-											<AlertDialogHeader>
-												<AlertDialogTitle>
-													<div className="flex items-center gap-2">
-														<AlertTriangle className="text-destructive" />
-														<span>
-															Bạn có chắc chắn
-															không?
-														</span>
-													</div>
-												</AlertDialogTitle>
-												<AlertDialogDescription>
-													Hành động này sẽ xóa
-													vĩnh viễn tất cả
-													flashcard, bài trắc
-													nghiệm và lý thuyết của
-													chủ đề hiện tại. Hành
-													động này không thể hoàn
-													tác.
-												</AlertDialogDescription>
-											</AlertDialogHeader>
-											<AlertDialogFooter>
-												<AlertDialogCancel>
-													Hủy
-												</AlertDialogCancel>
-												<AlertDialogAction
-													onClick={
-														handleClearLearningData
-													}
-												>
-													Vâng, xóa dữ liệu
-												</AlertDialogAction>
-											</AlertDialogFooter>
-										</AlertDialogContent>
-									</AlertDialog>
-									<AlertDialog>
-										<AlertDialogTrigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-											>
-												<RefreshCw className="mr-2 h-4 w-4" />
-												H.dẫn
-											</Button>
-										</AlertDialogTrigger>
-										<AlertDialogContent>
-											<AlertDialogHeader>
-												<AlertDialogTitle>
-													<div className="flex items-center gap-2">
-														<AlertTriangle className="text-destructive" />
-														<span>
-															Chạy lại hướng
-															dẫn ban đầu?
-														</span>
-													</div>
-												</AlertDialogTitle>
-												<AlertDialogDescription>
-													Hành động này sẽ xóa cờ
-													đánh dấu bạn đã hoàn
-													thành hướng dẫn và tải
-													lại trang để bắt đầu
-													lại. Dữ liệu học tập sẽ
-													không bị ảnh hưởng.
-												</AlertDialogDescription>
-											</AlertDialogHeader>
-											<AlertDialogFooter>
-												<AlertDialogCancel>
-													Hủy
-												</AlertDialogCancel>
-												<AlertDialogAction
-													onClick={
-														handleResetOnboarding
-													}
-												>
-													Ok, chạy lại
-												</AlertDialogAction>
-											</AlertDialogFooter>
-										</AlertDialogContent>
-									</AlertDialog>
-								</div>
-
-								{settingsChanged && (
-									<Button onClick={handleSave}>
-										<Save className="mr-2 h-4 w-4" />
-										Lưu thay đổi
-									</Button>
-								)}
-							</>
-						)}
-					</div>
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button variant="outline" className="w-full">
+								<RefreshCw className="mr-2 h-4 w-4" />
+								Tạo chủ đề mới
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>
+									<div className="flex items-center gap-2">
+										<AlertTriangle className="text-destructive" />
+										<span>Tạo chủ đề mới?</span>
+									</div>
+								</AlertDialogTitle>
+								<AlertDialogDescription>
+									Hành động này sẽ xóa vĩnh viễn tất cả dữ liệu hiện tại
+									(chủ đề, nội dung học, cài đặt giao diện) và bắt đầu
+									lại từ đầu. Bạn có chắc chắn muốn tiếp tục không?
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Hủy</AlertDialogCancel>
+								<AlertDialogAction onClick={handleResetOnboarding}>
+									Vâng, tạo mới
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>
 	)
 }
-
-    

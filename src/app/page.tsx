@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useRef } from "react"
@@ -98,7 +99,6 @@ function HomePageContent() {
 			} else {
 				panelGroup.setLayout([45, layout[1]])
 			}
-			onVisibilityChange({ ...visibility, home: true })
 		}
 	}
 	
@@ -112,7 +112,6 @@ function HomePageContent() {
 			} else {
 				panelGroup.setLayout([layout[0], 55])
 			}
-			onVisibilityChange({ ...visibility, learn: true })
 		}
 	}
 
@@ -325,6 +324,7 @@ function HomePageContent() {
 					<ResizablePanel 
 						collapsible={true}
 						collapsedSize={0}
+						minSize={30}
 						className={cn(!visibility.home && "min-w-0")}
 					>
 						<LeftColumn />
@@ -335,6 +335,7 @@ function HomePageContent() {
 					<ResizablePanel 
 						collapsible={true}
 						collapsedSize={0}
+						minSize={30}
 						className={cn(!visibility.learn && "min-w-0")}
 					>
 						<RightColumn />
@@ -489,5 +490,3 @@ export default function Home() {
 		</AppProvider>
 	)
 }
-
-    
