@@ -8,7 +8,7 @@ import {
 	Modality,
 	LiveServerMessage,
 } from "@google/generative-ai"
-import { Mic, Loader, Power, Waves } from "lucide-react"
+import { Mic, Loader, Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -19,7 +19,7 @@ const MODEL_NAME = "gemini-2.5-flash-preview-native-audio-dialog";
 export function AdvancedVoiceChat({
 	apiKeys,
 	apiKeyIndex,
-	onApiKeyIndexChange,
+	onApiKeyIndexChange, // Assuming this is passed to handle key rotation
 }: {
 	apiKeys: string[]
 	apiKeyIndex: number
@@ -27,8 +27,7 @@ export function AdvancedVoiceChat({
 }) {
 	const { toast } = useToast()
 	const [isRecording, setIsRecording] = useState(false);
-	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "processing">("idle")
-	const [isMounted, setIsMounted] = useState(false)
+	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "error">("idle")
 
 	const clientRef = useRef<GoogleGenerativeAI | null>(null)
 	const sessionRef = useRef<Session | null>(null);
@@ -40,38 +39,45 @@ export function AdvancedVoiceChat({
 	const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
 	const nextStartTimeRef = useRef(0);
 	const outputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+	const isMountedRef = useRef(true);
+
 
 	useEffect(() => {
-		setIsMounted(true)
-		// Initialize AudioContexts here, once, if they don't exist.
+		isMountedRef.current = true;
+		
+		// Initialize AudioContexts once
 		if (!inputAudioContextRef.current) {
 			inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
 		}
 		if (!outputAudioContextRef.current) {
 			outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 		}
+
 		return () => {
-			setIsMounted(false)
+			isMountedRef.current = false;
 			stopRecording();
 			sessionRef.current?.close();
+			inputAudioContextRef.current?.close();
+			outputAudioContextRef.current?.close();
 		}
 	}, [])
 
-	const initSession = useCallback(async () => {
-		if (!isMounted || !clientRef.current) return;
+
+	const initSession = useCallback(async (currentApiKey: string) => {
+		if (!isMountedRef.current || !clientRef.current) return;
 		setStatus("connecting");
-		const model = MODEL_NAME;
+
 		try {
 			const newSession = await clientRef.current.live.connect({
-				model: model,
+				model: MODEL_NAME,
 				callbacks: {
 					onopen: () => {
-						if (!isMounted) return;
-						setStatus("idle");
+						if (!isMountedRef.current) return;
+						setStatus("idle"); // Ready to record
 						toast({ title: "Kết nối thành công", description: "Bạn có thể bắt đầu nói." });
 					},
 					onmessage: async (message: LiveServerMessage) => {
-						if (!isMounted) return;
+						if (!isMountedRef.current) return;
 						const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
 
 						if (audio && outputAudioContextRef.current) {
@@ -98,7 +104,6 @@ export function AdvancedVoiceChat({
 							source.start(nextStartTimeRef.current);
 							nextStartTimeRef.current += audioBuffer.duration;
 							currentSources.add(source);
-							outputSourcesRef.current = currentSources;
 						}
 
 						const interrupted = message.serverContent?.interrupted;
@@ -109,15 +114,16 @@ export function AdvancedVoiceChat({
 						}
 					},
 					onerror: (e: ErrorEvent) => {
-						if (!isMounted) return;
+						if (!isMountedRef.current) return;
 						console.error("Session Error:", e);
 						toast({ title: "Lỗi Session", description: e.message, variant: "destructive" });
+						setStatus("error");
 						stopRecording();
 					},
 					onclose: (e: CloseEvent) => {
-						if (!isMounted) return;
-						toast({ title: "Đã đóng kết nối", description: `Lý do: ${e.reason || 'Không rõ'}` });
-						stopRecording();
+						if (!isMountedRef.current) return;
+						setStatus("idle");
+						stopRecording(); // Ensure everything is cleaned up
 					},
 				},
 				config: {
@@ -130,26 +136,27 @@ export function AdvancedVoiceChat({
 			sessionRef.current = newSession;
 			return newSession;
 		} catch (e: any) {
-			if (!isMounted) return;
+			if (!isMountedRef.current) return;
 			console.error("Failed to initialize session:", e);
 			toast({ title: "Lỗi Khởi tạo", description: e.message, variant: "destructive" });
-			setStatus("idle");
+			setStatus("error");
 			return null;
 		}
-	}, [isMounted, toast]);
+	}, [toast]);
 
 	const startRecording = useCallback(async () => {
-		if (isRecording || !isMounted || !inputAudioContextRef.current) return;
-		setIsRecording(true);
-		setStatus("recording");
-
+		if (isRecording || !isMountedRef.current || !inputAudioContextRef.current) return;
+		
 		await inputAudioContextRef.current.resume();
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+			if (!isMountedRef.current) return;
+
 			mediaStreamRef.current = stream;
 			sourceNodeRef.current = inputAudioContextRef.current.createMediaStreamSource(stream);
 
+			// Use the deprecated but required ScriptProcessorNode
 			const bufferSize = 256;
 			scriptProcessorNodeRef.current = inputAudioContextRef.current.createScriptProcessor(
 				bufferSize,
@@ -167,17 +174,18 @@ export function AdvancedVoiceChat({
 			sourceNodeRef.current.connect(scriptProcessorNodeRef.current);
 			scriptProcessorNodeRef.current.connect(inputAudioContextRef.current.destination);
 
+			setIsRecording(true);
+			setStatus("recording");
+
 		} catch (err: any) {
 			console.error('Error starting recording:', err);
 			toast({ title: "Lỗi Ghi Âm", description: err.message, variant: "destructive" });
 			stopRecording();
+			setStatus("error");
 		}
-
-	}, [isRecording, isMounted, toast]);
+	}, [isRecording, toast]);
 
 	const stopRecording = useCallback(() => {
-		if (!isMounted) return;
-		
 		setIsRecording(false);
 		setStatus("idle");
 
@@ -193,10 +201,10 @@ export function AdvancedVoiceChat({
 			mediaStreamRef.current.getTracks().forEach((track) => track.stop());
 			mediaStreamRef.current = null;
 		}
-	}, [isMounted]);
+	}, []);
 	
 	const handleMicClick = useCallback(async () => {
-		if (!isMounted) return;
+		if (status === "connecting") return;
 
 		if (isRecording) {
 			stopRecording();
@@ -212,16 +220,15 @@ export function AdvancedVoiceChat({
 				return
 			}
 			
-			if (!clientRef.current) {
-				clientRef.current = new GoogleGenerativeAI({ apiKey: apiKeys[apiKeyIndex] });
-			}
+			// Always create a new client with the current key
+			clientRef.current = new GoogleGenerativeAI({ apiKey: apiKeys[apiKeyIndex] });
 			
-			const session = await initSession();
+			const session = await initSession(apiKeys[apiKeyIndex]);
 			if (session) {
 				await startRecording();
 			}
 		}
-	}, [isMounted, isRecording, apiKeys, apiKeyIndex, toast, initSession, startRecording, stopRecording]);
+	}, [isRecording, status, apiKeys, apiKeyIndex, toast, initSession, startRecording, stopRecording]);
 
 
 	const getButtonContent = () => {
@@ -231,13 +238,14 @@ export function AdvancedVoiceChat({
 			case "recording":
 				return (
 					<>
-						<Power className="w-5 h-5" />
+						<Power className="w-5 h-5 text-destructive" />
 						<div
-							className="absolute inset-[-4px] rounded-full border-2 border-primary/50 animate-pulse"
+							className="absolute inset-[-4px] rounded-full border-2 border-destructive/50 animate-pulse"
 						></div>
 					</>
 				);
 			case "idle":
+			case "error":
 			default:
 				return (
 					<Mic className="w-5 h-5" />
@@ -245,19 +253,18 @@ export function AdvancedVoiceChat({
 		}
 	};
 
-	if (!isMounted) return null
-
 	return (
 		<Button
 			onClick={handleMicClick}
 			size="icon"
 			className={cn(
 				"relative h-9 w-9 rounded-full transition-all duration-300",
-				status === "recording" && "bg-destructive/80 hover:bg-destructive/70 scale-110",
+				status === "recording" && "bg-destructive/20 hover:bg-destructive/30",
 				status === "idle" && "bg-secondary hover:bg-secondary/90",
-				(status === "connecting" || status === "processing") && "bg-muted cursor-not-allowed"
+				status === "error" && "bg-secondary hover:bg-secondary/90",
+				(status === "connecting") && "bg-muted cursor-not-allowed"
 			)}
-			disabled={status === "connecting" || status === "processing"}
+			disabled={status === "connecting"}
 		>
 			{getButtonContent()}
 		</Button>
