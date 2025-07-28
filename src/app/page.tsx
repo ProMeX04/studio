@@ -85,7 +85,7 @@ function HomePageContent() {
 					minSize={30}
 					collapsible={true}
 					collapsedSize={0}
-					collapsed={!visibility.home}
+					collapsed={!visibility.home || undefined}
 					onCollapse={() => {
 						onVisibilityChange({ ...visibility, home: false })
 					}}
@@ -104,7 +104,7 @@ function HomePageContent() {
 					minSize={30}
 					collapsible={true}
 					collapsedSize={0}
-					collapsed={!visibility.learn}
+					collapsed={!visibility.learn || undefined}
 					onCollapse={() => {
 						onVisibilityChange({ ...visibility, learn: false })
 					}}
