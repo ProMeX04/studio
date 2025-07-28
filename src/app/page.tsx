@@ -10,14 +10,33 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable"
-
+import { Settings } from "@/components/Settings"
 
 function HomePageContent() {
-	const { isMounted, backgroundImage, visibility, onVisibilityChange } = useAppContext()
+	const { 
+		isMounted, 
+		backgroundImage, 
+		visibility, 
+		onVisibilityChange,
+		onClearAllData,
+		onBackgroundChange,
+		uploadedBackgrounds,
+		onUploadedBackgroundsChange,
+	} = useAppContext()
 
 	if (!isMounted) {
 		return null
 	}
+
+	const globalSettingsProps = {
+        onClearAllData,
+        onVisibilityChange,
+        onBackgroundChange,
+        onUploadedBackgroundsChange,
+        visibility,
+        uploadedBackgrounds,
+        currentBackgroundImage: backgroundImage,
+    };
 
 	return (
 		<main className="relative min-h-screen w-full">
@@ -29,6 +48,11 @@ function HomePageContent() {
 					<div className="absolute inset-0 bg-black/60"></div>
 				</div>
 			)}
+			
+			<div className="absolute top-0 left-0 p-4 sm:p-8 md:p-12 z-20">
+                <Settings {...globalSettingsProps} scope="global" />
+            </div>
+
 			<ResizablePanelGroup 
 				direction="horizontal" 
 				className="relative min-h-screen w-full"
