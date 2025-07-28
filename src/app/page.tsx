@@ -36,8 +36,8 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const FLASHCARD_BATCH_SIZE = 10;
-const QUIZ_BATCH_SIZE = 5;
+const FLASHCARDS_PER_CHAPTER = 5;
+const QUIZ_QUESTIONS_PER_CHAPTER = 2;
 
 type ViewType = "flashcards" | "quiz" | "theory";
 
@@ -54,7 +54,7 @@ const ApiKeyGuide = ({
 	initialTopic: string;
 	initialLanguage: string;
 	initialModel: string;
-	handleGenerate: (topic: string, language: string, model: string, forceNew: boolean, genType: ViewType) => void;
+	handleGenerate: (forceNew: boolean) => void;
 }) => {
 	const [onboardingStep, setOnboardingStep] = useState(1);
 	const [topic, setTopic] = useState(initialTopic);
@@ -77,13 +77,13 @@ const ApiKeyGuide = ({
 		onOnboardingComplete(topic, language, model);
 	}
 
-	const handleGenerateOnboardingContent = useCallback((genType: ViewType) => {
-        handleGenerate(topic, language, model, true, genType);
-    }, [handleGenerate, topic, language, model]);
+	const handleGenerateOnboardingContent = useCallback(() => {
+        handleGenerate(true);
+    }, [handleGenerate]);
 
 	const onboardingGenerateProps = {
         ...settingsProps,
-        onGenerateType: handleGenerateOnboardingContent,
+        onGenerate: handleGenerateOnboardingContent,
     };
 
 	if (onboardingStep === 1) {
@@ -317,7 +317,7 @@ const ApiKeyGuide = ({
 					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
 						<div className="bg-secondary/30 p-4 rounded-lg space-y-4 text-center">
 							<p className="text-lg">
-								Nhấn vào nút <strong>Menu</strong> <Menu className="inline-block h-5 w-5 mx-1" /> trên thanh công cụ và chọn <strong>Tạo</strong> cho loại nội dung bạn muốn.
+								Nhấn vào nút <strong>Menu</strong> <Menu className="inline-block h-5 w-5 mx-1" /> trên thanh công cụ và chọn <strong>Tạo / Tiếp tục</strong>.
 							</p>
 						</div>
 					</CardContent>
@@ -344,7 +344,6 @@ interface LearnProps {
 	quizState: QuizState | null
 	onQuizStateChange: (newState: QuizState) => void
 	onQuizReset: () => void;
-	canGenerateMore: boolean
 	onFlashcardIndexChange: (index: number) => void
 	flashcardIndex: number
 	onViewChange: (view: ViewType) => void
@@ -373,7 +372,7 @@ interface LearnProps {
 	onApiKeyIndexChange: (index: number) => void;
 	onOnboardingComplete: (topic: string, language: string, model: string) => void;
 	hasCompletedOnboarding: boolean;
-	handleGenerate: (topic: string, language: string, model: string, forceNew: boolean, genType: ViewType) => void;
+	handleGenerate: (forceNew: boolean) => void;
 }
 
 function Learn({
@@ -385,7 +384,6 @@ function Learn({
 	quizState,
 	onQuizStateChange,
 	onQuizReset,
-	canGenerateMore,
 	flashcardIndex,
 	onFlashcardIndexChange,
 	onViewChange,
@@ -701,12 +699,8 @@ export default function Home() {
 	const [view, setView] = useState<ViewType>("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-2.5-flash-lite");
-	const [flashcardMax, setFlashcardMax] = useState(50)
-	const [quizMax, setQuizMax] = useState(50)
-	const [isFlashcardLoading, setIsFlashcardLoading] = useState(false)
-	const [isQuizLoading, setIsQuizLoading] = useState(false)
-	const [isTheoryLoading, setIsTheoryLoading] = useState(false);
+	const [model, setModel] = useState("gemini-1.5-flash-latest");
+	const [isLoading, setIsLoading] = useState(false);
 	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
 	const [theorySet, setTheorySet] = useState<TheorySet | null>(null);
@@ -736,9 +730,7 @@ export default function Home() {
 	const [theoryChapterIndex, setTheoryChapterIndex] = useState(0);
 
 	// Prevent race conditions and cleanup async operations
-	const isFlashcardGeneratingRef = useRef(false)
-	const isQuizGeneratingRef = useRef(false)
-	const isTheoryGeneratingRef = useRef(false);
+	const isGeneratingRef = useRef(false);
 	const isMountedRef = useRef(true)
 
 	// Initialize once
@@ -762,13 +754,7 @@ export default function Home() {
 	}, [apiKeyIndex]);
 
 	const handleGenerate = useCallback(
-		async (
-			currentTopic: string,
-			currentLanguage: string,
-			currentModel: string,
-			forceNew: boolean = false,
-			genType: "flashcards" | "quiz" | "theory"
-		) => {
+		async (forceNew: boolean = false) => {
 
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
@@ -779,7 +765,7 @@ export default function Home() {
 				return;
 			}
 
-			if (!currentTopic.trim()) {
+			if (!topic.trim()) {
 				toast({
 					title: "Chủ đề trống",
 					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
@@ -788,242 +774,82 @@ export default function Home() {
 				return
 			}
 			
-			const isGeneratingRef = genType === 'flashcards' 
-				? isFlashcardGeneratingRef
-				: genType === 'quiz'
-				? isQuizGeneratingRef
-				: isTheoryGeneratingRef;
-
-			const setIsLoading = genType === 'flashcards' 
-				? setIsFlashcardLoading
-				: genType === 'quiz'
-				? setIsQuizLoading
-				: setIsTheoryLoading;
-
 			if (isGeneratingRef.current) {
 				toast({
 					title: "Đang tạo...",
-					description: `Một quá trình tạo ${genType} khác đang chạy.`,
+					description: `Một quá trình tạo nội dung khác đang chạy.`,
 				})
 				return
-			}
-
-			// Dependency Check: Flashcards and Quiz depend on Theory
-			if ((genType === 'flashcards' || genType === 'quiz') && (!theorySet || theorySet.chapters.length === 0 || !theorySet.chapters.some(c => c.content))) {
-				toast({
-					title: "Yêu cầu nội dung Lý thuyết",
-					description: "Vui lòng tạo nội dung Lý thuyết trước khi tạo Flashcard hoặc Trắc nghiệm.",
-					variant: "destructive",
-				});
-				return;
 			}
 
 			isGeneratingRef.current = true
 			setIsLoading(true)
 
-			const db = await getDb()
+			const db = await getDb();
+			let currentKeyIndex = apiKeyIndex;
 
 			try {
-				if (genType === "flashcards") {
-					if (forceNew) {
-						setFlashcardSet(null)
-						setFlashcardIndex(0)
-						setFlashcardState(null)
-						setShowFlashcardSummary(false);
-						await db.delete("data", "flashcards")
-						await db.delete("data", "flashcardState")
-					}
+				let currentTopic = topic;
+				let currentLanguage = language;
+				let currentModel = model;
 
-					const existingData = (await db.get(
-						"data",
-						"flashcards"
-					)) as LabeledData<CardSet>
-					const currentSet =
-						!forceNew && existingData && existingData.topic === currentTopic
-							? existingData.data
-							: { id: `idb-flashcards`, topic: currentTopic, cards: [] }
+				let theoryData = (await db.get("data", "theory")) as LabeledData<TheorySet> | undefined;
+				let currentTheorySet = theoryData?.topic === currentTopic ? theoryData.data : null;
+				let currentFlashcardSet = (await db.get("data", "flashcards") as LabeledData<CardSet> | undefined)?.data ?? { id: "idb-flashcards", topic: currentTopic, cards: [] };
+				let currentQuizSet = (await db.get("data", "quiz") as LabeledData<QuizSet> | undefined)?.data ?? { id: "idb-quiz", topic: currentTopic, questions: [] };
 
-					if (isMountedRef.current && forceNew) {
-						setFlashcardSet({ ...currentSet })
-						setFlashcardState({ understoodIndices: [] });
-					}
-
-					const theoryContent = theorySet?.chapters.map(c => c.content).join('\n\n') || '';
-
-					let itemsNeeded = flashcardMax - currentSet.cards.length
-					if (itemsNeeded <= 0) {
-						setIsLoading(false)
-						isGeneratingRef.current = false
-						return
-					}
-
-					while (itemsNeeded > 0) {
-						const count = Math.min(FLASHCARD_BATCH_SIZE, itemsNeeded)
-						
-						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
-							apiKeys,
-							apiKeyIndex,
-							topic: currentTopic,
-							count,
-							language: currentLanguage,
-							model: currentModel,
-							existingCards: currentSet.cards,
-							theoryContent: theoryContent,
-						});
-
-						await handleApiKeyIndexChange(newApiKeyIndex);
-
-						if (
-							Array.isArray(newCards) &&
-							newCards.length > 0 &&
-							isMountedRef.current
-						) {
-							currentSet.cards.push(...newCards)
-							itemsNeeded -= newCards.length
-							setFlashcardSet({ ...currentSet }) 
-							await db.put("data", {
-								id: "flashcards",
-								topic: currentTopic,
-								data: currentSet,
-							} as any)
-						} else {
-							itemsNeeded = 0;
-						}
-						if(itemsNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
-					}
-				}
-
-				if (genType === "quiz") {
-					if (forceNew) {
-						setQuizSet(null)
-						setQuizState(null)
-						setCurrentQuestionIndex(0);
-						setShowQuizSummary(false);
-						await db.delete("data", "quiz")
-						await db.delete("data", "quizState")
-					}
-
-					const quizData = (await db.get(
-						"data",
-						"quiz"
-					)) as LabeledData<QuizSet>
-					const currentQuiz =
-						!forceNew && quizData && quizData.topic === currentTopic
-							? quizData.data
-							: { id: "idb-quiz", topic: currentTopic, questions: [] }
-
-					if (isMountedRef.current && forceNew) {
-						setQuizSet({ ...currentQuiz })
-						setQuizState({ currentQuestionIndex: 0, answers: {} });
-					}
-
-					const theoryContent = theorySet?.chapters.map(c => c.content).join('\n\n') || '';
-
-					let quizNeeded = quizMax - currentQuiz.questions.length
-					if (quizNeeded <= 0) {
-						setIsLoading(false)
-						isGeneratingRef.current = false
-						return
-					}
-
-					while (quizNeeded > 0) {
-						const count = Math.min(QUIZ_BATCH_SIZE, quizNeeded)
-
-						const { result: newQuestions, newApiKeyIndex } = await generateQuiz({
-								apiKeys,
-								apiKeyIndex,
-								topic: currentTopic,
-								count,
-								language: currentLanguage,
-								model: currentModel,
-								existingQuestions: currentQuiz.questions,
-								theoryContent: theoryContent,
-						});
-
-						await handleApiKeyIndexChange(newApiKeyIndex);
-
-						if (
-							Array.isArray(newQuestions) &&
-							newQuestions.length > 0 &&
-							isMountedRef.current
-						) {
-							currentQuiz.questions.push(...newQuestions)
-							quizNeeded -= newQuestions.length
-							setQuizSet({ ...currentQuiz })
-							await db.put("data", {
-								id: "quiz",
-								topic: currentTopic,
-								data: currentQuiz,
-							} as any)
-						} else {
-							quizNeeded = 0;
-						}
-						if(quizNeeded > 0) await new Promise((resolve) => setTimeout(resolve, 1000));
-					}
-				}
-
-				if (genType === "theory") {
-					const theoryData = (await db.get("data", "theory")) as LabeledData<TheorySet>;
-					const shouldForceNew = forceNew || !theoryData || theoryData.topic !== currentTopic;
-			
-					let currentTheorySet: TheorySet;
-			
-					if (shouldForceNew) {
-						// This block runs when starting a new topic or forcing a reset.
-						setTheorySet(null);
-						setTheoryChapterIndex(0);
-						setTheoryState(null);
-						setShowTheorySummary(false);
-						await db.delete("data", "theory");
-						await db.delete("data", "theoryState");
-						await db.delete("data", "theoryChapterIndex");
+				// Step 1: Handle new topic or forced reset
+				if (forceNew || !currentTheorySet) {
+					await handleClearAllData(true); // Clear all learning data for the new topic
 					
-						const { result: outlineResult, newApiKeyIndex: outlineKeyIndex } = await generateTheoryOutline({
-							apiKeys,
-							apiKeyIndex,
-							topic: currentTopic,
-							language: currentLanguage,
-							model: currentModel,
-						});
-						await handleApiKeyIndexChange(outlineKeyIndex);
-				
-						if (!outlineResult?.outline || outlineResult.outline.length === 0) {
-							throw new Error("Failed to generate a valid theory outline.");
-						}
-				
-						currentTheorySet = {
-							id: 'idb-theory',
-							topic: currentTopic,
-							outline: outlineResult.outline,
-							chapters: outlineResult.outline.map(title => ({ title, content: null })),
-						};
-						
-						if (isMountedRef.current) {
-							setTheorySet(currentTheorySet);
-							setTheoryState({ understoodIndices: [] });
-							setTheoryChapterIndex(0);
-						}
-						await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet } as any);
-					} else {
-						// This block runs when continuing an existing topic.
-						currentTheorySet = theoryData.data;
+					// Generate Outline
+					const { result: outlineResult, newApiKeyIndex } = await generateTheoryOutline({
+						apiKeys,
+						apiKeyIndex: currentKeyIndex,
+						topic: currentTopic,
+						language: currentLanguage,
+						model: currentModel,
+					});
+					currentKeyIndex = newApiKeyIndex;
+					
+					if (!outlineResult?.outline || outlineResult.outline.length === 0) {
+						throw new Error("Failed to generate a valid theory outline.");
 					}
-			
-					// Now, generate content for chapters that are missing it.
-					const chaptersToGenerate = currentTheorySet.chapters.map((ch, idx) => ({ ...ch, originalIndex: idx })).filter(ch => !ch.content);
-			
-					if (chaptersToGenerate.length === 0) {
-						console.log("All theory chapters already have content.");
-						setIsLoading(false);
-						isGeneratingRef.current = false;
-						return;
+
+					currentTheorySet = {
+						id: 'idb-theory',
+						topic: currentTopic,
+						outline: outlineResult.outline,
+						chapters: outlineResult.outline.map(title => ({ title, content: null })),
+					};
+					currentFlashcardSet = { id: "idb-flashcards", topic: currentTopic, cards: [] };
+					currentQuizSet = { id: "idb-quiz", topic: currentTopic, questions: [] };
+					
+					if (isMountedRef.current) {
+						setTheorySet(currentTheorySet);
+						setFlashcardSet(currentFlashcardSet);
+						setQuizSet(currentQuizSet);
+						setTheoryState({ understoodIndices: [] });
+						setFlashcardState({ understoodIndices: [] });
+						setQuizState({ currentQuestionIndex: 0, answers: {} });
+						setTheoryChapterIndex(0);
+						setFlashcardIndex(0);
+						setCurrentQuestionIndex(0);
 					}
-			
-					let currentKeyIndex = apiKeyIndex;
-					for (const chapter of chaptersToGenerate) {
-						if (!isMountedRef.current) break;
-			
-						const { result: chapterResult, newApiKeyIndex: chapterKeyIndex } = await generateTheoryChapter({
+					await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
+					await db.put("data", { id: "flashcards", topic: currentTopic, data: currentFlashcardSet });
+					await db.put("data", { id: "quiz", topic: currentTopic, data: currentQuizSet });
+				}
+
+				// Step 2: Sequential Generation Loop
+				for (let i = 0; i < currentTheorySet.outline.length; i++) {
+					if (!isMountedRef.current) break; // Exit if component is unmounted
+					
+					const chapter = currentTheorySet.chapters[i];
+
+					// A. Generate Theory Content if it doesn't exist
+					if (!chapter.content) {
+						const { result: chapterResult, newApiKeyIndex } = await generateTheoryChapter({
 							apiKeys,
 							apiKeyIndex: currentKeyIndex,
 							topic: currentTopic,
@@ -1031,24 +857,77 @@ export default function Home() {
 							language: currentLanguage,
 							model: currentModel,
 						});
-						
-						currentKeyIndex = chapterKeyIndex;
-						await handleApiKeyIndexChange(chapterKeyIndex);
-			
-						if (chapterResult?.content && isMountedRef.current) {
-							const updatedChapters = [...currentTheorySet.chapters];
-							updatedChapters[chapter.originalIndex] = { ...chapter, content: chapterResult.content };
-							currentTheorySet.chapters = updatedChapters;
-			
-							setTheorySet({ ...currentTheorySet });
-							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet } as any);
+						currentKeyIndex = newApiKeyIndex;
+
+						if (chapterResult?.content) {
+							currentTheorySet.chapters[i].content = chapterResult.content;
+							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
+							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
+						} else {
+							throw new Error(`Failed to generate content for chapter: ${chapter.title}`);
 						}
-						await new Promise(resolve => setTimeout(resolve, 500));
 					}
+					
+					const chapterContent = currentTheorySet.chapters[i].content;
+					if (!chapterContent) continue; // Should not happen, but a safeguard
+
+					// B. Generate Flashcards for the chapter if they don't exist
+					const flashcardsForChapterExist = currentFlashcardSet.cards.some(c => c.back.includes(`Source: ${chapter.title}`));
+					if (!flashcardsForChapterExist) {
+						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
+							apiKeys,
+							apiKeyIndex: currentKeyIndex,
+							topic: currentTopic,
+							count: FLASHCARDS_PER_CHAPTER,
+							language: currentLanguage,
+							model: currentModel,
+							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`
+						});
+						currentKeyIndex = newApiKeyIndex;
+
+						if (Array.isArray(newCards) && newCards.length > 0) {
+							// Tag cards with source chapter to check for existence later
+							const taggedCards = newCards.map(card => ({...card, back: `${card.back}\n\n*Source: ${chapter.title}*`}));
+							currentFlashcardSet.cards.push(...taggedCards);
+							if (isMountedRef.current) setFlashcardSet({ ...currentFlashcardSet });
+							await db.put("data", { id: "flashcards", topic: currentTopic, data: currentFlashcardSet });
+						}
+					}
+
+					// C. Generate Quiz questions for the chapter if they don't exist
+					const quizForChapterExist = currentQuizSet.questions.some(q => q.explanation.includes(`Source: ${chapter.title}`));
+					if (!quizForChapterExist) {
+						const { result: newQuestions, newApiKeyIndex } = await generateQuiz({
+							apiKeys,
+							apiKeyIndex: currentKeyIndex,
+							topic: currentTopic,
+							count: QUIZ_QUESTIONS_PER_CHAPTER,
+							language: currentLanguage,
+							model: currentModel,
+							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`
+						});
+						currentKeyIndex = newApiKeyIndex;
+
+						if (Array.isArray(newQuestions) && newQuestions.length > 0) {
+							const taggedQuestions = newQuestions.map(q => ({...q, explanation: `${q.explanation}\n\n*Source: ${chapter.title}*`}));
+							currentQuizSet.questions.push(...taggedQuestions);
+							if (isMountedRef.current) setQuizSet({ ...currentQuizSet });
+							await db.put("data", { id: "quiz", topic: currentTopic, data: currentQuizSet });
+						}
+					}
+
+					await handleApiKeyIndexChange(currentKeyIndex);
+					if (!isMountedRef.current) break;
+					await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between chapter generations
 				}
 
+				toast({
+                    title: "Hoàn tất!",
+                    description: "Tất cả nội dung cho chủ đề đã được tạo thành công.",
+                });
+
 			} catch (error: any) {
-				console.error(`🚫 ${genType} generation bị hủy hoặc lỗi:`, error.message)
+				console.error(`🚫 Generation process stopped or failed:`, error)
 				if (error instanceof AIOperationError) {
 					toast({
 						title: "Lỗi tạo nội dung",
@@ -1058,7 +937,7 @@ export default function Home() {
 				} else {
 					toast({
 						title: "Lỗi không xác định",
-						description: `Đã xảy ra lỗi khi tạo ${genType}: ${error.message}. Vui lòng thử lại.`,
+						description: `Đã xảy ra lỗi khi tạo nội dung: ${error.message}. Vui lòng thử lại.`,
 						variant: "destructive",
 					})
 				}
@@ -1069,7 +948,7 @@ export default function Home() {
 				}
 			}
 		},
-		[toast, flashcardMax, quizMax, apiKeys, apiKeyIndex, handleApiKeyIndexChange, theorySet]
+		[toast, apiKeys, apiKeyIndex, handleApiKeyIndexChange, topic, language, model]
 	)
 	
 	const loadInitialData = useCallback(async () => {
@@ -1089,8 +968,6 @@ export default function Home() {
 			savedTopicRes,
 			savedLanguageRes,
 			savedModelRes,
-			savedFlashcardMaxRes,
-			savedQuizMaxRes,
 			savedVisibilityRes,
 			savedBgRes,
 			savedUploadedBgsRes,
@@ -1108,8 +985,6 @@ export default function Home() {
 			db.get("data", "topic"),
 			db.get("data", "language"),
 			db.get("data", "model"),
-			db.get("data", "flashcardMax"),
-			db.get("data", "quizMax"),
 			db.get("data", "visibility"),
 			db.get("data", "background"),
 			db.get("data", "uploadedBackgrounds"),
@@ -1127,9 +1002,7 @@ export default function Home() {
 		const savedView = (savedViewRes?.data as ViewType) || "theory";
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã";
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese";
-		const savedModel = (savedModelRes?.data as string) || "gemini-2.5-flash-lite";
-		const savedFlashcardMax = (savedFlashcardMaxRes?.data as number) || 50;
-		const savedQuizMax = (savedQuizMaxRes?.data as number) || 50;
+		const savedModel = (savedModelRes?.data as string) || "gemini-1.5-flash-latest";
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility;
 		const savedBg = savedBgRes?.data as string;
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || [];
@@ -1146,8 +1019,6 @@ export default function Home() {
 		setTopic(savedTopic);
 		setLanguage(savedLanguage);
 		setModel(savedModel);
-		setFlashcardMax(savedFlashcardMax);
-		setQuizMax(savedQuizMax);
 	
 		setVisibility(
 			savedVisibility ?? {
@@ -1247,7 +1118,7 @@ export default function Home() {
 				"theory", "theoryState", "theoryChapterIndex",
 				'topic', 'language', 'model', 'view', 'visibility', 
 				'background', 'uploadedBackgrounds', 
-				'flashcardMax', 'quizMax', 'apiKeys', 'apiKeyIndex',
+				'apiKeys', 'apiKeyIndex',
 				'hasCompletedOnboarding'
 			];
 	
@@ -1273,13 +1144,11 @@ export default function Home() {
 		if (!isLearningReset) {
 			setTopic("Lịch sử La Mã");
 			setLanguage("Vietnamese");
-			setModel("gemini-2.5-flash-lite");
+			setModel("gemini-1.5-flash-latest");
 			setView("theory");
 			setVisibility({ clock: true, greeting: true, search: true, quickLinks: true, learn: true });
 			setBackgroundImage("");
 			setUploadedBackgrounds([]);
-			setFlashcardMax(50);
-			setQuizMax(50);
 			setApiKeys([]);
 			setApiKeyIndex(0);
 			setHasCompletedOnboarding(false);
@@ -1288,7 +1157,7 @@ export default function Home() {
                 title: "Đã xóa dữ liệu học tập",
                 description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa."
             });
-            return; // Return early to avoid showing the "all data deleted" toast
+            return; 
         }
 	
 		toast({
@@ -1313,14 +1182,10 @@ export default function Home() {
 		async (settings: {
 			topic: string
 			language: string
-			flashcardMax: number
-			quizMax: number
 		}) => {
 			const {
 				topic: newTopic,
 				language: newLanguage,
-				flashcardMax: newFlashcardMax,
-				quizMax: newQuizMax,
 			} = settings
 			const db = await getDb()
 			
@@ -1335,32 +1200,19 @@ export default function Home() {
 				setLanguage(newLanguage)
 				await db.put("data", { id: "language", data: newLanguage })
 			}
-			if (flashcardMax !== newFlashcardMax) {
-				setFlashcardMax(newFlashcardMax)
-				await db.put("data", {
-					id: "flashcardMax",
-					data: newFlashcardMax,
-				})
-			}
-			if (quizMax !== newQuizMax) {
-				setQuizMax(newQuizMax)
-				await db.put("data", { id: "quizMax", data: newQuizMax })
-			}
 		},
 		[
 			topic, 
 			language,
-			flashcardMax, 
-			quizMax,
 			handleClearAllData,
 		]
 	)
 
-	const onGenerateType = useCallback(
-		(genType: ViewType) => {
-			handleGenerate(topic, language, model, false, genType);
+	const onGenerate = useCallback(
+		(forceNew: boolean) => {
+			handleGenerate(forceNew);
 		}, 
-		[handleGenerate, topic, language, model]
+		[handleGenerate]
 	);
 
 
@@ -1562,57 +1414,25 @@ export default function Home() {
 		[]
 	);
 
-	const isOverallLoading = isFlashcardLoading || isQuizLoading || isTheoryLoading;
-	const currentCount =
-		view === "flashcards"
-			? flashcardSet?.cards.length ?? 0
-			: view === 'quiz'
-			? quizSet?.questions.length ?? 0
-			: view === 'theory'
-			? (theorySet?.chapters?.filter(c => c.content).length ?? 0)
-			: 0;
-	
-	const targetCount = view === "flashcards" 
-		? flashcardMax 
-		: view === 'quiz'
-		? quizMax
-		: (theorySet?.outline?.length ?? 0);
-
-	const canGenerateMore = currentCount < targetCount && !isOverallLoading
-
-	const currentViewIsLoading =
-		view === "flashcards" 
-			? isFlashcardLoading
-			: view === 'quiz'
-			? isQuizLoading
-			: isTheoryLoading;
-	
-
 	if (!isMounted) {
 		return null
 	}
 	
 	const learnSettingsProps = {
 		onSettingsChange: onSettingsSave,
-		onGenerateType: onGenerateType,
+		onGenerate: onGenerate,
 		onClearLearningData: () => handleClearAllData(true),
-		currentView: view,
+		isLoading: isLoading,
 		topic: topic,
 		language: language,
 		model: model,
 		onModelChange: handleModelChange,
-		flashcardMax: flashcardMax,
-		quizMax: quizMax,
-		theoryCount: theorySet?.chapters?.filter(c => c.content).length ?? 0,
-		theoryMax: theorySet?.outline?.length ?? 0,
-		flashcardCount: flashcardSet?.cards.length ?? 0,
-		quizCount: quizSet?.questions.length ?? 0,
-		isTheoryLoading,
-		isFlashcardLoading,
-		isQuizLoading,
 		onApiKeysChange: handleApiKeysChange,
 		onResetOnboarding: handleResetOnboarding,
 		apiKeys: apiKeys,
+		theorySet: theorySet,
+		flashcardSet: flashcardSet,
+		quizSet: quizSet,
 	};
 
 	const globalSettingsProps = {
@@ -1657,14 +1477,13 @@ export default function Home() {
 					<div className="flex flex-col w-full h-full">
 						<Learn
 							view={view}
-							isLoading={currentViewIsLoading}
+							isLoading={isLoading}
 							flashcardSet={flashcardSet}
 							quizSet={quizSet}
 							theorySet={theorySet}
 							quizState={quizState}
 							onQuizStateChange={handleQuizStateChange}
 							onQuizReset={handleQuizReset}
-							canGenerateMore={canGenerateMore}
 							flashcardIndex={flashcardIndex}
 							onFlashcardIndexChange={handleFlashcardIndexChange}
 							onViewChange={handleViewChange}

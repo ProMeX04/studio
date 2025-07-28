@@ -35,7 +35,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
-import type { ComponentVisibility } from "@/app/page"
+import type { ComponentVisibility, ViewType } from "@/app/page"
 import { Switch } from "./ui/switch"
 import {
 	Select,
@@ -61,8 +61,7 @@ import {
 } from "./ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-
-type ViewType = "flashcards" | "quiz" | "theory"
+import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
 
 type SettingsScope =
 	| "global"
@@ -90,29 +89,21 @@ interface LearnSettingsProps {
 	onSettingsChange?: (settings: {
 		topic: string
 		language: string
-		flashcardMax: number
-		quizMax: number
 	}) => void
 	onModelChange: (model: string) => void
-	onGenerateType?: (type: ViewType) => void
+	onGenerate?: (forceNew: boolean) => void
 	onClearLearningData?: () => void
 	onApiKeysChange: (apiKeys: string[]) => void
 	onResetOnboarding: () => void
 	onSettingsChanged?: () => void // For onboarding
-	currentView?: ViewType
+	isLoading: boolean
 	topic?: string
 	language?: string
 	model?: string
-	flashcardMax?: number
-	quizMax?: number
-	theoryCount?: number
-	theoryMax?: number
-	flashcardCount?: number
-	quizCount?: number
-	isTheoryLoading?: boolean
-	isFlashcardLoading?: boolean
-	isQuizLoading?: boolean
 	apiKeys: string[]
+	theorySet: TheorySet | null
+	flashcardSet: CardSet | null
+	quizSet: QuizSet | null
 }
 
 // A more limited version of LearnSettingsProps for onboarding
@@ -121,16 +112,8 @@ interface LearnOnboardingSettingsProps {
 	onApiKeysChange: (apiKeys: string[]) => void
 	onSettingsChanged: () => void // For onboarding
 	apiKeys: string[]
-	onGenerateType?: (type: ViewType) => void
-	flashcardMax?: number
-	quizMax?: number
-	theoryCount?: number
-	theoryMax?: number
-	flashcardCount?: number
-	quizCount?: number
-	isTheoryLoading?: boolean
-	isFlashcardLoading?: boolean
-	isQuizLoading?: boolean
+	onGenerate?: (forceNew: boolean) => void
+	isLoading: boolean;
 }
 
 type SettingsProps = CommonSettingsProps &
@@ -148,14 +131,10 @@ export const languages = [
 
 export const models = [
 	{
-		value: "gemini-2.5-flash-lite",
-		label: "Gemini 2.5 Flash Lite (Rất Nhanh, Chính xác tương đối)",
+		value: "gemini-1.5-flash-latest",
+		label: "Gemini 1.5 Flash (Nhanh, Hiệu quả)",
 	},
-	{
-		value: "gemini-2.5-flash",
-		label: "Gemini 2.5 Flash (Trung bình, ổn định)",
-	},
-	{ value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Chính xác, Giới hạn)" },
+	{ value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ, Chính xác)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
@@ -180,16 +159,8 @@ export function Settings(props: SettingsProps) {
 	)
 	const [model, setModel] = useState(
 		scope === "learn"
-			? (props as LearnSettingsProps).model ?? "gemini-2.5-flash-lite"
-			: "gemini-2.5-flash-lite"
-	)
-	const [flashcardMax, setFlashcardMax] = useState(
-		scope === "learn"
-			? (props as LearnSettingsProps).flashcardMax ?? 50
-			: 50
-	)
-	const [quizMax, setQuizMax] = useState(
-		scope === "learn" ? (props as LearnSettingsProps).quizMax ?? 50 : 50
+			? (props as LearnSettingsProps).model ?? "gemini-1.5-flash-latest"
+			: "gemini-1.5-flash-latest"
 	)
 
 	// Local state for API keys (now managed in learn settings)
@@ -210,9 +181,7 @@ export function Settings(props: SettingsProps) {
 	const settingsChanged =
 		learnProps &&
 		(topicChanged ||
-			learnProps.language !== language ||
-			learnProps.flashcardMax !== flashcardMax ||
-			learnProps.quizMax !== quizMax)
+			learnProps.language !== language)
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
@@ -221,9 +190,7 @@ export function Settings(props: SettingsProps) {
 			if (isSheetOpen) {
 				setTopic(learnProps.topic ?? "")
 				setLanguage(learnProps.language ?? "Vietnamese")
-				setModel(learnProps.model ?? "gemini-2.5-flash-lite")
-				setFlashcardMax(learnProps.flashcardMax ?? 50)
-				setQuizMax(learnProps.quizMax ?? 50)
+				setModel(learnProps.model ?? "gemini-1.5-flash-latest")
 				setLocalApiKeys(learnProps.apiKeys)
 				setIsConfirmingTopicChange(false) // Reset confirmation on open
 			}
@@ -246,8 +213,6 @@ export function Settings(props: SettingsProps) {
 		learnProps.onSettingsChange({
 			topic,
 			language,
-			flashcardMax,
-			quizMax,
 		})
 
 		if (learnProps.onSettingsChanged) {
@@ -289,13 +254,13 @@ export function Settings(props: SettingsProps) {
 		).onApiKeysChange(newKeys)
 	}
 
-	const handleGenerateType = (type: ViewType) => {
+	const handleGenerate = (forceNew: boolean) => {
 		if (scope === "learn" || scope === "learn-onboarding-generate") {
 			const learnProps = props as
 				| LearnSettingsProps
 				| LearnOnboardingSettingsProps
-			if (learnProps.onGenerateType) {
-				learnProps.onGenerateType(type)
+			if (learnProps.onGenerate) {
+				learnProps.onGenerate(forceNew)
 			}
 		}
 	}
@@ -359,35 +324,6 @@ export function Settings(props: SettingsProps) {
 		if (scope === "learn" && learnProps) {
 			setModel(newModel)
 			learnProps.onModelChange(newModel)
-		}
-	}
-
-	const handleIncrement = (type: "flashcard" | "quiz") => {
-		if (scope !== "learn" || !learnProps) return
-		const STEP = 5
-		const MAX = 200
-
-		if (type === "flashcard") {
-			const newValue = Math.min(flashcardMax + STEP, MAX)
-			setFlashcardMax(newValue)
-		} else {
-			const newValue = Math.min(quizMax + STEP, MAX)
-			setQuizMax(newValue)
-		}
-	}
-
-	const handleDecrement = (type: "flashcard" | "quiz") => {
-		if (scope !== "learn" || !learnProps) return
-		const STEP = 5
-
-		if (type === "flashcard") {
-			const min = learnProps.flashcardCount ?? 0
-			const newValue = Math.max(flashcardMax - STEP, min, 0)
-			setFlashcardMax(newValue)
-		} else {
-			const min = learnProps.quizCount ?? 0
-			const newValue = Math.max(quizMax - STEP, min, 0)
-			setQuizMax(newValue)
 		}
 	}
 
@@ -462,13 +398,17 @@ export function Settings(props: SettingsProps) {
 	const renderContentGenerationControls = () => {
 		if (scope !== "learn" && scope !== "learn-onboarding-generate")
 			return null
-		const learnProps = props as
-			| LearnSettingsProps
-			| LearnOnboardingSettingsProps
+		
+		const currentProps = props as LearnSettingsProps | LearnOnboardingSettingsProps;
+		const { isLoading } = currentProps;
 
-		const fMax = learnProps.flashcardMax ?? 50
-		const qMax = learnProps.quizMax ?? 50
-
+		const theoryCount = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.chapters.filter(c => c.content).length ?? 0 : 0;
+		const theoryMax = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.outline.length ?? 0 : 0;
+		const flashcardCount = scope === 'learn' ? (props as LearnSettingsProps).flashcardSet?.cards.length ?? 0 : 0;
+		const quizCount = scope === 'learn' ? (props as LearnSettingsProps).quizSet?.questions.length ?? 0 : 0;
+	
+		const isCompleted = theoryMax > 0 && theoryCount === theoryMax && flashcardCount > 0 && quizCount > 0;
+		
 		return (
 			<div className="space-y-4">
 				{scope === "learn" && (
@@ -477,158 +417,33 @@ export function Settings(props: SettingsProps) {
 					</Label>
 				)}
 
-				{/* Theory Progress */}
-				<div className="space-y-2">
-					<div className="flex justify-between items-center text-sm">
-						<Label htmlFor="theory-progress">Lý thuyết</Label>
-						<span className="text-muted-foreground">
-							{learnProps.theoryCount} /{" "}
-							{learnProps.theoryMax! > 0
-								? learnProps.theoryMax
-								: "?"}
+				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
+					<div className="flex justify-between items-center">
+						<Label htmlFor="theory-progress">Tiến độ</Label>
+						<span className="text-sm text-muted-foreground">
+							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} Chương
 						</span>
 					</div>
-					<div className="flex items-center gap-2">
-						<Progress
-							value={
-								learnProps.theoryMax! > 0
-									? (learnProps.theoryCount! /
-											learnProps.theoryMax!) *
-									  100
-									: 0
-							}
-							id="theory-progress"
-						/>
-						<Button
-							size="icon"
-							variant="outline"
-							onClick={() => handleGenerateType("theory")}
-							disabled={learnProps.isTheoryLoading}
-						>
-							{learnProps.isTheoryLoading ? (
-								<Loader className="animate-spin h-4 w-4" />
-							) : (
-								<Plus className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
-				</div>
-
-				{/* Flashcard Progress */}
-				<div className="space-y-2">
-					<div className="flex justify-between items-center text-sm">
-						<Label htmlFor="flashcard-progress">Flashcards</Label>
-						{scope === "learn" ? (
-							<div className="flex items-center gap-2">
-								<Button
-									size="icon"
-									variant="outline"
-									className="h-6 w-6"
-									onClick={() => handleDecrement("flashcard")}
-									disabled={
-										flashcardMax <=
-										(learnProps.flashcardCount ?? 0)
-									}
-								>
-									<Minus className="h-4 w-4" />
-								</Button>
-								<span className="text-muted-foreground text-center w-12">
-									{learnProps.flashcardCount} / {flashcardMax}
-								</span>
-								<Button
-									size="icon"
-									variant="outline"
-									className="h-6 w-6"
-									onClick={() => handleIncrement("flashcard")}
-								>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
+					<Progress
+						value={
+							theoryMax > 0
+								? (theoryCount / theoryMax) * 100
+								: 0
+						}
+						id="theory-progress"
+					/>
+					<Button
+						className="w-full"
+						onClick={() => handleGenerate(false)}
+						disabled={isLoading || isCompleted}
+					>
+						{isLoading ? (
+							<Loader className="animate-spin h-4 w-4 mr-2" />
 						) : (
-							<span className="text-muted-foreground">
-								{learnProps.flashcardCount} / {fMax}
-							</span>
+							<Plus className="h-4 w-4 mr-2" />
 						)}
-					</div>
-					<div className="flex items-center gap-2">
-						<Progress
-							value={((learnProps.flashcardCount ?? 0) / (scope === "learn" ? flashcardMax : fMax)) * 100}
-							id="flashcard-progress"
-						/>
-						<Button
-							size="icon"
-							variant="outline"
-							onClick={() => handleGenerateType("flashcards")}
-							disabled={
-								(learnProps.flashcardCount ?? 0) >= (scope === "learn" ? flashcardMax : fMax) ||
-								learnProps.isFlashcardLoading
-							}
-						>
-							{learnProps.isFlashcardLoading ? (
-								<Loader className="animate-spin h-4 w-4" />
-							) : (
-								<Plus className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
-				</div>
-
-				{/* Quiz Progress */}
-				<div className="space-y-2">
-					<div className="flex justify-between items-center text-sm">
-						<Label htmlFor="quiz-progress">Trắc nghiệm</Label>
-						{scope === "learn" ? (
-							<div className="flex items-center gap-2">
-								<Button
-									size="icon"
-									variant="outline"
-									className="h-6 w-6"
-									onClick={() => handleDecrement("quiz")}
-									disabled={
-										quizMax <= (learnProps.quizCount ?? 0)
-									}
-								>
-									<Minus className="h-4 w-4" />
-								</Button>
-								<span className="text-muted-foreground text-center w-12">
-									{learnProps.quizCount} / {quizMax}
-								</span>
-								<Button
-									size="icon"
-									variant="outline"
-									className="h-6 w-6"
-									onClick={() => handleIncrement("quiz")}
-								>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-						) : (
-							<span className="text-muted-foreground">
-								{learnProps.quizCount} / {qMax}
-							</span>
-						)}
-					</div>
-					<div className="flex items-center gap-2">
-						<Progress
-							value={((learnProps.quizCount ?? 0) / (scope === "learn" ? quizMax : qMax)) * 100}
-							id="quiz-progress"
-						/>
-						<Button
-							size="icon"
-							variant="outline"
-							onClick={() => handleGenerateType("quiz")}
-							disabled={
-								(learnProps.quizCount ?? 0) >= (scope === "learn" ? quizMax : qMax) ||
-								learnProps.isQuizLoading
-							}
-						>
-							{learnProps.isQuizLoading ? (
-								<Loader className="animate-spin h-4 w-4" />
-							) : (
-								<Plus className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
+						{isCompleted ? "Đã hoàn tất" : (isLoading ? "Đang tạo..." : "Tạo / Tiếp tục")}
+					</Button>
 				</div>
 			</div>
 		)

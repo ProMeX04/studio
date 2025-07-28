@@ -19,8 +19,6 @@ export type DataKey =
   | 'visibility'
   | 'background'
   | 'uploadedBackgrounds'
-  | 'flashcardMax'
-  | 'quizMax'
   | 'flashcardIndex'
   | 'theoryChapterIndex'
   | 'apiKeys'
