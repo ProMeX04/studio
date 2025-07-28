@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -135,6 +136,7 @@ export const models = [
 		label: "Gemini 1.5 Flash (Nhanh, Hiệu quả)",
 	},
 	{ value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ, Chính xác)" },
+	{ value: "gemini-1.5-flash-latest-tts", label: "Gemini 1.5 Flash + Podcast (TTS)" },
 ]
 
 const MAX_UPLOADED_IMAGES = 6
@@ -882,3 +884,4 @@ export function Settings(props: SettingsProps) {
 }
 
     
+

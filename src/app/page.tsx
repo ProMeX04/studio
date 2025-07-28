@@ -1,4 +1,5 @@
 
+
       "use client"
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
@@ -10,6 +11,7 @@ import { Flashcards } from "@/components/Flashcards"
 import type { CardData, CardSet, TheorySet } from "@/ai/schemas"
 import { Quiz } from "@/components/Quiz"
 import { Theory } from "@/components/Theory"
+import { Podcast } from "@/components/Podcast"
 import type { QuizSet, QuizQuestion } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
@@ -17,7 +19,9 @@ import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
 import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit } from "lucide-react"
+import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
+import { generateAudio } from "@/ai/flows/generate-audio";
+import { Loader, ChevronLeft, ChevronRight, Award, Settings as SettingsIcon, CheckCircle, KeyRound, ExternalLink, Sparkles, BookOpen, Menu, Languages, Plus, BrainCircuit, AudioLines, Podcast as PodcastIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, languages, models } from "@/components/Settings"
 import {
@@ -38,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const FLASHCARDS_PER_CHAPTER = 5;
 const QUIZ_QUESTIONS_PER_CHAPTER = 4;
 
-type ViewType = "flashcards" | "quiz" | "theory";
+type ViewType = "flashcards" | "quiz" | "theory" | "podcast";
 
 const ApiKeyGuide = ({ 
 	settingsProps, 
@@ -417,7 +421,9 @@ function Learn({
 		? flashcardSet?.cards.length ?? 0
 		: view === "quiz"
 		? quizSet?.questions.length ?? 0
-		: theorySet?.chapters?.filter(c => c.content).length ?? 0;
+		: (view === "theory" || view === "podcast")
+		? theorySet?.chapters?.filter(c => c.content).length ?? 0
+		: 0;
 			
 	const currentIndex = view === "flashcards" 
 		? flashcardIndex 
@@ -437,7 +443,7 @@ function Learn({
 		if (currentIndex < totalItems - 1) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex + 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex + 1);
-			else if (view === 'theory') onTheoryChapterIndexChange(theoryChapterIndex + 1);
+			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex + 1);
 		}
 	};
 	
@@ -445,7 +451,7 @@ function Learn({
 		if (currentIndex > 0) {
 			if (view === 'flashcards') onFlashcardIndexChange(flashcardIndex - 1);
 			else if (view === 'quiz') onCurrentQuestionIndexChange(currentQuestionIndex - 1);
-			else if (view === 'theory') onTheoryChapterIndexChange(theoryChapterIndex - 1);
+			else if (view === 'theory' || view === 'podcast') onTheoryChapterIndexChange(theoryChapterIndex - 1);
 		}
 	};
 
@@ -498,7 +504,7 @@ function Learn({
     const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === 'flashcards';
 
 	const allTheoryChaptersMarked = theorySet && (theoryUnderstood === theorySet.chapters.length);
-    const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && view === 'theory';
+    const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && (view === 'theory' || view === 'podcast');
 
 	const isSummaryActive = shouldShowQuizSummary || shouldShowFlashcardSummary || shouldShowTheorySummary;
 	const isNavDisabled = isSummaryActive;
@@ -511,7 +517,7 @@ function Learn({
 			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1);
 			else newUnderstoodIndices.push(flashcardIndex);
 			onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
-		} else if (view === 'theory') {
+		} else if (view === 'theory' || view === 'podcast') {
 			if (!theoryState || !theorySet) return;
 			const newUnderstoodIndices = [...theoryState.understoodIndices];
 			const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex);
@@ -526,7 +532,7 @@ function Learn({
 			if (!flashcardState || !flashcardSet) return false;
 			return flashcardState.understoodIndices.includes(flashcardIndex);
 		}
-		if (view === 'theory') {
+		if (view === 'theory' || view === 'podcast') {
 			if (!theoryState || !theorySet) return false;
 			return theoryState.understoodIndices.includes(theoryChapterIndex);
 		}
@@ -544,61 +550,80 @@ function Learn({
 		/>;
 	}
 
+	const renderContent = () => {
+		if (shouldShowQuizSummary && quizSet) {
+			return (
+				<QuizSummary
+					correctAnswers={correctAnswers}
+					incorrectAnswers={incorrectAnswers}
+					unansweredQuestions={unansweredQuestions}
+					totalQuestions={quizSet.questions.length}
+					onReset={onQuizReset}
+					onBack={() => setShowQuizSummary(false)}
+					isCompleted={allQuestionsAnswered}
+				/>
+			);
+		}
+		if (shouldShowFlashcardSummary && flashcardSet) {
+			return (
+				<FlashcardSummary
+					understoodCount={flashcardUnderstood}
+					notUnderstoodCount={flashcardNotUnderstood}
+					totalCards={flashcardSet.cards.length}
+					onReset={onFlashcardReset}
+					onBack={() => setShowFlashcardSummary(false)}
+					isCompleted={allFlashcardsMarked}
+				/>
+			);
+		}
+		if (shouldShowTheorySummary && theorySet) {
+			return (
+				<TheorySummary
+					understoodCount={theoryUnderstood}
+					notUnderstoodCount={theoryNotUnderstood}
+					totalChapters={theorySet.chapters.length}
+					onReset={onTheoryReset}
+					onBack={() => setShowTheorySummary(false)}
+					isCompleted={allTheoryChaptersMarked}
+				/>
+			);
+		}
+		switch (view) {
+			case 'flashcards':
+				return <Flashcards
+					flashcardSet={flashcardSet}
+					flashcardIndex={flashcardIndex}
+					topic={topic}
+					isCurrentUnderstood={isCurrentItemUnderstood}
+				/>;
+			case 'quiz':
+				return <Quiz
+					quizSet={quizSet}
+					quizState={quizState}
+					onQuizStateChange={onQuizStateChange}
+					language={language}
+					topic={topic}
+					model={model}
+					currentQuestionIndex={currentQuestionIndex}
+					onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
+					apiKeys={apiKeys}
+					apiKeyIndex={apiKeyIndex}
+					onApiKeyIndexChange={onApiKeyIndexChange}
+				/>;
+			case 'theory':
+				return <Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
+			case 'podcast':
+				return <Podcast theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
+			default:
+				return <Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />;
+		}
+	};
+
+
 	return (
 		<div className="w-full h-full relative">
 			<div className="h-full w-full overflow-y-auto pb-20">
-				{shouldShowQuizSummary && quizSet ? (
-					<QuizSummary
-						correctAnswers={correctAnswers}
-						incorrectAnswers={incorrectAnswers}
-						unansweredQuestions={unansweredQuestions}
-						totalQuestions={quizSet.questions.length}
-						onReset={onQuizReset}
-						onBack={() => setShowQuizSummary(false)}
-						isCompleted={allQuestionsAnswered}
-					/>
-				) : shouldShowFlashcardSummary && flashcardSet ? (
-					<FlashcardSummary
-						understoodCount={flashcardUnderstood}
-						notUnderstoodCount={flashcardNotUnderstood}
-						totalCards={flashcardSet.cards.length}
-						onReset={onFlashcardReset}
-						onBack={() => setShowFlashcardSummary(false)}
-						isCompleted={allFlashcardsMarked}
-					/>
-				) : shouldShowTheorySummary && theorySet ? (
-					<TheorySummary
-						understoodCount={theoryUnderstood}
-						notUnderstoodCount={theoryNotUnderstood}
-						totalChapters={theorySet.chapters.length}
-						onReset={onTheoryReset}
-						onBack={() => setShowTheorySummary(false)}
-						isCompleted={allTheoryChaptersMarked}
-					/>
-				) : view === "flashcards" ? (
-					<Flashcards
-						flashcardSet={flashcardSet}
-						flashcardIndex={flashcardIndex}
-						topic={topic}
-						isCurrentUnderstood={isCurrentItemUnderstood}
-					/>
-				) : view === "quiz" ? (
-					<Quiz
-						quizSet={quizSet}
-						quizState={quizState}
-						onQuizStateChange={onQuizStateChange}
-						language={language}
-						topic={topic}
-						model={model}
-						currentQuestionIndex={currentQuestionIndex}
-						onCurrentQuestionIndexChange={onCurrentQuestionIndexChange}
-						apiKeys={apiKeys}
-						apiKeyIndex={apiKeyIndex}
-						onApiKeyIndexChange={onApiKeyIndexChange}
-					/>
-				) : (
-					<Theory theorySet={theorySet} topic={topic} chapterIndex={theoryChapterIndex} isCurrentUnderstood={isCurrentItemUnderstood} />
-				)}
+				{renderContent()}
 			</div>
 
 			{/* Sticky Toolbar */}
@@ -613,6 +638,7 @@ function Learn({
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="theory">Lý thuyết</SelectItem>
+								<SelectItem value="podcast">Podcast</SelectItem>
 								<SelectItem value="flashcards">Flashcard</SelectItem>
 								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
 							</SelectContent>
@@ -643,7 +669,7 @@ function Learn({
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 							
-							{(view === 'flashcards' || view === 'theory') && (
+							{(view === 'flashcards' || view === 'theory' || view === 'podcast') && (
 								<>
 									<Button
 										onClick={handleToggleUnderstood}
@@ -655,7 +681,10 @@ function Learn({
 										<CheckCircle className="w-4 h-4" />
 									</Button>
 									<Button
-										onClick={() => view === 'flashcards' ? setShowFlashcardSummary(true) : setShowTheorySummary(true)}
+										onClick={() => {
+											if (view === 'flashcards') setShowFlashcardSummary(true);
+											else if (view === 'theory' || view === 'podcast') setShowTheorySummary(true);
+										}}
 										disabled={!hasContent || isSummaryActive}
 										variant="outline"
 										size="icon"
@@ -756,7 +785,7 @@ export default function Home() {
 
 	const handleGenerate = useCallback(
 		async (forceNew: boolean = false) => {
-
+			const ttsModel = 'gemini-2.5-flash-preview-tts';
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
@@ -821,7 +850,7 @@ export default function Home() {
 						id: 'idb-theory',
 						topic: currentTopic,
 						outline: outlineResult.outline,
-						chapters: outlineResult.outline.map(title => ({ title, content: null })),
+						chapters: outlineResult.outline.map(title => ({ title, content: null, podcastScript: null, audioDataUri: null })),
 					};
 					currentFlashcardSet = { id: "idb-flashcards", topic: currentTopic, cards: [] };
 					currentQuizSet = { id: "idb-quiz", topic: currentTopic, questions: [] };
@@ -844,7 +873,7 @@ export default function Home() {
 
 				// Step 2: Sequential Generation Loop
 				for (let i = 0; i < currentTheorySet.outline.length; i++) {
-					if (!isMountedRef.current) break; // Exit if component is unmounted
+					if (!isMountedRef.current) break;
 					
 					const chapter = currentTheorySet.chapters[i];
 
@@ -869,25 +898,50 @@ export default function Home() {
 						}
 					}
 					
-					const chapterContent = currentTheorySet.chapters[i].content;
-					if (!chapterContent) continue; // Should not happen, but a safeguard
+					const chapterContent = currentTheorySet.chapters[i].content!;
 
-					// B. Generate Flashcards for the chapter if they don't exist
+					// B. Generate Podcast Script if it doesn't exist
+					if (!chapter.podcastScript) {
+						const { result: scriptResult, newApiKeyIndex } = await generatePodcastScript({
+							apiKeys, apiKeyIndex: currentKeyIndex,
+							topic: currentTopic, chapterTitle: chapter.title,
+							theoryContent: chapterContent, language: currentLanguage,
+							model: currentModel
+						});
+						currentKeyIndex = newApiKeyIndex;
+						if (scriptResult?.script) {
+							currentTheorySet.chapters[i].podcastScript = scriptResult.script;
+							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
+							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
+						}
+					}
+
+					// C. Generate Audio if it doesn't exist and model supports it
+					if (currentModel.includes("tts") && chapter.podcastScript && !chapter.audioDataUri) {
+						const { result: audioResult, newApiKeyIndex } = await generateAudio({
+							apiKeys, apiKeyIndex: currentKeyIndex,
+							script: chapter.podcastScript, model: ttsModel
+						});
+						currentKeyIndex = newApiKeyIndex;
+						if (audioResult?.audioDataUri) {
+							currentTheorySet.chapters[i].audioDataUri = audioResult.audioDataUri;
+							if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
+							await db.put("data", { id: "theory", topic: currentTopic, data: currentTheorySet });
+						}
+					}
+
+					// D. Generate Flashcards for the chapter if they don't exist
 					const flashcardsForChapterExist = currentFlashcardSet.cards.some(c => c.back.includes(`Source: ${chapter.title}`));
 					if (!flashcardsForChapterExist) {
 						const { result: newCards, newApiKeyIndex } = await generateFlashcards({
-							apiKeys,
-							apiKeyIndex: currentKeyIndex,
-							topic: currentTopic,
-							count: FLASHCARDS_PER_CHAPTER,
-							language: currentLanguage,
-							model: currentModel,
+							apiKeys, apiKeyIndex: currentKeyIndex,
+							topic: currentTopic, count: FLASHCARDS_PER_CHAPTER,
+							language: currentLanguage, model: currentModel,
 							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`
 						});
 						currentKeyIndex = newApiKeyIndex;
 
 						if (Array.isArray(newCards) && newCards.length > 0) {
-							// Tag cards with source chapter to check for existence later
 							const taggedCards = newCards.map(card => ({...card, back: `${card.back}\n\n*Source: ${chapter.title}*`}));
 							currentFlashcardSet.cards.push(...taggedCards);
 							if (isMountedRef.current) setFlashcardSet({ ...currentFlashcardSet });
@@ -895,16 +949,13 @@ export default function Home() {
 						}
 					}
 
-					// C. Generate Quiz questions for the chapter if they don't exist
+					// E. Generate Quiz questions for the chapter if they don't exist
 					const quizForChapterExist = currentQuizSet.questions.some(q => q.explanation.includes(`Source: ${chapter.title}`));
 					if (!quizForChapterExist) {
 						const { result: newQuestions, newApiKeyIndex } = await generateQuiz({
-							apiKeys,
-							apiKeyIndex: currentKeyIndex,
-							topic: currentTopic,
-							count: QUIZ_QUESTIONS_PER_CHAPTER,
-							language: currentLanguage,
-							model: currentModel,
+							apiKeys, apiKeyIndex: currentKeyIndex,
+							topic: currentTopic, count: QUIZ_QUESTIONS_PER_CHAPTER,
+							language: currentLanguage, model: currentModel,
 							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`
 						});
 						currentKeyIndex = newApiKeyIndex;
@@ -1527,4 +1578,5 @@ export default function Home() {
     
 
     
+
 

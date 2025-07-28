@@ -1,4 +1,5 @@
 
+
 /**
  * @fileOverview Shared Zod schemas and TypeScript types for AI flows.
  */
@@ -193,9 +194,38 @@ export const GenerateTheoryChapterOutputSchema = z.object({
 export type GenerateTheoryChapterOutput = z.infer<typeof GenerateTheoryChapterOutputSchema>;
 
 
+// Podcast
+export const GeneratePodcastScriptInputSchema = z.object({
+    topic: z.string().describe('The overall topic of the document.'),
+    chapterTitle: z.string().describe('The title of the chapter for the script.'),
+    theoryContent: z.string().describe('The theory content to convert to a script.'),
+    language: z.string().describe('The language for the script.'),
+    model: z.string().describe('The Generative AI model to use for scripting.'),
+});
+export type GeneratePodcastScriptInput = z.infer<typeof GeneratePodcastScriptInputSchema>;
+
+export const GeneratePodcastScriptOutputSchema = z.object({
+    script: z.string().describe('The generated podcast script.'),
+});
+export type GeneratePodcastScriptOutput = z.infer<typeof GeneratePodcastScriptOutputSchema>;
+
+export const GenerateAudioInputSchema = z.object({
+    script: z.string().describe('The script to convert to audio.'),
+    model: z.string().describe('The TTS model to use.'),
+});
+export type GenerateAudioInput = z.infer<typeof GenerateAudioInputSchema>;
+
+export const GenerateAudioOutputSchema = z.object({
+    audioDataUri: z.string().describe('The generated audio as a base64 data URI.'),
+});
+export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
+
+
 export interface TheoryChapter {
   title: string;
   content: string | null; // Null while generating
+  podcastScript: string | null;
+  audioDataUri: string | null;
 }
 export interface TheorySet {
   id: string;
