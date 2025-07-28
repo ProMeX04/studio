@@ -237,6 +237,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			const store = tx.objectStore("data")
 			await Promise.all(keysToDelete.map((key) => store.delete(key)))
 			await tx.done
+			
+			// Also clear the layout from localStorage
+			localStorage.removeItem("newtab-ai-layout");
+
 
 			// Reset state in memory
 			setFlashcardSet(null)
@@ -362,18 +366,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setTopic(savedTopic)
 		setLanguage(savedLanguage)
 		setModel(savedModel)
+		
+		// Visibility is now primarily controlled by the resizable panel's auto-save.
+		// We still load it from DB for other components, but the panel state itself is from localStorage.
+		if (savedVisibility) {
+			setVisibility(savedVisibility);
+		}
 
-		setVisibility(
-			savedVisibility ?? {
-				home: true,
-				clock: true,
-				greeting: true,
-				search: true,
-				quickLinks: true,
-				learn: true,
-				advancedVoiceChat: true,
-			}
-		)
 
 		const flashcardData = flashcardDataRes as LabeledData<CardSet>
 		const quizData = quizDataRes as LabeledData<QuizSet>
@@ -927,8 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const onVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
 			setVisibility(newVisibility);
-			const db = await getDb();
-			await db.put("data", { id: "visibility", data: newVisibility });
+			// We no longer save this to DB, as localStorage is handled by the panel library
 		},
 		[]
 	);

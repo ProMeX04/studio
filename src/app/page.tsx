@@ -33,12 +33,18 @@ function HomePageContent() {
 
 	const handleOpenLeft = () => {
 		onVisibilityChange({ ...visibility, home: true })
-		panelGroupRef.current?.setLayout([45, 55])
+		const layout = panelGroupRef.current?.getLayout()
+		if (layout) {
+			panelGroupRef.current?.setLayout(visibility.learn ? [45, 55] : [100, 0])
+		}
 	}
 	
 	const handleOpenRight = () => {
 		onVisibilityChange({ ...visibility, learn: true })
-		panelGroupRef.current?.setLayout([45, 55])
+		const layout = panelGroupRef.current?.getLayout()
+		if (layout) {
+			panelGroupRef.current?.setLayout(visibility.home ? [45, 55] : [0, 100])
+		}
 	}
 
 	if (!isMounted) {
@@ -94,18 +100,20 @@ function HomePageContent() {
 				ref={panelGroupRef}
 				direction="horizontal" 
 				className="relative min-h-screen w-full"
+				autoSaveId="newtab-ai-layout"
+				onLayout={(sizes: number[]) => {
+					onVisibilityChange({
+						...visibility,
+						home: sizes[0] > 0,
+						learn: sizes[1] > 0,
+					});
+				}}
 			>
 				<ResizablePanel 
-					defaultSize={visibility.home ? 45 : 0}
+					defaultSize={50}
 					minSize={30}
 					collapsible={true}
 					collapsedSize={0}
-					onCollapse={() => {
-						onVisibilityChange({ ...visibility, home: false })
-					}}
-					onExpand={() => {
-						onVisibilityChange({ ...visibility, home: true })
-					}}
 					className={cn(!visibility.home && "min-w-0")}
 				>
 					<LeftColumn />
@@ -114,16 +122,10 @@ function HomePageContent() {
 				<ResizableHandle className="bg-transparent" />
 				
 				<ResizablePanel 
-					defaultSize={visibility.learn ? 55 : 0}
+					defaultSize={50}
 					minSize={30}
 					collapsible={true}
 					collapsedSize={0}
-					onCollapse={() => {
-						onVisibilityChange({ ...visibility, learn: false })
-					}}
-					onExpand={() => {
-						onVisibilityChange({ ...visibility, learn: true })
-					}}
 					className={cn(!visibility.learn && "min-w-0")}
 				>
 					<RightColumn />
