@@ -11,6 +11,7 @@ import {
 	ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { Settings } from "@/components/Settings"
+import { cn } from "@/lib/utils"
 
 function HomePageContent() {
 	const { 
