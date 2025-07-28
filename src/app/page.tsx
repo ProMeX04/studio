@@ -4,14 +4,12 @@
 import React from "react"
 import { AppProvider, useAppContext } from "@/contexts/AppContext"
 import LeftColumn from "@/components/LeftColumn"
-import { ApiKeyGuide } from "@/components/ApiKeyGuide"
-import { Learn } from "@/components/Learn"
+import RightColumn from "@/components/RightColumn"
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable"
-import RightColumn from "@/components/RightColumn"
 
 
 function HomePageContent() {
@@ -37,7 +35,7 @@ function HomePageContent() {
 				</ResizablePanel>
 				{visibility.learn && (
 					<>
-						<ResizableHandle />
+						<ResizableHandle className="bg-transparent" />
 						<ResizablePanel defaultSize={55} minSize={30}>
 							<RightColumn />
 						</ResizablePanel>
