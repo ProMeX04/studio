@@ -18,6 +18,11 @@ const ClientInputSchema = GenerateMindMapInputSchema.extend({
 });
 type ClientInput = z.infer<typeof ClientInputSchema>;
 
+function extractJson(text: string): string | null {
+  const match = text.match(/```json\s*([\s\S]*?)\s*```/);
+  return match ? match[1].trim() : null;
+}
+
 export async function generateMindmap(
   input: ClientInput
 ): Promise<{ result: GenerateMindMapOutput; newApiKeyIndex: number }> {
@@ -39,26 +44,26 @@ export async function generateMindmap(
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: modelName });
 
-      const promptText = `Bạn là một chuyên gia về sơ đồ tư duy. Dựa vào nội dung lý thuyết được cung cấp cho chương "${promptInput.chapterTitle}" thuộc chủ đề "${promptInput.topic}", hãy tạo một sơ đồ tư duy (mind map) theo cấu trúc JSON.
+      const promptText = `Bạn là một chuyên gia về sơ đồ tư duy. Dựa vào nội dung lý thuyết được cung cấp cho chương "${promptInput.chapterTitle}" thuộc chủ đề "${promptInput.topic}", hãy tạo một sơ đồ tư duy (mind map).
 
 Nội dung lý thuyết:
 ---
 ${promptInput.theoryContent}
 ---
 
-Yêu cầu về cấu trúc JSON:
-1.  Bắt đầu với một nút gốc (root node) duy nhất có thuộc tính "name" là tên của chương ("${promptInput.chapterTitle}").
-2.  Từ nút gốc, phân tích nội dung để xác định các khái niệm chính và tạo các nút con (children) tương ứng.
-3.  Tiếp tục phân rã từng khái niệm chính thành các ý nhỏ hơn, chi tiết hơn dưới dạng các nút con lồng nhau.
-4.  Chỉ bao gồm các thuộc tính "name" và "children" cho mỗi nút. "children" là một mảng các nút con và là không bắt buộc.
-5.  Sơ đồ cần có độ sâu ít nhất là 2-3 cấp độ để thể hiện rõ mối quan hệ giữa các khái niệm.
-6.  Sử dụng ngôn ngữ: ${promptInput.language}.
+Yêu cầu:
+1.  Phân tích nội dung để xác định các khái niệm chính và tạo các nút con (children) tương ứng.
+2.  Tiếp tục phân rã từng khái niệm chính thành các ý nhỏ hơn, chi tiết hơn dưới dạng các nút con lồng nhau.
+3.  Sơ đồ cần có độ sâu ít nhất là 2-3 cấp độ để thể hiện rõ mối quan hệ giữa các khái niệm.
+4.  Sử dụng ngôn ngữ: ${promptInput.language}.
+5.  Toàn bộ đầu ra phải là một khối mã JSON duy nhất, được bao bọc trong \`\`\`json và \`\`\`.
+6.  Đối tượng JSON phải tuân theo cấu trúc sau:
+    - Bắt đầu với một nút gốc (root node) duy nhất có thuộc tính "name" là tên của chương ("${promptInput.chapterTitle}").
+    - Mỗi nút chỉ bao gồm các thuộc tính "name" và "children" (tùy chọn).
 `;
 
       const generationConfig: GenerationConfig = {
-        responseMimeType: "application/json",
-        // @ts-ignore - responseSchema is a valid property
-        responseSchema: GenerateMindMapJsonSchema,
+        responseMimeType: "text/plain",
       };
 
       const result = await model.generateContent({
@@ -72,7 +77,14 @@ Yêu cầu về cấu trúc JSON:
         ]
       });
       
-      const parsedJson = JSON.parse(result.response.text());
+      const rawText = result.response.text();
+      const jsonString = extractJson(rawText);
+
+      if (!jsonString) {
+        throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Khối JSON không được tìm thấy.', 'AI_INVALID_FORMAT');
+      }
+
+      const parsedJson = JSON.parse(jsonString);
       const validatedOutput = GenerateMindMapOutputSchema.parse(parsedJson);
 
       console.log(`✅ Generated Mind Map for chapter: "${promptInput.chapterTitle}"`);
@@ -93,7 +105,7 @@ Yêu cầu về cấu trúc JSON:
             console.log(`Trying next API Key at index ${currentKeyIndex}.`);
         } else {
             console.error('❌ Mind Map generation error:', error);
-            if (error.message.includes('JSON') || error instanceof z.ZodError) {
+            if (error.message.includes('JSON') || error instanceof z.ZodError || error instanceof AIOperationError) {
                 throw new AIOperationError('AI đã trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'AI_INVALID_FORMAT');
             }
             if (invalidKeyCount === apiKeys.length) {
