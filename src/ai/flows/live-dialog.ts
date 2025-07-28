@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -17,10 +18,12 @@ const sessionMessages = new Map<string, LiveDialogResponsePart[]>();
 
 const modelName = 'gemini-1.5-flash-latest'; // Using a standard model that supports text/audio input
 
-interface FlowClientInput {
-    apiKeys: z.infer<typeof z.array(z.string)>;
-    apiKeyIndex: z.infer<typeof z.number>;
-}
+const FlowClientInputSchema = z.object({
+    apiKeys: z.array(z.string()),
+    apiKeyIndex: z.number(),
+});
+type FlowClientInput = z.infer<typeof FlowClientInputSchema>;
+
 
 export async function connectToLiveSession(input: FlowClientInput): Promise<{ sessionId: string }> {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
