@@ -64,10 +64,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 type SettingsScope =
-	| "global"
-	| "learn"
+	| "all"
 	| "learn-onboarding"
 	| "learn-onboarding-generate"
 
@@ -75,8 +76,8 @@ interface CommonSettingsProps {
 	scope: SettingsScope
 }
 
-interface GlobalSettingsProps {
-	scope: "global"
+interface AllSettingsProps {
+	scope: "all"
 	onClearAllData: () => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
@@ -84,10 +85,6 @@ interface GlobalSettingsProps {
 	visibility: ComponentVisibility
 	uploadedBackgrounds: string[]
 	currentBackgroundImage: string | null
-}
-
-interface LearnSettingsProps {
-	scope: "learn"
 	onSettingsChange?: (settings: {
 		topic: string
 		language: string
@@ -97,7 +94,6 @@ interface LearnSettingsProps {
 	onClearLearningData?: () => void
 	onApiKeysChange: (apiKeys: string[]) => void
 	onResetOnboarding: () => void
-	onSettingsChanged?: () => void // For onboarding
 	isLoading: boolean
 	topic?: string
 	language?: string
@@ -107,6 +103,7 @@ interface LearnSettingsProps {
 	flashcardSet: CardSet | null
 	quizSet: QuizSet | null
 }
+
 
 // A more limited version of LearnSettingsProps for onboarding
 interface LearnOnboardingSettingsProps {
@@ -119,7 +116,7 @@ interface LearnOnboardingSettingsProps {
 }
 
 type SettingsProps = CommonSettingsProps &
-	(GlobalSettingsProps | LearnSettingsProps | LearnOnboardingSettingsProps)
+	(AllSettingsProps | LearnOnboardingSettingsProps)
 
 export const languages = [
 	{ value: "Vietnamese", label: "Tiếng Việt" },
@@ -143,7 +140,7 @@ const MAX_UPLOADED_IMAGES = 6
 
 export function Settings(props: SettingsProps) {
 	const { scope } = props
-	const isLearnScope = scope === "learn"
+	const isAllScope = scope === "all"
 	const isOnboardingScope = scope.startsWith("learn-onboarding")
 	const { toast } = useToast()
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -152,23 +149,23 @@ export function Settings(props: SettingsProps) {
 
 	// Local state for learn settings
 	const [topic, setTopic] = useState(
-		scope === "learn" ? (props as LearnSettingsProps).topic ?? "" : ""
+		scope === "all" ? (props as AllSettingsProps).topic ?? "" : ""
 	)
 	const [language, setLanguage] = useState(
-		scope === "learn"
-			? (props as LearnSettingsProps).language ?? "Vietnamese"
+		scope === "all"
+			? (props as AllSettingsProps).language ?? "Vietnamese"
 			: "Vietnamese"
 	)
 	const [model, setModel] = useState(
-		scope === "learn"
-			? (props as LearnSettingsProps).model ?? "gemini-1.5-flash-latest"
+		scope === "all"
+			? (props as AllSettingsProps).model ?? "gemini-1.5-flash-latest"
 			: "gemini-1.5-flash-latest"
 	)
 
 	// Local state for API keys (now managed in learn settings)
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(
-		scope.startsWith("learn")
-			? (props as LearnSettingsProps | LearnOnboardingSettingsProps)
+		scope.startsWith("learn") || scope === "all"
+			? (props as AllSettingsProps | LearnOnboardingSettingsProps)
 					.apiKeys
 			: []
 	)
@@ -176,24 +173,24 @@ export function Settings(props: SettingsProps) {
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
-	const learnProps =
-		scope === "learn" ? (props as LearnSettingsProps) : undefined
-	const topicChanged = learnProps && learnProps.topic !== topic
+	const allProps =
+		scope === "all" ? (props as AllSettingsProps) : undefined
+	const topicChanged = allProps && allProps.topic !== topic
 
 	const settingsChanged =
-		learnProps &&
+		allProps &&
 		(topicChanged ||
-			learnProps.language !== language)
+			allProps.language !== language)
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
-		if (scope === "learn") {
-			const learnProps = props as LearnSettingsProps
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
 			if (isSheetOpen) {
-				setTopic(learnProps.topic ?? "")
-				setLanguage(learnProps.language ?? "Vietnamese")
-				setModel(learnProps.model ?? "gemini-1.5-flash-latest")
-				setLocalApiKeys(learnProps.apiKeys)
+				setTopic(allProps.topic ?? "")
+				setLanguage(allProps.language ?? "Vietnamese")
+				setModel(allProps.model ?? "gemini-1.5-flash-latest")
+				setLocalApiKeys(allProps.apiKeys)
 				setIsConfirmingTopicChange(false) // Reset confirmation on open
 			}
 		} else if (isOnboardingScope) {
@@ -203,7 +200,7 @@ export function Settings(props: SettingsProps) {
 	}, [props, scope, isSheetOpen, isOnboardingScope])
 
 	const handleSave = () => {
-		if (scope !== "learn" || !learnProps?.onSettingsChange) return
+		if (scope !== "all" || !allProps?.onSettingsChange) return
 
 		// If topic changed and we are not yet confirming, start confirmation process
 		if (topicChanged && !isConfirmingTopicChange) {
@@ -212,14 +209,10 @@ export function Settings(props: SettingsProps) {
 		}
 
 		// Proceed with saving
-		learnProps.onSettingsChange({
+		allProps.onSettingsChange({
 			topic,
 			language,
 		})
-
-		if (learnProps.onSettingsChanged) {
-			learnProps.onSettingsChanged()
-		}
 
 		toast({
 			title: "Đã lưu cài đặt",
@@ -234,13 +227,13 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleAddNewApiKey = () => {
-		if (!scope.startsWith("learn")) return
+		if (!scope.startsWith("learn") && scope !== "all") return
 		if (newApiKey.trim()) {
 			if (!localApiKeys.includes(newApiKey.trim())) {
 				const newKeys = [...localApiKeys, newApiKey.trim()]
 				setLocalApiKeys(newKeys)
 				;(
-					props as LearnSettingsProps | LearnOnboardingSettingsProps
+					props as AllSettingsProps | LearnOnboardingSettingsProps
 				).onApiKeysChange(newKeys)
 			}
 			setNewApiKey("")
@@ -248,53 +241,53 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleRemoveApiKey = (keyToRemove: string) => {
-		if (!scope.startsWith("learn")) return
+		if (!scope.startsWith("learn") && scope !== "all") return
 		const newKeys = localApiKeys.filter((key) => key !== keyToRemove)
 		setLocalApiKeys(newKeys)
 		;(
-			props as LearnSettingsProps | LearnOnboardingSettingsProps
+			props as AllSettingsProps | LearnOnboardingSettingsProps
 		).onApiKeysChange(newKeys)
 	}
 
 	const handleGenerate = (forceNew: boolean) => {
-		if (scope === "learn" || scope === "learn-onboarding-generate") {
-			const learnProps = props as
-				| LearnSettingsProps
+		if (scope === "all" || scope === "learn-onboarding-generate") {
+			const currentProps = props as
+				| AllSettingsProps
 				| LearnOnboardingSettingsProps
-			if (learnProps.onGenerate) {
-				learnProps.onGenerate(forceNew)
+			if (currentProps.onGenerate) {
+				currentProps.onGenerate(forceNew)
 			}
 		}
 	}
 
 	const handleClearData = () => {
-		if (scope === "global") {
-			const globalProps = props as GlobalSettingsProps
-			globalProps.onClearAllData()
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
+			allProps.onClearAllData()
 			setIsSheetOpen(false)
 		}
 	}
 
 	const handleClearLearningData = () => {
-		if (scope === "learn") {
-			const learnProps = props as LearnSettingsProps
-			if (learnProps.onClearLearningData) {
-				learnProps.onClearLearningData()
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
+			if (allProps.onClearLearningData) {
+				allProps.onClearLearningData()
 				setIsSheetOpen(false)
 			}
 		}
 	}
 
 	const handleResetOnboarding = () => {
-		if (scope === "learn") {
-			const learnProps = props as LearnSettingsProps
-			learnProps.onResetOnboarding()
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
+			allProps.onResetOnboarding()
 		}
 	}
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (scope === "global") {
-			const globalProps = props as GlobalSettingsProps
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
 			const file = e.target.files?.[0]
 			if (file) {
 				const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -312,10 +305,10 @@ export function Settings(props: SettingsProps) {
 					const result = event.target?.result as string
 					const newUploadedBgs = [
 						result,
-						...globalProps.uploadedBackgrounds,
+						...allProps.uploadedBackgrounds,
 					].slice(0, MAX_UPLOADED_IMAGES)
-					globalProps.onUploadedBackgroundsChange(newUploadedBgs)
-					globalProps.onBackgroundChange(result)
+					allProps.onUploadedBackgroundsChange(newUploadedBgs)
+					allProps.onBackgroundChange(result)
 				}
 				reader.readAsDataURL(file)
 			}
@@ -323,15 +316,15 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleModelChange = (newModel: string) => {
-		if (scope === "learn" && learnProps) {
+		if (scope === "all" && allProps) {
 			setModel(newModel)
-			learnProps.onModelChange(newModel)
+			allProps.onModelChange(newModel)
 		}
 	}
 
 	const renderApiKeyManagement = () => {
-		if (!scope.startsWith("learn")) return null
-		const learnProps = props as LearnOnboardingSettingsProps // Base props for onboarding
+		if (!scope.startsWith("learn") && scope !== "all") return null
+		const learnProps = props as LearnOnboardingSettingsProps | AllSettingsProps
 
 		return (
 			<div className="space-y-2">
@@ -398,20 +391,20 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderContentGenerationControls = () => {
-		if (scope !== "learn" && scope !== "learn-onboarding-generate")
+		if (scope !== "all" && scope !== "learn-onboarding-generate")
 			return null
 		
-		const currentProps = props as LearnSettingsProps | LearnOnboardingSettingsProps;
+		const currentProps = props as AllSettingsProps | LearnOnboardingSettingsProps;
 		const { isLoading } = currentProps;
 
-		const theoryCount = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.chapters.filter(c => c.content).length ?? 0 : 0;
-		const theoryMax = scope === 'learn' ? (props as LearnSettingsProps).theorySet?.outline.length ?? 0 : 0;
+		const theoryCount = scope === 'all' ? (props as AllSettingsProps).theorySet?.chapters.filter(c => c.content).length ?? 0 : 0;
+		const theoryMax = scope === 'all' ? (props as AllSettingsProps).theorySet?.outline.length ?? 0 : 0;
 	
 		const isCompleted = theoryMax > 0 && theoryCount === theoryMax;
 		
 		return (
 			<div className="space-y-4">
-				{scope === "learn" && (
+				{scope === "all" && (
 					<Label className="font-medium text-foreground">
 						Quản lý nội dung học tập
 					</Label>
@@ -450,7 +443,7 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderLearnSettings = () => {
-		if (scope !== "learn" || !learnProps) return null
+		if (scope !== "all" || !allProps) return null
 
 		return (
 			<div className="space-y-4">
@@ -519,8 +512,8 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderGlobalSettings = () => {
-		if (scope !== "global") return null
-		const globalProps = props as GlobalSettingsProps
+		if (scope !== "all") return null
+		const allProps = props as AllSettingsProps
 		return (
 			<div className="space-y-4">
 				<div className="space-y-4">
@@ -539,7 +532,7 @@ export function Settings(props: SettingsProps) {
 						<Button
 							variant="ghost"
 							size="icon"
-							onClick={() => globalProps.onBackgroundChange(null)}
+							onClick={() => allProps.onBackgroundChange(null)}
 							aria-label="Xóa hình nền"
 						>
 							<Trash2 className="h-4 w-4" />
@@ -553,12 +546,12 @@ export function Settings(props: SettingsProps) {
 						accept="image/*"
 					/>
 					<div className="grid grid-cols-3 gap-2">
-						{globalProps.uploadedBackgrounds.map((bg, index) => (
+						{allProps.uploadedBackgrounds.map((bg, index) => (
 							<div
 								key={`uploaded-${index}`}
 								className="relative cursor-pointer group"
 								onClick={() =>
-									globalProps.onBackgroundChange(bg)
+									allProps.onBackgroundChange(bg)
 								}
 							>
 								<Image
@@ -568,12 +561,12 @@ export function Settings(props: SettingsProps) {
 									height={60}
 									className={cn(
 										"rounded-md object-cover aspect-video",
-										globalProps.currentBackgroundImage ===
+										allProps.currentBackgroundImage ===
 											bg &&
 											"ring-2 ring-primary ring-offset-2 ring-offset-background"
 									)}
 								/>
-								{globalProps.currentBackgroundImage === bg && (
+								{allProps.currentBackgroundImage === bg && (
 									<CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />
 								)}
 							</div>
@@ -593,10 +586,10 @@ export function Settings(props: SettingsProps) {
 							</Label>
 							<Switch
 								id="advanced-voice-chat-visible"
-								checked={globalProps.visibility.advancedVoiceChat}
+								checked={allProps.visibility.advancedVoiceChat}
 								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
+									allProps.onVisibilityChange({
+										...allProps.visibility,
 										advancedVoiceChat: checked,
 									})
 								}
@@ -606,10 +599,10 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="clock-visible">Đồng hồ</Label>
 							<Switch
 								id="clock-visible"
-								checked={globalProps.visibility.clock}
+								checked={allProps.visibility.clock}
 								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
+									allProps.onVisibilityChange({
+										...allProps.visibility,
 										clock: checked,
 									})
 								}
@@ -619,10 +612,10 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="greeting-visible">Lời chào</Label>
 							<Switch
 								id="greeting-visible"
-								checked={globalProps.visibility.greeting}
+								checked={allProps.visibility.greeting}
 								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
+									allProps.onVisibilityChange({
+										...allProps.visibility,
 										greeting: checked,
 									})
 								}
@@ -632,10 +625,10 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="search-visible">Tìm kiếm</Label>
 							<Switch
 								id="search-visible"
-								checked={globalProps.visibility.search}
+								checked={allProps.visibility.search}
 								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
+									allProps.onVisibilityChange({
+										...allProps.visibility,
 										search: checked,
 									})
 								}
@@ -647,24 +640,11 @@ export function Settings(props: SettingsProps) {
 							</Label>
 							<Switch
 								id="quicklinks-visible"
-								checked={globalProps.visibility.quickLinks}
+								checked={allProps.visibility.quickLinks}
 								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
+									allProps.onVisibilityChange({
+										...allProps.visibility,
 										quickLinks: checked,
-									})
-								}
-							/>
-						</div>
-						<div className="flex items-center justify-between">
-							<Label htmlFor="learn-visible">Phần học tập</Label>
-							<Switch
-								id="learn-visible"
-								checked={globalProps.visibility.learn}
-								onCheckedChange={(checked) =>
-									globalProps.onVisibilityChange({
-										...globalProps.visibility,
-										learn: checked,
 									})
 								}
 							/>
@@ -688,11 +668,11 @@ export function Settings(props: SettingsProps) {
 		<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
 			<SheetTrigger asChild>
 				<Button
-					variant={isLearnScope ? "outline" : "ghost"}
+					variant="outline"
 					size="icon"
-					className={cn(isLearnScope && "h-9 w-9")}
+					className="h-9 w-9"
 				>
-					{isLearnScope ? <Menu /> : <SettingsIcon />}
+					<Menu />
 					<span className="sr-only">Cài đặt</span>
 				</Button>
 			</SheetTrigger>
@@ -703,158 +683,160 @@ export function Settings(props: SettingsProps) {
 				<SheetHeader>
 					<SheetTitle>
 						<div className="flex items-center gap-2">
-							{isLearnScope ? <BookOpen /> : <Brush />}
+							<SettingsIcon />
 							<span>
-								{isLearnScope
-									? "Cài đặt học tập"
-									: "Cài đặt chung"}
+								Cài đặt
 							</span>
 						</div>
 					</SheetTitle>
 				</SheetHeader>
 
-				<div className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6">
-					<div className="grid gap-6 py-4">
-						<Separator />
-						{isLearnScope
-							? renderLearnSettings()
-							: renderGlobalSettings()}
-					</div>
-				</div>
+				<Tabs defaultValue="learn" className="flex-grow flex flex-col mt-4">
+                    <TabsList className="w-full">
+                        <TabsTrigger value="learn" className="flex-1">Học tập</TabsTrigger>
+                        <TabsTrigger value="global" className="flex-1">Giao diện</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="learn" className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4">
+                        <div className="grid gap-6">
+                            {renderLearnSettings()}
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="global" className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4">
+                        <div className="grid gap-6">
+                            {renderGlobalSettings()}
+                        </div>
+                    </TabsContent>
+                </Tabs>
 
 				<SheetFooter className="mt-auto pt-4 border-t">
-					{isLearnScope ? (
-						<div className="w-full flex justify-between items-center">
-							{isConfirmingTopicChange ? (
-								<div className="w-full space-y-2 rounded-lg border border-destructive p-4">
-									<p className="text-sm text-destructive-foreground font-medium">
-										Thay đổi chủ đề sẽ xóa tất cả dữ liệu
-										học tập cũ.
-									</p>
-									<p className="text-sm text-muted-foreground">
-										Bạn có chắc chắn muốn tiếp tục?
-									</p>
-									<div className="flex justify-end gap-2 pt-2">
-										<Button
-											variant="ghost"
-											onClick={handleCancelTopicChange}
-										>
-											Hủy
-										</Button>
-										<Button
-											variant="destructive"
-											onClick={handleSave}
-										>
-											Xác nhận
-										</Button>
-									</div>
+					<div className="w-full flex justify-between items-center">
+						{isConfirmingTopicChange ? (
+							<div className="w-full space-y-2 rounded-lg border border-destructive p-4">
+								<p className="text-sm text-destructive-foreground font-medium">
+									Thay đổi chủ đề sẽ xóa tất cả dữ liệu
+									học tập cũ.
+								</p>
+								<p className="text-sm text-muted-foreground">
+									Bạn có chắc chắn muốn tiếp tục?
+								</p>
+								<div className="flex justify-end gap-2 pt-2">
+									<Button
+										variant="ghost"
+										onClick={handleCancelTopicChange}
+									>
+										Hủy
+									</Button>
+									<Button
+										variant="destructive"
+										onClick={handleSave}
+									>
+										Xác nhận
+									</Button>
 								</div>
-							) : (
-								<>
-									<div className="flex gap-2">
-										<AlertDialog>
-											<AlertDialogTrigger asChild>
-												<Button
-													variant="outline"
-													size="sm"
+							</div>
+						) : (
+							<>
+								<div className="flex gap-2">
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+											>
+												<Trash2 className="mr-2 h-4 w-4" />
+												Xóa DL
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>
+													<div className="flex items-center gap-2">
+														<AlertTriangle className="text-destructive" />
+														<span>
+															Bạn có chắc chắn
+															không?
+														</span>
+													</div>
+												</AlertDialogTitle>
+												<AlertDialogDescription>
+													Hành động này sẽ xóa
+													vĩnh viễn tất cả
+													flashcard, bài trắc
+													nghiệm và lý thuyết của
+													chủ đề hiện tại. Hành
+													động này không thể hoàn
+													tác.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>
+													Hủy
+												</AlertDialogCancel>
+												<AlertDialogAction
+													onClick={
+														handleClearLearningData
+													}
 												>
-													<Trash2 className="mr-2 h-4 w-4" />
-													Xóa DL
-												</Button>
-											</AlertDialogTrigger>
-											<AlertDialogContent>
-												<AlertDialogHeader>
-													<AlertDialogTitle>
-														<div className="flex items-center gap-2">
-															<AlertTriangle className="text-destructive" />
-															<span>
-																Bạn có chắc chắn
-																không?
-															</span>
-														</div>
-													</AlertDialogTitle>
-													<AlertDialogDescription>
-														Hành động này sẽ xóa
-														vĩnh viễn tất cả
-														flashcard, bài trắc
-														nghiệm và lý thuyết của
-														chủ đề hiện tại. Hành
-														động này không thể hoàn
-														tác.
-													</AlertDialogDescription>
-												</AlertDialogHeader>
-												<AlertDialogFooter>
-													<AlertDialogCancel>
-														Hủy
-													</AlertDialogCancel>
-													<AlertDialogAction
-														onClick={
-															handleClearLearningData
-														}
-													>
-														Vâng, xóa dữ liệu
-													</AlertDialogAction>
-												</AlertDialogFooter>
-											</AlertDialogContent>
-										</AlertDialog>
-										<AlertDialog>
-											<AlertDialogTrigger asChild>
-												<Button
-													variant="outline"
-													size="sm"
+													Vâng, xóa dữ liệu
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+											>
+												<RefreshCw className="mr-2 h-4 w-4" />
+												H.dẫn
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>
+													<div className="flex items-center gap-2">
+														<AlertTriangle className="text-destructive" />
+														<span>
+															Chạy lại hướng
+															dẫn ban đầu?
+														</span>
+													</div>
+												</AlertDialogTitle>
+												<AlertDialogDescription>
+													Hành động này sẽ xóa cờ
+													đánh dấu bạn đã hoàn
+													thành hướng dẫn và tải
+													lại trang để bắt đầu
+													lại. Dữ liệu học tập sẽ
+													không bị ảnh hưởng.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>
+													Hủy
+												</AlertDialogCancel>
+												<AlertDialogAction
+													onClick={
+														handleResetOnboarding
+													}
 												>
-													<RefreshCw className="mr-2 h-4 w-4" />
-													H.dẫn
-												</Button>
-											</AlertDialogTrigger>
-											<AlertDialogContent>
-												<AlertDialogHeader>
-													<AlertDialogTitle>
-														<div className="flex items-center gap-2">
-															<AlertTriangle className="text-destructive" />
-															<span>
-																Chạy lại hướng
-																dẫn ban đầu?
-															</span>
-														</div>
-													</AlertDialogTitle>
-													<AlertDialogDescription>
-														Hành động này sẽ xóa cờ
-														đánh dấu bạn đã hoàn
-														thành hướng dẫn và tải
-														lại trang để bắt đầu
-														lại. Dữ liệu học tập sẽ
-														không bị ảnh hưởng.
-													</AlertDialogDescription>
-												</AlertDialogHeader>
-												<AlertDialogFooter>
-													<AlertDialogCancel>
-														Hủy
-													</AlertDialogCancel>
-													<AlertDialogAction
-														onClick={
-															handleResetOnboarding
-														}
-													>
-														Ok, chạy lại
-													</AlertDialogAction>
-												</AlertDialogFooter>
-											</AlertDialogContent>
-										</AlertDialog>
-									</div>
+													Ok, chạy lại
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</div>
 
-									{settingsChanged && (
-										<Button onClick={handleSave}>
-											<Save className="mr-2 h-4 w-4" />
-											Lưu thay đổi
-										</Button>
-									)}
-								</>
-							)}
-						</div>
-					) : (
-						null
-					)}
+								{settingsChanged && (
+									<Button onClick={handleSave}>
+										<Save className="mr-2 h-4 w-4" />
+										Lưu thay đổi
+									</Button>
+								)}
+							</>
+						)}
+					</div>
 				</SheetFooter>
 			</SheetContent>
 		</Sheet>

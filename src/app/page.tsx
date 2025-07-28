@@ -256,7 +256,7 @@ function HomePageContent() {
 		return null
 	}
 
-	const globalSettingsProps = {
+	const settingsProps = {
         onClearAllData,
         onVisibilityChange,
         onBackgroundChange,
@@ -264,9 +264,6 @@ function HomePageContent() {
         visibility,
         uploadedBackgrounds,
         currentBackgroundImage: backgroundImage,
-    };
-
-	const learnSettingsProps = {
 		onSettingsChange: onSettingsSave,
 		onGenerate: onGenerate,
 		onClearLearningData: handleClearLearningData,
@@ -281,7 +278,7 @@ function HomePageContent() {
 		theorySet: theorySet,
 		flashcardSet: flashcardSet,
 		quizSet: quizSet,
-	}
+    };
 
 	const voiceChatProps = {
 		apiKeys: apiKeys,
@@ -307,11 +304,14 @@ function HomePageContent() {
 					className="relative min-h-full w-full"
 					autoSaveId="newtab-ai-layout"
 					onLayout={(sizes: number[]) => {
-						onVisibilityChange({
+						const newVisibility = {
 							...visibility,
 							home: sizes[0] > 0,
 							learn: sizes[1] > 0,
-						});
+						};
+						if (newVisibility.home !== visibility.home || newVisibility.learn !== visibility.learn) {
+							onVisibilityChange(newVisibility);
+						}
 					}}
 				>
 					<ResizablePanel 
@@ -362,11 +362,6 @@ function HomePageContent() {
 			{/* Unified Toolbar */}
 			<div className="absolute bottom-0 left-0 right-0 flex justify-center pb-2 z-40">
 				<div className="flex flex-wrap items-center justify-center gap-2 bg-background/30 backdrop-blur-sm p-2 rounded-md w-full max-w-4xl">
-					
-					{/* Global Settings */}
-					<Settings {...globalSettingsProps} scope="global" />
-					
-					<Separator orientation="vertical" className="h-8" />
 					
 					{/* Learning Mode Selector */}
 					<Select
@@ -457,7 +452,7 @@ function HomePageContent() {
 							</Button>
 						)}
 
-						<Settings {...learnSettingsProps} scope="learn" />
+						<Settings {...settingsProps} scope="all" />
 
 						{visibility.advancedVoiceChat && (
 							<AdvancedVoiceChat {...voiceChatProps} />
