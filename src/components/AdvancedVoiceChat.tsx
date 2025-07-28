@@ -12,9 +12,7 @@ import { Mic, Loader } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { decode } from "@/lib/audio-utils"
 
-// Use the model specified by the user
 const MODEL_NAME = "gemini-2.5-flash-preview-native-audio-dialog"
 
 export function AdvancedVoiceChat({
@@ -34,16 +32,16 @@ export function AdvancedVoiceChat({
 
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
 	const audioContextRef = useRef<AudioContext | null>(null)
-	const audioQueueRef = useRef<ArrayBuffer[]>([])
-	const isPlayingRef = useRef(false)
+	const audioQueueRef = useRef<Float32Array[]>([])
+    const isPlayingRef = useRef(false)
 	const chatSessionRef = useRef<ChatSession | null>(null)
 	const aiRef = useRef<GoogleGenerativeAI | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
+    const nextStartTimeRef = useRef(0)
 
 	useEffect(() => {
 		setIsMounted(true)
 		return () => {
-			// Ensure all resources are cleaned up on unmount
 			disconnectSession()
 		}
 	}, [])
@@ -58,48 +56,59 @@ export function AdvancedVoiceChat({
 		}
 		if (audioContextRef.current?.state !== "closed") {
 			audioContextRef.current?.close().catch(console.error)
+            audioContextRef.current = null;
 		}
 		mediaRecorderRef.current = null
-		audioContextRef.current = null
 		chatSessionRef.current = null
 		setStatus("idle")
 		audioQueueRef.current = []
 		isPlayingRef.current = false
 	}, [])
 
-	const playNextInQueue = useCallback(async () => {
-		if (
-			isPlayingRef.current ||
-			audioQueueRef.current.length === 0 ||
-			!audioContextRef.current
-		) {
-			return
-		}
-		isPlayingRef.current = true
-		const audioData = audioQueueRef.current.shift()
+    const decodeAndPlay = useCallback(async (base64Audio: string) => {
+        try {
+            // 1. Decode Base64 to binary string
+            const binaryString = atob(base64Audio);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
 
-		if (audioData) {
-			try {
-				const audioBuffer = await audioContextRef.current.decodeAudioData(
-					audioData
-				)
-				const source = audioContextRef.current.createBufferSource()
-				source.buffer = audioBuffer
-				source.connect(audioContextRef.current.destination)
-				source.onended = () => {
-					isPlayingRef.current = false
-					playNextInQueue()
-				}
-				source.start()
-			} catch (error) {
-				console.error("Error playing audio:", error)
-				isPlayingRef.current = false
-				playNextInQueue()
-			}
-		} else {
-			isPlayingRef.current = false
-		}
-	}, [])
+            // 2. Create Int16Array from the Uint8Array buffer
+            // The audio from Gemini is 16-bit PCM
+            const pcmData = new Int16Array(bytes.buffer);
+
+            // 3. Convert Int16 PCM to Float32 range [-1, 1]
+            const float32Data = new Float32Array(pcmData.length);
+            for (let i = 0; i < pcmData.length; i++) {
+                float32Data[i] = pcmData[i] / 32768.0;
+            }
+
+            // 4. Create an AudioBuffer
+            if (!audioContextRef.current) return;
+            const audioBuffer = audioContextRef.current.createBuffer(
+                1, // num channels
+                float32Data.length,
+                24000 // Gemini returns 24kHz audio
+            );
+            audioBuffer.copyToChannel(float32Data, 0);
+
+            // 5. Play the buffer
+            const source = audioContextRef.current.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContextRef.current.destination);
+            
+            const currentTime = audioContextRef.current.currentTime;
+            const startTime = Math.max(currentTime, nextStartTimeRef.current);
+            source.start(startTime);
+            nextStartTimeRef.current = startTime + audioBuffer.duration;
+
+        } catch (error) {
+            console.error("Error playing audio:", error);
+        }
+    }, []);
+
 
 	const handleServerMessage = useCallback(
 		async (response: any) => {
@@ -110,16 +119,14 @@ export function AdvancedVoiceChat({
 						// console.log("AI Text:", part.text); // Log text for debugging
 					}
 					if (part.audio) {
-						const audioBytes = decode(part.audio)
-						audioQueueRef.current.push(audioBytes.buffer)
-						playNextInQueue()
+                        await decodeAndPlay(part.audio);
 					}
 				}
 			} catch (error) {
 				console.error("Error processing server message:", error)
 			}
 		},
-		[playNextInQueue]
+		[decodeAndPlay]
 	)
 
 	const startSession = useCallback(async () => {
@@ -147,69 +154,43 @@ export function AdvancedVoiceChat({
 			})
 
 			audioContextRef.current = new (window.AudioContext ||
-				(window as any).webkitAudioContext)()
+				(window as any).webkitAudioContext)({sampleRate: 24000})
+            nextStartTimeRef.current = audioContextRef.current.currentTime;
+
 			streamRef.current = await navigator.mediaDevices.getUserMedia({
 				audio: true,
 			})
 
-			mediaRecorderRef.current = new MediaRecorder(streamRef.current)
-			const audioChunks: Blob[] = []
+			mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+			
+            mediaRecorderRef.current.ondataavailable = async (event) => {
+                if (event.data.size > 0 && chatSessionRef.current) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(event.data);
+                    reader.onloadend = async () => {
+                        const base64Audio = (reader.result as string).split(",")[1];
+                        try {
+                            const result = await chatSessionRef.current!.sendMessageStream([
+                                {
+                                    inlineData: {
+                                        data: base64Audio,
+                                        mimeType: 'audio/webm',
+                                    },
+                                },
+                            ]);
+                            for await (const chunk of result.stream) {
+                                await handleServerMessage(chunk);
+                            }
+                        } catch (e: any) {
+                            console.error("Error sending or processing stream:", e);
+                            toast({ title: "Lỗi giao tiếp với AI", description: e.message, variant: "destructive" });
+                            disconnectSession();
+                        }
+                    };
+                }
+            };
 
-			mediaRecorderRef.current.ondataavailable = (event) => {
-				if (event.data.size > 0) {
-					audioChunks.push(event.data)
-				}
-			}
-
-			mediaRecorderRef.current.onstop = async () => {
-				if (status === "idle") return // Session was disconnected
-				setStatus("processing")
-				const audioBlob = new Blob(audioChunks, {
-					type: "audio/webm",
-				})
-				audioChunks.length = 0
-
-				const reader = new FileReader()
-				reader.readAsDataURL(audioBlob)
-				reader.onloadend = async () => {
-					const base64Audio = (reader.result as string).split(",")[1]
-					try {
-						if (!chatSessionRef.current) {
-							throw new Error("Chat session not initialized.")
-						}
-						const result =
-							await chatSessionRef.current.sendMessageStream([
-								{
-									inlineData: {
-										data: base64Audio,
-										mimeType: "audio/webm",
-									},
-								},
-							])
-
-						for await (const chunk of result.stream) {
-							await handleServerMessage(chunk)
-						}
-					} catch (e: any) {
-						console.error(
-							"Error sending or processing stream:",
-							e
-						)
-						toast({
-							title: "Lỗi giao tiếp với AI",
-							description: e.message,
-							variant: "destructive",
-						})
-					} finally {
-						// When processing is done, go back to recording state if not idle
-						if (status !== "idle") {
-							setStatus("recording")
-						}
-					}
-				}
-			}
-
-			mediaRecorderRef.current.start(1000) // Collect 1-second chunks
+			mediaRecorderRef.current.start(1000) // Collect and send 1-second chunks
 			setStatus("recording")
 			toast({
 				title: "Đã kết nối",
@@ -299,3 +280,5 @@ export function AdvancedVoiceChat({
 		</div>
 	)
 }
+
+    
