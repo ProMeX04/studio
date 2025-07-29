@@ -20,7 +20,7 @@ import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
 import { generateAudio } from "@/ai/flows/generate-audio"
-import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
+import type { CardSet, QuizSet, TheorySet, QuizQuestion, CardData } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 
 export interface ComponentVisibility {
@@ -236,8 +236,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			greeting: true,
 			search: true,
 			quickLinks: true,
-			learn: true,
 			advancedVoiceChat: true,
+			learn: true,
 		})
 		setBackgroundImage("")
 		setUploadedBackgrounds([])
@@ -493,6 +493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setIsLoading(true)
 
 			const db = await getDb()
+			let overallSuccess = true
 
 			try {
 				let currentTheorySet = theorySet
@@ -509,72 +510,83 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 				// Step 1: Handle new topic or forced reset
 				if (forceNew || !currentTheorySet) {
-					await handleClearLearningData() // Clear all learning data for the new topic
+					await handleClearLearningData()
 
-					// Generate Outline
-					const { result: outlineResult, newApiKeyIndex } =
-						await generateTheoryOutline({
-							apiKeys,
-							apiKeyIndex,
+					try {
+						const { result: outlineResult, newApiKeyIndex } =
+							await generateTheoryOutline({
+								apiKeys,
+								apiKeyIndex,
+								topic,
+								language,
+								model,
+							})
+						handleApiKeyIndexChange(newApiKeyIndex)
+
+						if (
+							!outlineResult?.outline ||
+							outlineResult.outline.length === 0
+						) {
+							throw new Error(
+								"Failed to generate a valid theory outline."
+							)
+						}
+
+						currentTheorySet = {
+							id: "idb-theory",
 							topic,
-							language,
-							model,
+							outline: outlineResult.outline,
+							chapters: outlineResult.outline.map((title) => ({
+								title,
+								content: null,
+								podcastScript: null,
+								audioDataUri: null,
+							})),
+						}
+						currentFlashcardSet = {
+							id: "idb-flashcards",
+							topic,
+							cards: [],
+						}
+						currentQuizSet = { id: "idb-quiz", topic, questions: [] }
+
+						if (isMountedRef.current) {
+							setTheorySet(currentTheorySet)
+							setFlashcardSet(currentFlashcardSet)
+							setQuizSet(currentQuizSet)
+							setTheoryState({ understoodIndices: [] })
+							setFlashcardState({ understoodIndices: [] })
+							setQuizState({ currentQuestionIndex: 0, answers: {} })
+							setTheoryChapterIndex(0)
+							setFlashcardIndex(0)
+							setCurrentQuestionIndex(0)
+						}
+						await db.put("data", {
+							id: "theory",
+							topic,
+							data: currentTheorySet,
 						})
-					handleApiKeyIndexChange(newApiKeyIndex)
-
-					if (
-						!outlineResult?.outline ||
-						outlineResult.outline.length === 0
-					) {
-						throw new Error(
-							"Failed to generate a valid theory outline."
-						)
+						await db.put("data", {
+							id: "flashcards",
+							topic,
+							data: currentFlashcardSet,
+						})
+						await db.put("data", {
+							id: "quiz",
+							topic,
+							data: currentQuizSet,
+						})
+					} catch (error) {
+						console.error("🚫 Failed to generate outline:", error)
+						toast({
+							title: "Lỗi tạo dàn bài",
+							description:
+								"Không thể tạo dàn bài cho chủ đề. Vui lòng thử lại.",
+							variant: "destructive",
+						})
+						overallSuccess = false // Mark as failed and stop
+						return // Stop execution
 					}
-
-					currentTheorySet = {
-						id: "idb-theory",
-						topic,
-						outline: outlineResult.outline,
-						chapters: outlineResult.outline.map((title) => ({
-							title,
-							content: null,
-							podcastScript: null,
-							audioDataUri: null,
-						})),
-					}
-					currentFlashcardSet = {
-						id: "idb-flashcards",
-						topic,
-						cards: [],
-					}
-					currentQuizSet = { id: "idb-quiz", topic, questions: [] }
-
-					if (isMountedRef.current) {
-						setTheorySet(currentTheorySet)
-						setFlashcardSet(currentFlashcardSet)
-						setQuizSet(currentQuizSet)
-						setTheoryState({ understoodIndices: [] })
-						setFlashcardState({ understoodIndices: [] })
-						setQuizState({ currentQuestionIndex: 0, answers: {} })
-						setTheoryChapterIndex(0)
-						setFlashcardIndex(0)
-						setCurrentQuestionIndex(0)
-					}
-					await db.put("data", {
-						id: "theory",
-						topic,
-						data: currentTheorySet,
-					})
-					await db.put("data", {
-						id: "flashcards",
-						topic,
-						data: currentFlashcardSet,
-					})
-					await db.put("data", {
-						id: "quiz",
-						topic,
-						data: currentQuizSet,
-					})
 				}
 
 				// Step 2: Sequential Generation Loop
@@ -585,39 +597,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 					// A. Generate Theory Content if it doesn't exist
 					if (!chapter.content) {
-						const { result: chapterResult, newApiKeyIndex } =
-							await generateTheoryChapter({
-								apiKeys,
-								apiKeyIndex,
-								topic,
-								chapterTitle: chapter.title,
-								language,
-								model,
-							})
-						handleApiKeyIndexChange(newApiKeyIndex)
+						try {
+							const { result: chapterResult, newApiKeyIndex } =
+								await generateTheoryChapter({
+									apiKeys,
+									apiKeyIndex,
+									topic,
+									chapterTitle: chapter.title,
+									language,
+									model,
+								})
+							handleApiKeyIndexChange(newApiKeyIndex)
 
-						if (chapterResult?.content) {
-							currentTheorySet.chapters[i].content =
-								chapterResult.content
-							if (isMountedRef.current)
-								setTheorySet({ ...currentTheorySet })
-							await db.put("data", {
-								id: "theory",
-								topic,
-								data: currentTheorySet,
-							})
-						} else {
-							throw new Error(
-								`Failed to generate content for chapter: ${chapter.title}`
+							if (chapterResult?.content) {
+								currentTheorySet.chapters[i].content =
+									chapterResult.content
+								if (isMountedRef.current)
+									setTheorySet({ ...currentTheorySet })
+								await db.put("data", {
+									id: "theory",
+									topic,
+									data: currentTheorySet,
+								})
+							} else {
+								throw new Error("No content returned")
+							}
+						} catch (error) {
+							overallSuccess = false
+							console.error(
+								`🚫 Failed to generate theory for chapter "${chapter.title}":`,
+								error
 							)
+							toast({
+								title: "Lỗi tạo nội dung",
+								description: `Không thể tạo lý thuyết cho chương: "${chapter.title}".`,
+								variant: "destructive",
+							})
+							continue // Skip to next chapter
 						}
 					}
 
-					const chapterContent = currentTheorySet.chapters[i].content!
+					const chapterContent = currentTheorySet.chapters[i].content
+					if (!chapterContent) continue // Should not happen if the above logic is correct, but a safe guard
 
 					// B. Generate Flashcards for the chapter
-					const { result: newCards, newApiKeyIndex: newKeyIndexFC } =
-						await generateFlashcards({
+					try {
+						const {
+							result: newCards,
+							newApiKeyIndex: newKeyIndexFC,
+						} = await generateFlashcards({
 							apiKeys,
 							apiKeyIndex,
 							topic,
@@ -627,61 +655,101 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							existingCards: currentFlashcardSet.cards,
 							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
 						})
-					handleApiKeyIndexChange(newKeyIndexFC)
+						handleApiKeyIndexChange(newKeyIndexFC)
 
-					if (Array.isArray(newCards) && newCards.length > 0) {
-						const cardsWithSource = newCards.map(card => ({...card, source: chapter.title}));
-						currentFlashcardSet.cards.push(...cardsWithSource)
-						if (isMountedRef.current)
-							setFlashcardSet({ ...currentFlashcardSet })
-						await db.put("data", {
-							id: "flashcards",
-							topic,
-							data: currentFlashcardSet,
+						if (Array.isArray(newCards) && newCards.length > 0) {
+							const cardsWithSource = newCards.map((card) => ({
+								...card,
+								source: chapter.title,
+							}))
+							currentFlashcardSet.cards.push(...cardsWithSource)
+							if (isMountedRef.current)
+								setFlashcardSet({ ...currentFlashcardSet })
+							await db.put("data", {
+								id: "flashcards",
+								topic,
+								data: currentFlashcardSet,
+							})
+						}
+					} catch (error) {
+						overallSuccess = false
+						console.error(
+							`🚫 Failed to generate flashcards for chapter "${chapter.title}":`,
+							error
+						)
+						toast({
+							title: "Lỗi tạo Flashcard",
+							description: `Không thể tạo flashcard cho chương: "${chapter.title}".`,
+							variant: "destructive",
 						})
 					}
 
 					// C. Generate Quiz questions for the chapter
-					const {
-						result: newQuestions,
-						newApiKeyIndex: newKeyIndexQuiz,
-					} = await generateQuiz({
-						apiKeys,
-						apiKeyIndex,
-						topic,
-						count: QUIZ_QUESTIONS_PER_CHAPTER,
-						language,
-						model,
-						existingQuestions: currentQuizSet.questions,
-						theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
-					})
-					handleApiKeyIndexChange(newKeyIndexQuiz)
-
-					if (
-						Array.isArray(newQuestions) &&
-						newQuestions.length > 0
-					) {
-						const questionsWithSource = newQuestions.map(q => ({...q, source: chapter.title}));
-						currentQuizSet.questions.push(...questionsWithSource)
-						if (isMountedRef.current)
-							setQuizSet({ ...currentQuizSet })
-						await db.put("data", {
-							id: "quiz",
+					try {
+						const {
+							result: newQuestions,
+							newApiKeyIndex: newKeyIndexQuiz,
+						} = await generateQuiz({
+							apiKeys,
+							apiKeyIndex,
 							topic,
-							data: currentQuizSet,
+							count: QUIZ_QUESTIONS_PER_CHAPTER,
+							language,
+							model,
+							existingQuestions: currentQuizSet.questions,
+							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
+						})
+						handleApiKeyIndexChange(newKeyIndexQuiz)
+
+						if (
+							Array.isArray(newQuestions) &&
+							newQuestions.length > 0
+						) {
+							const questionsWithSource = newQuestions.map(
+								(q) => ({ ...q, source: chapter.title })
+							)
+							currentQuizSet.questions.push(...questionsWithSource)
+							if (isMountedRef.current)
+								setQuizSet({ ...currentQuizSet })
+							await db.put("data", {
+								id: "quiz",
+								topic,
+								data: currentQuizSet,
+							})
+						}
+					} catch (error) {
+						overallSuccess = false
+						console.error(
+							`🚫 Failed to generate quiz for chapter "${chapter.title}":`,
+							error
+						)
+						toast({
+							title: "Lỗi tạo Trắc nghiệm",
+							description: `Không thể tạo trắc nghiệm cho chương: "${chapter.title}".`,
+							variant: "destructive",
 						})
 					}
 
 					if (!isMountedRef.current) break
-					await new Promise((resolve) => setTimeout(resolve, 500)) // Small delay
+					await new Promise((resolve) => setTimeout(resolve, 200)) // Small delay
 				}
 
-				toast({
-					title: "Hoàn tất!",
-					description:
-						"Tất cả nội dung cho chủ đề đã được tạo thành công.",
-				})
+				if (overallSuccess) {
+					toast({
+						title: "Hoàn tất!",
+						description:
+							"Tất cả nội dung cho chủ đề đã được tạo thành công.",
+					})
+				} else {
+					toast({
+						title: "Hoàn tất với một vài lỗi",
+						description:
+							"Quá trình tạo đã xong, nhưng một vài phần đã gặp lỗi. Hãy kiểm tra lại.",
+						variant: "default",
+					})
+				}
 			} catch (error: any) {
+				// This outer catch handles very early errors, like outline generation failure
 				console.error(`🚫 Generation process stopped or failed:`, error)
 				if (error instanceof AIError) {
 					toast({
@@ -1124,3 +1192,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
+
+    
