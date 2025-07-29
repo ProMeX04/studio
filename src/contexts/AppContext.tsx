@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, {
@@ -11,13 +10,7 @@ import React, {
 	ReactNode,
 } from "react"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
-import {
-	getDb,
-	LabeledData,
-	AppData,
-	DataKey,
-	closeDb,
-} from "@/lib/idb"
+import { getDb, LabeledData, AppData, DataKey, closeDb } from "@/lib/idb"
 import { AIError } from "@/lib/ai-service"
 import { generateFlashcards } from "@/ai/flows/generate-flashcards"
 import { generateQuiz } from "@/ai/flows/generate-quiz"
@@ -25,25 +18,17 @@ import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
 import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
 import { generateAudio } from "@/ai/flows/generate-audio"
-import type {
-	CardSet,
-	QuizSet,
-	TheorySet,
-} from "@/ai/schemas"
-import type { 
-	QuizState,
-	FlashcardState,
-	TheoryState,
-} from "@/app/types"
+import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
+import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 
 export interface ComponentVisibility {
-	home: boolean;
-	clock: boolean;
-	greeting: boolean;
-	search: boolean;
-	quickLinks: boolean;
-	learn: boolean;
-	advancedVoiceChat: boolean;
+	home: boolean
+	clock: boolean
+	greeting: boolean
+	search: boolean
+	quickLinks: boolean
+	learn: boolean
+	advancedVoiceChat: boolean
 }
 
 const FLASHCARDS_PER_CHAPTER = 5
@@ -112,9 +97,9 @@ interface AppContextType {
 		language: string,
 		model: string
 	) => void
-	onSettingsSave: (settings: { topic: string; language: string; }) => void;
-	handleClearLearningData: () => Promise<void>;
-	onGenerate: (forceNew: boolean) => void;
+	onSettingsSave: (settings: { topic: string; language: string }) => void
+	handleClearLearningData: () => Promise<void>
+	onGenerate: (forceNew: boolean) => void
 	handleResetOnboarding: () => void
 }
 
@@ -147,11 +132,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
 
 	// Learning State
-	const [view, setView] =
-		useState<"flashcards" | "quiz" | "theory">("theory")
+	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-1.5-flash-latest")
+	const [model, setModel] = useState("gemin-2.5-flash-lite")
 	const [apiKeys, setApiKeys] = useState<string[]>([])
 	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 
@@ -220,8 +204,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const store = tx.objectStore("data")
 		await Promise.all(keysToDelete.map((key) => store.delete(key)))
 		await tx.done
-		
-		localStorage.removeItem("newtab-ai-layout-v2");
+
+		localStorage.removeItem("newtab-ai-layout-v2")
 
 		// Reset state in memory
 		setFlashcardSet(null)
@@ -238,7 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setShowTheorySummary(false)
 		setTopic("Lịch sử La Mã")
 		setLanguage("Vietnamese")
-		setModel("gemini-1.5-flash-latest")
+		setModel("gemin-2.5-flash-lite")
 		setView("theory")
 		setVisibility({
 			home: true,
@@ -260,7 +244,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			description: "Toàn bộ dữ liệu ứng dụng đã được xóa.",
 		})
 	}, [toast])
-
 
 	const handleClearLearningData = useCallback(async () => {
 		const db = await getDb()
@@ -298,8 +281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			title: "Đã xóa dữ liệu học tập",
 			description: "Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
 		})
-	},[toast]
-)
+	}, [toast])
 
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb()
@@ -350,21 +332,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || []
 		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0
 		const savedView =
-			(savedViewRes?.data as "flashcards" | "quiz" | "theory") ||
-			"theory"
+			(savedViewRes?.data as "flashcards" | "quiz" | "theory") || "theory"
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
-			(savedModelRes?.data as string) || "gemini-1.5-flash-latest"
+			(savedModelRes?.data as string) || "gemin-2.5-flash-lite"
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
-		const onboardingCompleted = (onboardingStatusRes?.data as boolean) || false
+		const onboardingCompleted =
+			(onboardingStatusRes?.data as boolean) || false
 
 		setHasCompletedOnboarding(onboardingCompleted)
 
 		if (savedApiKeys) setApiKeys(savedApiKeys)
-		setApiKeyIndex(savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0)
+		setApiKeyIndex(
+			savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0
+		)
 		if (savedBg) setBackgroundImage(savedBg)
 		setUploadedBackgrounds(savedUploadedBgs)
 
@@ -372,11 +356,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setTopic(savedTopic)
 		setLanguage(savedLanguage)
 		setModel(savedModel)
-		
-		if (savedVisibility) {
-			setVisibility(savedVisibility);
-		}
 
+		if (savedVisibility) {
+			setVisibility(savedVisibility)
+		}
 
 		const flashcardData = flashcardDataRes as LabeledData<CardSet>
 		const quizData = quizDataRes as LabeledData<QuizSet>
@@ -394,7 +377,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			quizData && quizData.topic === savedTopic ? quizData.data : null
 
 		let currentTheory =
-			theoryData && theoryData.topic === savedTopic ? theoryData.data : null
+			theoryData && theoryData.topic === savedTopic
+				? theoryData.data
+				: null
 
 		setFlashcardSet(currentFlashcards)
 		setQuizSet(currentQuiz)
@@ -411,7 +396,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		let initialFlashcardIndex = 0
 		if (currentFlashcards && currentFlashcards.cards.length > 0) {
 			const firstUnseenIndex = currentFlashcards.cards.findIndex(
-				(_, index) => !currentFlashcardState.understoodIndices.includes(index)
+				(_, index) =>
+					!currentFlashcardState.understoodIndices.includes(index)
 			)
 			if (firstUnseenIndex !== -1) {
 				initialFlashcardIndex = firstUnseenIndex
@@ -447,7 +433,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		let initialTheoryIndex = 0
 		if (currentTheory && currentTheory.chapters.length > 0) {
 			const firstUnseenIndex = currentTheory.chapters.findIndex(
-				(_, index) => !currentTheoryState.understoodIndices.includes(index)
+				(_, index) =>
+					!currentTheoryState.understoodIndices.includes(index)
 			)
 			if (firstUnseenIndex !== -1) {
 				initialTheoryIndex = firstUnseenIndex
@@ -457,19 +444,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	}, [])
 
 	// --- AI Generation Callbacks ---
-	const handleApiKeyIndexChange = useCallback(async (index: number) => {
-		if (apiKeyIndex === index) return
-		setApiKeyIndex(index)
-		const db = await getDb()
-		await db.put("data", { id: "apiKeyIndex", data: index })
-	}, [apiKeyIndex])
+	const handleApiKeyIndexChange = useCallback(
+		async (index: number) => {
+			if (apiKeyIndex === index) return
+			setApiKeyIndex(index)
+			const db = await getDb()
+			await db.put("data", { id: "apiKeyIndex", data: index })
+		},
+		[apiKeyIndex]
+	)
 
 	const handleGenerate = useCallback(
 		async (forceNew: boolean = false) => {
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
-					description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+					description:
+						"Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
 					variant: "destructive",
 				})
 				return
@@ -499,8 +490,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 			try {
 				let currentTheorySet = theorySet
-				let currentFlashcardSet = flashcardSet ?? { id: "idb-flashcards", topic, cards: [] }
-				let currentQuizSet = quizSet ?? { id: "idb-quiz", topic, questions: [] }
+				let currentFlashcardSet = flashcardSet ?? {
+					id: "idb-flashcards",
+					topic,
+					cards: [],
+				}
+				let currentQuizSet = quizSet ?? {
+					id: "idb-quiz",
+					topic,
+					questions: [],
+				}
 
 				// Step 1: Handle new topic or forced reset
 				if (forceNew || !currentTheorySet) {
@@ -517,8 +516,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 						})
 					handleApiKeyIndexChange(newApiKeyIndex)
 
-					if (!outlineResult?.outline || outlineResult.outline.length === 0) {
-						throw new Error("Failed to generate a valid theory outline.")
+					if (
+						!outlineResult?.outline ||
+						outlineResult.outline.length === 0
+					) {
+						throw new Error(
+							"Failed to generate a valid theory outline."
+						)
 					}
 
 					currentTheorySet = {
@@ -532,7 +536,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							audioDataUri: null,
 						})),
 					}
-					currentFlashcardSet = { id: "idb-flashcards", topic, cards: [] }
+					currentFlashcardSet = {
+						id: "idb-flashcards",
+						topic,
+						cards: [],
+					}
 					currentQuizSet = { id: "idb-quiz", topic, questions: [] }
 
 					if (isMountedRef.current) {
@@ -546,9 +554,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 						setFlashcardIndex(0)
 						setCurrentQuestionIndex(0)
 					}
-					await db.put("data", { id: "theory", topic, data: currentTheorySet })
-					await db.put("data", { id: "flashcards", topic, data: currentFlashcardSet })
-					await db.put("data", { id: "quiz", topic, data: currentQuizSet })
+					await db.put("data", {
+						id: "theory",
+						topic,
+						data: currentTheorySet,
+					})
+					await db.put("data", {
+						id: "flashcards",
+						topic,
+						data: currentFlashcardSet,
+					})
+					await db.put("data", {
+						id: "quiz",
+						topic,
+						data: currentQuizSet,
+					})
 				}
 
 				// Step 2: Sequential Generation Loop
@@ -568,14 +588,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 								language,
 								model,
 							})
-						handleApiKeyIndexChange(newApiKeyIndex);
+						handleApiKeyIndexChange(newApiKeyIndex)
 
 						if (chapterResult?.content) {
-							currentTheorySet.chapters[i].content = chapterResult.content
-							if (isMountedRef.current) setTheorySet({ ...currentTheorySet })
-							await db.put("data", { id: "theory", topic, data: currentTheorySet })
+							currentTheorySet.chapters[i].content =
+								chapterResult.content
+							if (isMountedRef.current)
+								setTheorySet({ ...currentTheorySet })
+							await db.put("data", {
+								id: "theory",
+								topic,
+								data: currentTheorySet,
+							})
 						} else {
-							throw new Error( `Failed to generate content for chapter: ${chapter.title}`)
+							throw new Error(
+								`Failed to generate content for chapter: ${chapter.title}`
+							)
 						}
 					}
 
@@ -593,33 +621,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							existingCards: currentFlashcardSet.cards,
 							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
 						})
-					handleApiKeyIndexChange(newKeyIndexFC);
+					handleApiKeyIndexChange(newKeyIndexFC)
 
 					if (Array.isArray(newCards) && newCards.length > 0) {
 						currentFlashcardSet.cards.push(...newCards)
-						if (isMountedRef.current) setFlashcardSet({ ...currentFlashcardSet })
-						await db.put("data", { id: "flashcards", topic, data: currentFlashcardSet })
+						if (isMountedRef.current)
+							setFlashcardSet({ ...currentFlashcardSet })
+						await db.put("data", {
+							id: "flashcards",
+							topic,
+							data: currentFlashcardSet,
+						})
 					}
 
 					// C. Generate Quiz questions for the chapter
-					const { result: newQuestions, newApiKeyIndex: newKeyIndexQuiz } = await generateQuiz(
-						{
-							apiKeys,
-							apiKeyIndex,
-							topic,
-							count: QUIZ_QUESTIONS_PER_CHAPTER,
-							language,
-							model,
-							existingQuestions: currentQuizSet.questions,
-							theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
-						}
-					)
-					handleApiKeyIndexChange(newKeyIndexQuiz);
+					const {
+						result: newQuestions,
+						newApiKeyIndex: newKeyIndexQuiz,
+					} = await generateQuiz({
+						apiKeys,
+						apiKeyIndex,
+						topic,
+						count: QUIZ_QUESTIONS_PER_CHAPTER,
+						language,
+						model,
+						existingQuestions: currentQuizSet.questions,
+						theoryContent: `Chapter: ${chapter.title}\n\n${chapterContent}`,
+					})
+					handleApiKeyIndexChange(newKeyIndexQuiz)
 
-					if (Array.isArray(newQuestions) && newQuestions.length > 0) {
+					if (
+						Array.isArray(newQuestions) &&
+						newQuestions.length > 0
+					) {
 						currentQuizSet.questions.push(...newQuestions)
-						if (isMountedRef.current) setQuizSet({ ...currentQuizSet })
-						await db.put("data", { id: "quiz", topic, data: currentQuizSet })
+						if (isMountedRef.current)
+							setQuizSet({ ...currentQuizSet })
+						await db.put("data", {
+							id: "quiz",
+							topic,
+							data: currentQuizSet,
+						})
 					}
 
 					if (!isMountedRef.current) break
@@ -628,7 +670,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 				toast({
 					title: "Hoàn tất!",
-					description: "Tất cả nội dung cho chủ đề đã được tạo thành công.",
+					description:
+						"Tất cả nội dung cho chủ đề đã được tạo thành công.",
 				})
 			} catch (error: any) {
 				console.error(`🚫 Generation process stopped or failed:`, error)
@@ -663,7 +706,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			handleClearLearningData,
 			theorySet,
 			flashcardSet,
-			quizSet
+			quizSet,
 		]
 	)
 
@@ -702,22 +745,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 						title: "Đang tạo kịch bản...",
 						description: `Bắt đầu tạo kịch bản cho chương "${chapter.title}".`,
 					})
-					const { result, newApiKeyIndex } = await generatePodcastScript({
-						apiKeys,
-						apiKeyIndex,
-						topic,
-						chapterTitle: chapter.title,
-						theoryContent: chapter.content!,
-						language,
-						model,
-					})
+					const { result, newApiKeyIndex } =
+						await generatePodcastScript({
+							apiKeys,
+							apiKeyIndex,
+							topic,
+							chapterTitle: chapter.title,
+							theoryContent: chapter.content!,
+							language,
+							model,
+						})
 					handleApiKeyIndexChange(newApiKeyIndex)
 					if (!result?.script)
 						throw new Error("Không thể tạo kịch bản podcast.")
 
-					tempTheorySet.chapters[chapterIndex].podcastScript = result.script
+					tempTheorySet.chapters[chapterIndex].podcastScript =
+						result.script
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
-					await db.put("data", { id: "theory", topic, data: tempTheorySet })
+					await db.put("data", {
+						id: "theory",
+						topic,
+						data: tempTheorySet,
+					})
 				}
 
 				// Generate Audio if it doesn't exist
@@ -732,17 +781,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					const { result, newApiKeyIndex } = await generateAudio({
 						apiKeys,
 						apiKeyIndex,
-						script: tempTheorySet.chapters[chapterIndex].podcastScript!,
+						script: tempTheorySet.chapters[chapterIndex]
+							.podcastScript!,
 						model: ttsModel,
 					})
-					handleApiKeyIndexChange(newApiKeyIndex);
+					handleApiKeyIndexChange(newApiKeyIndex)
 					if (!result?.audioDataUri)
 						throw new Error("Không thể tạo file âm thanh podcast.")
 
 					tempTheorySet.chapters[chapterIndex].audioDataUri =
 						result.audioDataUri
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
-					await db.put("data", { id: "theory", topic: topic, data: tempTheorySet })
+					await db.put("data", {
+						id: "theory",
+						topic: topic,
+						data: tempTheorySet,
+					})
 				}
 
 				toast({
@@ -750,7 +804,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					description: `Podcast cho chương "${chapter.title}" đã được tạo.`,
 				})
 			} catch (error: any) {
-				console.error(`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`, error)
+				console.error(
+					`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`,
+					error
+				)
 				if (error instanceof AIError) {
 					toast({
 						title: "Lỗi tạo podcast",
@@ -787,7 +844,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const onApiKeysChange = useCallback(
 		async (newApiKeys: string[]) => {
 			setApiKeys(newApiKeys)
-			const currentKeyIndex = apiKeyIndex >= newApiKeys.length ? 0 : apiKeyIndex
+			const currentKeyIndex =
+				apiKeyIndex >= newApiKeys.length ? 0 : apiKeyIndex
 			setApiKeyIndex(currentKeyIndex)
 			const db = await getDb()
 			await db.put("data", { id: "apiKeys", data: newApiKeys })
@@ -814,7 +872,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	const onUploadedBackgroundsChange = useCallback(
 		async (newUploadedBgs: string[]) => {
-			if (uploadedBackgrounds.toString() === newUploadedBgs.toString()) return
+			if (uploadedBackgrounds.toString() === newUploadedBgs.toString())
+				return
 
 			setUploadedBackgrounds(newUploadedBgs)
 			const db = await getDb()
@@ -863,7 +922,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				setQuizState(newState)
 				// Debounce or directly write to DB
 				const db = getDb()
-				db.then((d) => d.put("data", { id: "quizState", data: newState }))
+				db.then((d) =>
+					d.put("data", { id: "quizState", data: newState })
+				)
 			}
 		},
 		[quizState]
@@ -899,11 +960,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		})
 	}, [toast])
 
-	const onFlashcardStateChange = useCallback(async (newState: FlashcardState) => {
-		setFlashcardState(newState)
-		const db = await getDb()
-		await db.put("data", { id: "flashcardState", data: newState })
-	}, [])
+	const onFlashcardStateChange = useCallback(
+		async (newState: FlashcardState) => {
+			setFlashcardState(newState)
+			const db = await getDb()
+			await db.put("data", { id: "flashcardState", data: newState })
+		},
+		[]
+	)
 
 	const onFlashcardReset = useCallback(async () => {
 		const newFlashcardState: FlashcardState = {
@@ -950,7 +1014,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	// --- Onboarding Callbacks ---
 
 	const onOnboardingComplete = useCallback(
-		async (finalTopic: string, finalLanguage: string, finalModel: string) => {
+		async (
+			finalTopic: string,
+			finalLanguage: string,
+			finalModel: string
+		) => {
 			setTopic(finalTopic)
 			setLanguage(finalLanguage)
 			setModel(finalModel)
@@ -965,7 +1033,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	)
 
 	const onSettingsSave = useCallback(
-		async (settings: { topic: string; language: string; }) => {
+		async (settings: { topic: string; language: string }) => {
 			setTopic(settings.topic)
 			setLanguage(settings.language)
 			const db = await getDb()
@@ -976,21 +1044,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	)
 
 	const handleResetOnboarding = useCallback(async () => {
-		await handleClearLearningData();
+		await handleClearLearningData()
 		const db = await getDb()
-		await db.put("data", { id: "hasCompletedOnboarding", data: false });
-		setHasCompletedOnboarding(false);
-		window.location.reload();
-	}, [handleClearLearningData]);
-	
+		await db.put("data", { id: "hasCompletedOnboarding", data: false })
+		setHasCompletedOnboarding(false)
+		window.location.reload()
+	}, [handleClearLearningData])
 
 	const onGenerate = useCallback(
 		(forceNew: boolean) => {
-			handleGenerate(forceNew);
+			handleGenerate(forceNew)
 		},
 		[handleGenerate]
-	);
-
+	)
 
 	const value: AppContextType = {
 		isMounted,

@@ -1,5 +1,3 @@
-
-
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -66,11 +64,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-
-type SettingsScope =
-	| "all"
-	| "learn-onboarding"
-	| "learn-onboarding-generate"
+type SettingsScope = "all" | "learn-onboarding" | "learn-onboarding-generate"
 
 interface CommonSettingsProps {
 	scope: SettingsScope
@@ -90,16 +84,19 @@ interface AllSettingsProps {
 	isLoading: boolean
 	apiKeys: string[]
 	theorySet: TheorySet | null
-	flashcardSet: CardSet | null;
-	quizSet: QuizSet | null;
-	onSettingsChange: (settings: { topic: string; language: string; model: string; }) => void;
-	topic: string;
-	language: string;
-	model: string;
-	onModelChange: (model: string) => void;
-	onClearLearningData: () => void;
+	flashcardSet: CardSet | null
+	quizSet: QuizSet | null
+	onSettingsChange: (settings: {
+		topic: string
+		language: string
+		model: string
+	}) => void
+	topic: string
+	language: string
+	model: string
+	onModelChange: (model: string) => void
+	onClearLearningData: () => void
 }
-
 
 // A more limited version of LearnSettingsProps for onboarding
 interface LearnOnboardingSettingsProps {
@@ -108,7 +105,7 @@ interface LearnOnboardingSettingsProps {
 	onSettingsChanged: () => void // For onboarding
 	apiKeys: string[]
 	onGenerate?: (forceNew: boolean) => void
-	isLoading: boolean;
+	isLoading: boolean
 }
 
 type SettingsProps = CommonSettingsProps &
@@ -126,10 +123,13 @@ export const languages = [
 
 export const models = [
 	{
-		value: "gemini-1.5-flash-latest",
-		label: "Gemini 1.5 Flash (Nhanh, Hiệu quả)",
+		value: "gemin-2.5-flash-lite",
+		label: "Gemini 2.5 Flash (Nhanh, Hiệu quả)",
 	},
-	{ value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro (Mạnh mẽ, Chính xác)" },
+	{
+		value: "gemini-2.5-pro",
+		label: "Gemini 2.5 Pro (Mạnh mẽ, Chính xác)",
+	},
 ]
 
 const MAX_UPLOADED_IMAGES = 6
@@ -143,16 +143,14 @@ export function Settings(props: SettingsProps) {
 	// Local state for API keys (now managed in learn settings)
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(
 		scope.startsWith("learn") || scope === "all"
-			? (props as AllSettingsProps | LearnOnboardingSettingsProps)
-					.apiKeys
+			? (props as AllSettingsProps | LearnOnboardingSettingsProps).apiKeys
 			: []
 	)
 	const [newApiKey, setNewApiKey] = useState("")
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
-	const allProps =
-		scope === "all" ? (props as AllSettingsProps) : undefined
+	const allProps = scope === "all" ? (props as AllSettingsProps) : undefined
 
 	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
@@ -240,7 +238,9 @@ export function Settings(props: SettingsProps) {
 
 	const renderApiKeyManagement = () => {
 		if (!scope.startsWith("learn") && scope !== "all") return null
-		const learnProps = props as LearnOnboardingSettingsProps | AllSettingsProps
+		const learnProps = props as
+			| LearnOnboardingSettingsProps
+			| AllSettingsProps
 
 		return (
 			<div className="space-y-2">
@@ -309,25 +309,29 @@ export function Settings(props: SettingsProps) {
 	const renderContentGenerationControls = () => {
 		if (scope !== "all" && scope !== "learn-onboarding-generate")
 			return null
-		
-		const currentProps = props as AllSettingsProps | LearnOnboardingSettingsProps;
-		const { isLoading } = currentProps;
-		
-		let theoryCount = 0;
-		let theoryMax = 0;
-		let flashcardCount = 0;
-		let quizCount = 0;
 
-		if (scope === 'all') {
-			const allProps = props as AllSettingsProps;
-			theoryCount = allProps.theorySet?.chapters.filter(c => c.content).length ?? 0;
-			theoryMax = allProps.theorySet?.outline.length ?? 0;
-			flashcardCount = allProps.flashcardSet?.cards.length ?? 0;
-			quizCount = allProps.quizSet?.questions.length ?? 0;
+		const currentProps = props as
+			| AllSettingsProps
+			| LearnOnboardingSettingsProps
+		const { isLoading } = currentProps
+
+		let theoryCount = 0
+		let theoryMax = 0
+		let flashcardCount = 0
+		let quizCount = 0
+
+		if (scope === "all") {
+			const allProps = props as AllSettingsProps
+			theoryCount =
+				allProps.theorySet?.chapters.filter((c) => c.content).length ??
+				0
+			theoryMax = allProps.theorySet?.outline.length ?? 0
+			flashcardCount = allProps.flashcardSet?.cards.length ?? 0
+			quizCount = allProps.quizSet?.questions.length ?? 0
 		}
-	
-		const isCompleted = theoryMax > 0 && theoryCount === theoryMax;
-		
+
+		const isCompleted = theoryMax > 0 && theoryCount === theoryMax
+
 		return (
 			<div className="space-y-4">
 				{scope === "all" && (
@@ -338,27 +342,31 @@ export function Settings(props: SettingsProps) {
 
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
 					<div className="flex justify-between items-center">
-						<Label htmlFor="theory-progress" className="text-sm">Lý thuyết</Label>
+						<Label htmlFor="theory-progress" className="text-sm">
+							Lý thuyết
+						</Label>
 						<span className="text-sm text-muted-foreground">
 							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"}
 						</span>
 					</div>
 					<Progress
 						value={
-							theoryMax > 0
-								? (theoryCount / theoryMax) * 100
-								: 0
+							theoryMax > 0 ? (theoryCount / theoryMax) * 100 : 0
 						}
 						id="theory-progress"
 					/>
-					
+
 					<div className="flex justify-between items-center text-sm">
 						<Label>Flashcard</Label>
-						<span className="text-muted-foreground">{flashcardCount} thẻ</span>
+						<span className="text-muted-foreground">
+							{flashcardCount} thẻ
+						</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Trắc nghiệm</Label>
-						<span className="text-muted-foreground">{quizCount} câu</span>
+						<span className="text-muted-foreground">
+							{quizCount} câu
+						</span>
 					</div>
 
 					<Button
@@ -371,7 +379,11 @@ export function Settings(props: SettingsProps) {
 						) : (
 							<Plus className="h-4 w-4 mr-2" />
 						)}
-						{isCompleted ? "Đã hoàn tất" : (isLoading ? "Đang tạo..." : "Tiếp tục tạo nội dung")}
+						{isCompleted
+							? "Đã hoàn tất"
+							: isLoading
+							? "Đang tạo..."
+							: "Tiếp tục tạo nội dung"}
 					</Button>
 				</div>
 			</div>
@@ -435,9 +447,7 @@ export function Settings(props: SettingsProps) {
 							<div
 								key={`uploaded-${index}`}
 								className="relative cursor-pointer group"
-								onClick={() =>
-									allProps.onBackgroundChange(bg)
-								}
+								onClick={() => allProps.onBackgroundChange(bg)}
 							>
 								<Image
 									src={bg}
@@ -465,8 +475,11 @@ export function Settings(props: SettingsProps) {
 					</Label>
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
-							<Label htmlFor="advanced-voice-chat-visible" className="flex items-center gap-2">
-								<Mic className="w-4 h-4"/>
+							<Label
+								htmlFor="advanced-voice-chat-visible"
+								className="flex items-center gap-2"
+							>
+								<Mic className="w-4 h-4" />
 								<span>Chat thoại</span>
 							</Label>
 							<Switch
@@ -552,11 +565,7 @@ export function Settings(props: SettingsProps) {
 	return (
 		<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
 			<SheetTrigger asChild>
-				<Button
-					variant="outline"
-					size="icon"
-					className="h-9 w-9"
-				>
+				<Button variant="outline" size="icon" className="h-9 w-9">
 					<Menu />
 					<span className="sr-only">Cài đặt</span>
 				</Button>
@@ -569,29 +578,40 @@ export function Settings(props: SettingsProps) {
 					<SheetTitle>
 						<div className="flex items-center gap-2">
 							<SettingsIcon />
-							<span>
-								Cài đặt
-							</span>
+							<span>Cài đặt</span>
 						</div>
 					</SheetTitle>
 				</SheetHeader>
 
-				<Tabs defaultValue="learn" className="flex-grow flex flex-col mt-4">
-                    <TabsList className="w-full">
-                        <TabsTrigger value="learn" className="flex-1">Học tập</TabsTrigger>
-                        <TabsTrigger value="global" className="flex-1">Giao diện</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="learn" className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4">
-                        <div className="grid gap-6">
-                            {renderLearnSettings()}
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="global" className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4">
-                        <div className="grid gap-6">
-                            {renderGlobalSettings()}
-                        </div>
-                    </TabsContent>
-                </Tabs>
+				<Tabs
+					defaultValue="learn"
+					className="flex-grow flex flex-col mt-4"
+				>
+					<TabsList className="w-full">
+						<TabsTrigger value="learn" className="flex-1">
+							Học tập
+						</TabsTrigger>
+						<TabsTrigger value="global" className="flex-1">
+							Giao diện
+						</TabsTrigger>
+					</TabsList>
+					<TabsContent
+						value="learn"
+						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
+					>
+						<div className="grid gap-6">
+							{renderLearnSettings()}
+						</div>
+					</TabsContent>
+					<TabsContent
+						value="global"
+						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
+					>
+						<div className="grid gap-6">
+							{renderGlobalSettings()}
+						</div>
+					</TabsContent>
+				</Tabs>
 
 				<SheetFooter className="mt-auto pt-4 border-t">
 					<AlertDialog>
@@ -610,15 +630,24 @@ export function Settings(props: SettingsProps) {
 									</div>
 								</AlertDialogTitle>
 								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả dữ liệu học tập hiện tại
-									(lý thuyết, flashcard, trắc nghiệm) và bắt đầu
-									lại quá trình tạo chủ đề mới. Cài đặt chung của bạn sẽ được giữ lại.
-									Bạn có chắc chắn muốn tiếp tục không?
+									Hành động này sẽ xóa vĩnh viễn tất cả dữ
+									liệu học tập hiện tại (lý thuyết, flashcard,
+									trắc nghiệm) và bắt đầu lại quá trình tạo
+									chủ đề mới. Cài đặt chung của bạn sẽ được
+									giữ lại. Bạn có chắc chắn muốn tiếp tục
+									không?
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction onClick={handleResetOnboarding} className={cn(buttonVariants({variant: "destructive"}))}>
+								<AlertDialogAction
+									onClick={handleResetOnboarding}
+									className={cn(
+										buttonVariants({
+											variant: "destructive",
+										})
+									)}
+								>
 									Vâng, tạo mới
 								</AlertDialogAction>
 							</AlertDialogFooter>

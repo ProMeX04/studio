@@ -293,7 +293,7 @@ export function ApiKeyGuide() {
 						<CardDescription className="text-lg mt-2 space-y-1">
 							<p>Chọn model AI bạn muốn sử dụng.</p>
 							<p className="text-sm text-muted-foreground">
-								Gemini 1.5 Flash nhanh và hiệu quả, trong khi 1.5 Pro mạnh mẽ
+								Gemini 2.5 Flash lite nhanh và hiệu quả, trong khi 2.5 Pro mạnh mẽ
 								hơn.
 							</p>
 						</CardDescription>
