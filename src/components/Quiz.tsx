@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, {
@@ -392,6 +393,11 @@ export function Quiz({
 									<MarkdownRenderer>
 										{currentQuestion.explanation}
 									</MarkdownRenderer>
+									{currentQuestion.source && (
+										<p className="text-sm italic mt-2 !mb-0 text-muted-foreground">
+											Nguồn: {currentQuestion.source}
+										</p>
+									)}
 								</AlertDescription>
 							</Alert>
 						)}

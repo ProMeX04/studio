@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, {
@@ -125,10 +126,15 @@ function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: b
 					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
 				</div>
 				{/* Back of the card */}
-				<div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm overflow-y-auto">
-					<div className="text-2xl prose dark:prose-invert max-w-none prose-p:my-0">
+				<div className="flashcard-back absolute w-full h-full backface-hidden rotate-y-180 flex flex-col items-center justify-center p-6 text-center rounded-lg border shadow-lg bg-background/80 backdrop-blur-sm overflow-y-auto">
+					<div className="text-2xl prose dark:prose-invert max-w-none prose-p:my-0 flex-grow">
 						<MarkdownRenderer>{card.back}</MarkdownRenderer>
 					</div>
+					{card.source && (
+						<div className="mt-4 pt-4 border-t border-border/50 w-full text-center">
+							<p className="text-sm text-muted-foreground italic">Nguồn: {card.source}</p>
+						</div>
+					)}
 					{isUnderstood && <CheckCircle className="absolute top-4 right-4 text-success w-6 h-6" />}
 				</div>
 			</div>

@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, {
@@ -140,7 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-2.5-flash-lite")
+	const [model, setModel] = useState("gemini-1.5-flash-lite")
 	const [apiKeys, setApiKeys] = useState<string[]>([])
 	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 
@@ -227,7 +228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setShowTheorySummary(false)
 		setTopic("Lịch sử La Mã")
 		setLanguage("Vietnamese")
-		setModel("gemini-2.5-flash-lite")
+		setModel("gemini-1.5-flash-lite")
 		setView("theory")
 		setVisibility({
 			home: true,
@@ -341,7 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
-			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
+			(savedModelRes?.data as string) || "gemini-1.5-flash-lite"
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
@@ -629,7 +630,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					handleApiKeyIndexChange(newKeyIndexFC)
 
 					if (Array.isArray(newCards) && newCards.length > 0) {
-						currentFlashcardSet.cards.push(...newCards)
+						const cardsWithSource = newCards.map(card => ({...card, source: chapter.title}));
+						currentFlashcardSet.cards.push(...cardsWithSource)
 						if (isMountedRef.current)
 							setFlashcardSet({ ...currentFlashcardSet })
 						await db.put("data", {
@@ -659,7 +661,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 						Array.isArray(newQuestions) &&
 						newQuestions.length > 0
 					) {
-						currentQuizSet.questions.push(...newQuestions)
+						const questionsWithSource = newQuestions.map(q => ({...q, source: chapter.title}));
+						currentQuizSet.questions.push(...questionsWithSource)
 						if (isMountedRef.current)
 							setQuizSet({ ...currentQuizSet })
 						await db.put("data", {
@@ -737,7 +740,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setIsGeneratingPodcast(true)
 			isGeneratingRef.current = true // Block other generations
 
-			const ttsModel = "gemini-2.5-flash-preview-tts"
+			const ttsModel = "gemini-1.5-flash-preview-tts"
 			const db = await getDb()
 			const chapter = theorySet.chapters[chapterIndex]
 

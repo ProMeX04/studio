@@ -91,6 +91,7 @@ export const ExplainQuizOptionJsonSchema: Schema = {
 export const CardSchema = z.object({
     front: z.string().describe('The front side of the card (term/question/title).'),
     back: z.string().describe('The back side of the card (definition/answer/content).'),
+    source: z.string().optional().describe('The source chapter for this card.'),
 });
 export type CardData = z.infer<typeof CardSchema>;
 
@@ -125,6 +126,7 @@ export const QuizQuestionSchema = z.object({
     options: z.array(z.string()).min(2).max(4).describe('A list of 2 to 4 possible answers.'),
     answer: z.string().describe('The correct answer.'),
     explanation: z.string().describe('A brief explanation for the correct answer.'),
+    source: z.string().optional().describe('The source chapter for this question.'),
 });
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 
