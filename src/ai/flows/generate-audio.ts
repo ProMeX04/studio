@@ -6,10 +6,10 @@
  * This flow specifically uses a multi-speaker setup for a conversational feel.
  */
 
-import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { z } from 'zod';
+import { GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { GenerateAudioInputSchema, GenerateAudioOutputSchema, GenerateAudioOutput } from '@/ai/schemas';
-import { AIOperationError } from '@/lib/ai-utils';
+import { performAIOperation } from '@/lib/ai-service';
 import wav from 'wav';
 
 const ClientInputSchema = GenerateAudioInputSchema.extend({
@@ -46,19 +46,10 @@ export async function generateAudio(
 ): Promise<{ result: GenerateAudioOutput; newApiKeyIndex: number }> {
     const { apiKeys, apiKeyIndex, model: modelName, ...promptInput } = input;
 
-    if (!apiKeys || apiKeys.length === 0) {
-        throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
-    }
-
-    let currentKeyIndex = apiKeyIndex;
-    let invalidKeyCount = 0;
-    let quotaErrorCount = 0;
-
-    for (let i = 0; i < apiKeys.length; i++) {
-        const apiKey = apiKeys[currentKeyIndex];
-
-        try {
-            const genAI = new GoogleGenerativeAI(apiKey);
+    return performAIOperation({
+        apiKeys,
+        apiKeyIndex,
+        operation: async (genAI) => {
             const model = genAI.getGenerativeModel({ model: modelName });
 
             const generationConfig: GenerationConfig = {
@@ -91,7 +82,6 @@ export async function generateAudio(
                 ]
             });
             
-            // The SDK for audio returns raw PCM data in response.candidates[0].content.parts[0].inlineData.data
             const audioPart = result.response.candidates?.[0]?.content?.parts?.[0];
             if (!audioPart || !('inlineData' in audioPart) || !audioPart.inlineData.data) {
                 throw new Error("No audio data returned from API.");
@@ -101,39 +91,7 @@ export async function generateAudio(
             const wavBase64 = await toWav(pcmBuffer);
             const audioDataUri = `data:audio/wav;base64,${wavBase64}`;
 
-            const validatedOutput = GenerateAudioOutputSchema.parse({ audioDataUri });
-            
-            console.log(`✅ Generated audio for script.`);
-            return { result: validatedOutput, newApiKeyIndex: currentKeyIndex };
-
-        } catch (error: any) {
-            const errorMessage = error.message || '';
-            const isQuotaError = errorMessage.includes('429');
-            const isBadApiKeyError = errorMessage.includes('400');
-            
-            console.warn(`API Key at index ${currentKeyIndex} failed during audio generation. Reason: ${errorMessage}`);
-            
-            if (isQuotaError) quotaErrorCount++;
-            if (isBadApiKeyError) invalidKeyCount++;
-
-            if ((isQuotaError || isBadApiKeyError) && i < apiKeys.length - 1) {
-                currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-                console.log(`Trying next API Key for audio at index ${currentKeyIndex}.`);
-            } else {
-                console.error('❌ Audio generation error:', error);
-                if (error instanceof z.ZodError) {
-                  throw new AIOperationError('AI đã trả về dữ liệu âm thanh không hợp lệ.', 'AI_INVALID_FORMAT');
-                }
-                if (invalidKeyCount === apiKeys.length) {
-                    throw new AIOperationError('Tất cả API key đều không hợp lệ.', 'ALL_KEYS_FAILED');
-                }
-                if (quotaErrorCount === apiKeys.length) {
-                    throw new AIOperationError('Tất cả API key đều đã hết dung lượng.', 'ALL_KEYS_FAILED');
-                }
-                throw new AIOperationError('Không thể tạo podcast từ AI.', 'AI_GENERATION_FAILED');
-            }
+            return GenerateAudioOutputSchema.parse({ audioDataUri });
         }
-    }
-
-    throw new AIOperationError('Tất cả các API key đều không thành công.', 'ALL_KEYS_FAILED');
+    });
 }

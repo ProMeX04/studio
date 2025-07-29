@@ -39,7 +39,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { QuizSummary } from "./QuizSummary"
-import { AIOperationError } from "@/lib/ai-utils"
+import { AIError } from "@/lib/ai-service"
 import { ScrollArea } from "./ui/scroll-area"
 import { useAppContext } from "@/contexts/AppContext"
 
@@ -203,7 +203,7 @@ export function Quiz({
 	
 			try {
 				if (!apiKeys || apiKeys.length === 0) {
-					throw new AIOperationError('API key is required.', 'API_KEY_REQUIRED');
+					throw new AIError('API key is required.', 'API_KEY_REQUIRED');
 				}
 				
 				const { result, newApiKeyIndex } = await explainQuizOption({
@@ -240,7 +240,7 @@ export function Quiz({
 				}
 			} catch (error: any) {
 				console.error("Failed to get explanation", error);
-				if (error instanceof AIOperationError) {
+				if (error instanceof AIError) {
 					toast({
 						title: "Lỗi lấy giải thích",
 						description: error.message,
