@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -50,36 +51,38 @@ export async function generateAudio(
         apiKeys,
         apiKeyIndex,
         operation: async (genAI) => {
-            const model = genAI.getGenerativeModel({ model: modelName });
-
-            const generationConfig: GenerationConfig = {
-                responseMimeType: "audio/wav",
-                // @ts-ignore - speechConfig and other tts properties are valid for TTS models
-                speechConfig: {
-                    multiSpeakerVoiceConfig: {
-                        speakerVoiceConfigs: [
-                            {
-                                speaker: 'Người dẫn chương trình',
-                                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Algenib' } },
-                            },
-                            {
-                                speaker: 'Chuyên gia',
-                                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Achernar' } },
-                            },
-                        ],
-                    },
+            const model = genAI.getGenerativeModel({ 
+                model: modelName,
+                generationConfig: {
+                    responseMimeType: "audio/wav",
                 },
-            };
-            
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: promptInput.script }] }],
-                generationConfig,
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                 ]
+            });
+
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: promptInput.script }] }],
+                // @ts-ignore - speechConfig and other tts properties are valid for TTS models
+                generationConfig: {
+                    speechConfig: {
+                        multiSpeakerVoiceConfig: {
+                            speakerVoiceConfigs: [
+                                {
+                                    speaker: 'Người dẫn chương trình',
+                                    voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Algenib' } },
+                                },
+                                {
+                                    speaker: 'Chuyên gia',
+                                    voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Achernar' } },
+                                },
+                            ],
+                        },
+                    },
+                }
             });
             
             const audioPart = result.response.candidates?.[0]?.content?.parts?.[0];

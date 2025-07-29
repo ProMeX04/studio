@@ -150,7 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-2.5-flash-lite")
+	const [model, setModel] = useState("gemini-1.5-flash-latest")
 	const [apiKeys, setApiKeys] = useState<string[]>([])
 	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 
@@ -249,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setShowTheorySummary(false)
 		setTopic("Lịch sử La Mã")
 		setLanguage("Vietnamese")
-		setModel("gemini-2.5-flash-lite")
+		setModel("gemini-1.5-flash-latest")
 		setView("theory")
 		setVisibility({
 			home: true,
@@ -368,7 +368,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
-			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
+			(savedModelRes?.data as string) || "gemini-1.5-flash-latest"
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
@@ -528,23 +528,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				let currentQuizSet = quizSet;
 				let localProgress = generationProgress;
 	
-				// Step 1: Handle new topic or forced reset
-				if (forceNew || !currentTheorySet || !localProgress) {
+				if (forceNew || !currentTheorySet || !localProgress || localProgress.currentStage === 'done') {
 					await handleClearLearningData();
 					currentTheorySet = null;
 					currentFlashcardSet = null;
 					currentQuizSet = null;
 					localProgress = null;
 	
-					// Generate Outline
+					toast({ title: "Bắt đầu tạo...", description: "Đang tạo dàn bài cho chủ đề của bạn." });
 					try {
 						const { result: outlineResult, newApiKeyIndex } =
 							await generateTheoryOutline({
-								apiKeys,
-								apiKeyIndex,
-								topic,
-								language,
-								model,
+								apiKeys, apiKeyIndex, topic, language, model,
 							});
 						handleApiKeyIndexChange(newApiKeyIndex);
 	
@@ -557,15 +552,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							topic,
 							outline: outlineResult.outline,
 							chapters: outlineResult.outline.map((title) => ({
-								title,
-								content: null,
-								podcastScript: null,
-								audioDataUri: null,
+								title, content: null, podcastScript: null, audioDataUri: null,
 							})),
 						};
 						currentFlashcardSet = { id: "idb-flashcards", topic, cards: [] };
 						currentQuizSet = { id: "idb-quiz", topic, questions: [] };
-						
 						localProgress = { currentChapterIndex: 0, currentStage: 'theory' };
 	
 						if (isMountedRef.current) {
@@ -592,7 +583,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							description: "Không thể tạo dàn bài cho chủ đề. Vui lòng thử lại.",
 							variant: "destructive",
 						});
-						return; // Stop execution
+						isGeneratingRef.current = false;
+						if (isMountedRef.current) setIsLoading(false);
+						return; 
 					}
 				}
 	
@@ -600,54 +593,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					throw new Error("State không hợp lệ để bắt đầu tạo nội dung.");
 				}
 	
-				// Step 2: Sequential Generation Loop with State
 				for (let i = localProgress.currentChapterIndex; i < currentTheorySet.outline.length; i++) {
 					if (!isMountedRef.current) break;
 					
 					const chapter = currentTheorySet.chapters[i];
-					let stage = localProgress.currentStage;
-	
+					let currentStage = localProgress.currentStage;
+					
 					const runWithRetry = async <T>(task: () => Promise<T>, taskName: string) => {
 						for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 							try {
 								return await task();
 							} catch (error) {
 								console.error(`🚫 Lỗi ${taskName} cho chương "${chapter.title}" (lần ${attempt}):`, error);
-								if (attempt === MAX_RETRIES) {
-									toast({
-										title: `Lỗi tạo ${taskName}`,
-										description: `Không thể tạo ${taskName} cho chương: "${chapter.title}" sau ${MAX_RETRIES} lần thử.`,
-										variant: "destructive",
-									});
-									throw error; // Re-throw to stop the generation for this chapter
-								}
-								await new Promise(res => setTimeout(res, 1000 * attempt)); // Exponential backoff
+								if (attempt === MAX_RETRIES) throw error;
+								await new Promise(res => setTimeout(res, 1000 * attempt));
 							}
 						}
-						throw new Error("Đã hết số lần thử lại.");
+						throw new Error(`Đã hết số lần thử lại cho ${taskName}.`);
 					};
-	
-					try {
-						// A. Generate Theory Content
-						if (stage === 'theory' && !chapter.content) {
+					
+					let chapterFailed = false;
+
+					// STAGE: THEORY
+					if (currentStage === 'theory') {
+						if (!chapter.content) {
 							await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'theory' });
-							const { result: chapterResult, newApiKeyIndex } = await runWithRetry(
-								() => generateTheoryChapter({
-									apiKeys, apiKeyIndex, topic, chapterTitle: chapter.title, language, model,
-								}), 'Lý thuyết'
-							);
-							handleApiKeyIndexChange(newApiKeyIndex);
-							if (chapterResult?.content) {
-								currentTheorySet.chapters[i].content = chapterResult.content;
-								if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
-								await db.put("data", { id: "theory", topic, data: currentTheorySet });
-							} else throw new Error("Không có nội dung được trả về");
+							try {
+								const { result: chapterResult, newApiKeyIndex } = await runWithRetry(
+									() => generateTheoryChapter({ apiKeys, apiKeyIndex, topic, chapterTitle: chapter.title, language, model }), 'Lý thuyết'
+								);
+								handleApiKeyIndexChange(newApiKeyIndex);
+								if (chapterResult?.content) {
+									currentTheorySet.chapters[i].content = chapterResult.content;
+									if (isMountedRef.current) setTheorySet({ ...currentTheorySet });
+									await db.put("data", { id: "theory", topic, data: currentTheorySet });
+								} else throw new Error("Không có nội dung được trả về");
+							} catch (error) {
+								chapterFailed = true;
+								toast({ title: `Lỗi tạo Lý thuyết`, description: `Không thể tạo nội dung cho chương: "${chapter.title}".`, variant: "destructive" });
+							}
 						}
-						stage = 'flashcards';
-	
-						// B. Generate Flashcards
-						if (stage === 'flashcards') {
-							await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'flashcards' });
+						if (!chapterFailed) currentStage = 'flashcards';
+					}
+
+					// STAGE: FLASHCARDS
+					if (currentStage === 'flashcards' && !chapterFailed) {
+						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'flashcards' });
+						try {
 							const { result: newCards, newApiKeyIndex } = await runWithRetry(
 								() => generateFlashcards({
 									apiKeys, apiKeyIndex, topic, count: FLASHCARDS_PER_CHAPTER, language, model,
@@ -662,12 +654,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 								if (isMountedRef.current) setFlashcardSet({ ...currentFlashcardSet });
 								await db.put("data", { id: "flashcards", topic, data: currentFlashcardSet });
 							}
+						} catch (error) {
+							chapterFailed = true;
+							toast({ title: `Lỗi tạo Flashcard`, description: `Không thể tạo flashcard cho chương: "${chapter.title}".`, variant: "destructive" });
 						}
-						stage = 'quiz';
-	
-						// C. Generate Quiz questions
-						if (stage === 'quiz') {
-							await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'quiz' });
+						if (!chapterFailed) currentStage = 'quiz';
+					}
+
+					// STAGE: QUIZ
+					if (currentStage === 'quiz' && !chapterFailed) {
+						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'quiz' });
+						try {
 							const { result: newQuestions, newApiKeyIndex } = await runWithRetry(
 								() => generateQuiz({
 									apiKeys, apiKeyIndex, topic, count: QUIZ_QUESTIONS_PER_CHAPTER, language, model,
@@ -682,23 +679,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 								if (isMountedRef.current) setQuizSet({ ...currentQuizSet });
 								await db.put("data", { id: "quiz", topic, data: currentQuizSet });
 							}
+						} catch(error) {
+							chapterFailed = true;
+							toast({ title: `Lỗi tạo Trắc nghiệm`, description: `Không thể tạo câu hỏi cho chương: "${chapter.title}".`, variant: "destructive" });
 						}
-					} catch (error) {
-						// Error was thrown after all retries failed for a stage
-						console.error(`Dừng tạo nội dung cho chương "${chapter.title}" do lỗi không thể phục hồi.`);
-						// Stop the entire generation process
-						isGeneratingRef.current = false;
-						if (isMountedRef.current) setIsLoading(false);
-						return;
 					}
 	
+					// Update progress for next chapter
 					if (i < currentTheorySet.outline.length - 1) {
 						localProgress = { currentChapterIndex: i + 1, currentStage: 'theory' };
+					} else {
+						// This was the last chapter
+						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'done' });
+						toast({ title: "Hoàn tất!", description: "Tất cả nội dung cho chủ đề đã được tạo." });
+						break; // Exit loop
 					}
 				}
-	
-				await updateGenerationProgress({ currentChapterIndex: currentTheorySet.outline.length, currentStage: 'done' });
-				toast({ title: "Hoàn tất!", description: "Tất cả nội dung cho chủ đề đã được tạo." });
 	
 			} catch (error: any) {
 				console.error(`🚫 Lỗi nghiêm trọng trong quá trình tạo:`, error);
@@ -741,7 +737,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setIsGeneratingPodcast(true)
 			isGeneratingRef.current = true // Block other generations
 
-			const ttsModel = "gemini-1.5-flash-preview-tts"
+			const ttsModel = "text-to-speech-1" // Corrected TTS model name
 			const db = await getDb()
 			const chapter = theorySet.chapters[chapterIndex]
 
