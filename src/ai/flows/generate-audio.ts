@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Flow to generate audio from a podcast script using Google Generative AI SDK.
  * This flow specifically uses a multi-speaker setup for a conversational feel.
@@ -95,6 +96,7 @@ export async function generateAudio(
                 contents: [{ role: "user", parts: [{ text: promptInput.script }] }],
                 // @ts-ignore - speechConfig and other tts properties are valid for TTS models
                 generationConfig: {
+                    responseModalities: ['AUDIO'],
                     speechConfig: {
                         multiSpeakerVoiceConfig: {
                             speakerVoiceConfigs: [

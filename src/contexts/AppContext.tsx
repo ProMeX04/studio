@@ -527,6 +527,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				let tempQuizSet = quizSet;
 				let localProgress = generationProgress;
 	
+				// Stage 0: Create outline if forced or doesn't exist
 				if (forceNew || !tempTheorySet || !localProgress || localProgress.currentStage === 'done') {
 					toast({ title: "Bắt đầu tạo...", description: "Đang tạo dàn bài cho chủ đề của bạn." });
 					try {
@@ -534,22 +535,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							apiKeys, apiKeyIndex, topic, language, model,
 						});
 						
-						const newApiKeyIndex = outlineResponse.newApiKeyIndex;
-						const outlineResult = outlineResponse.result;
-
-						handleApiKeyIndexChange(newApiKeyIndex);
+						handleApiKeyIndexChange(outlineResponse.newApiKeyIndex);
 	
-						if (!outlineResult?.outline || outlineResult.outline.length === 0) {
+						if (!outlineResponse.result?.outline || outlineResponse.result.outline.length === 0) {
 							throw new Error("Không thể tạo dàn bài hợp lệ.");
 						}
 
+						// Clear old learning data AFTER new outline is successfully fetched
 						await handleClearLearningData();
 	
 						tempTheorySet = {
 							id: "idb-theory",
 							topic,
-							outline: outlineResult.outline,
-							chapters: outlineResult.outline.map((title) => ({
+							outline: outlineResponse.result.outline,
+							chapters: outlineResponse.result.outline.map((title) => ({
 								title, content: null, podcastScript: null, audioDataUri: null,
 							})),
 						};
@@ -591,8 +590,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					throw new Error("State không hợp lệ để bắt đầu tạo nội dung.");
 				}
 	
+				// Main generation loop
 				for (let i = localProgress.currentChapterIndex; i < tempTheorySet.outline.length; i++) {
-					const chapter = tempTheorySet.chapters[i];
+					let chapter = tempTheorySet.chapters[i];
 					let currentStage = localProgress.currentStage;
 	
 					const runWithRetry = async <T>(task: () => Promise<{ result: T; newApiKeyIndex: number }>, taskName: string): Promise<{ result: T; newApiKeyIndex: number } | null> => {
@@ -602,7 +602,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							} catch (error) {
 								console.error(`🚫 Lỗi ${taskName} cho chương "${chapter.title}" (lần ${attempt}):`, error);
 								if (attempt === MAX_RETRIES) {
-									toast({ title: `Lỗi tạo ${taskName}`, description: `Không thể tạo nội dung cho chương: "${chapter.title}". Bỏ qua...`, variant: "destructive" });
+									toast({ title: `Lỗi tạo ${taskName}`, description: `Không thể tạo nội dung cho chương: "${chapter.title}".`, variant: "destructive" });
 									return null;
 								}
 								await new Promise(res => setTimeout(res, 1000 * attempt));
@@ -612,22 +612,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					};
 	
 					// STAGE: THEORY
-					if (currentStage === 'theory' && !chapter.content) {
-						const chapterResult = await runWithRetry(
-							() => generateTheoryChapter({ apiKeys, apiKeyIndex, topic, chapterTitle: chapter.title, language, model }), 'Lý thuyết'
-						);
-						if (chapterResult?.result?.content) {
-							tempTheorySet.chapters[i].content = chapterResult.result.content;
-							handleApiKeyIndexChange(chapterResult.newApiKeyIndex);
-							await db.put("data", { id: "theory", topic, data: tempTheorySet });
-							if (isMountedRef.current) setTheorySet({ ...tempTheorySet });
-
-							localProgress = { currentChapterIndex: i, currentStage: 'flashcards' };
-							await updateGenerationProgress(localProgress);
-							currentStage = 'flashcards';
-						} else {
-							continue;
+					if (currentStage === 'theory') {
+						if (!chapter.content) {
+							const chapterResult = await runWithRetry(
+								() => generateTheoryChapter({ apiKeys, apiKeyIndex, topic, chapterTitle: chapter.title, language, model, source: chapter.title }), 'Lý thuyết'
+							);
+							if (chapterResult?.result?.content) {
+								tempTheorySet.chapters[i].content = chapterResult.result.content;
+								handleApiKeyIndexChange(chapterResult.newApiKeyIndex);
+								await db.put("data", { id: "theory", topic, data: { ...tempTheorySet } });
+								if (isMountedRef.current) setTheorySet({ ...tempTheorySet });
+							} else {
+								// If theory fails after retries, stop the whole process for this topic.
+								throw new Error(`Failed to generate theory for chapter "${chapter.title}"`);
+							}
 						}
+						currentStage = 'flashcards';
+						localProgress = { currentChapterIndex: i, currentStage: 'flashcards' };
+						await updateGenerationProgress(localProgress);
 					}
 					
 					// STAGE: FLASHCARDS
@@ -637,18 +639,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 								apiKeys, apiKeyIndex, topic, count: FLASHCARDS_PER_CHAPTER, language, model,
 								existingCards: tempFlashcardSet!.cards,
 								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
+								source: chapter.title
 							}), 'Flashcards'
 						);
 						if (flashcardResult?.result && Array.isArray(flashcardResult.result) && flashcardResult.result.length > 0) {
 							const cardsWithSource = flashcardResult.result.map((card: CardData) => ({...card, source: chapter.title}));
 							tempFlashcardSet.cards.push(...cardsWithSource);
 							handleApiKeyIndexChange(flashcardResult.newApiKeyIndex);
-							await db.put("data", { id: "flashcards", topic, data: tempFlashcardSet });
+							await db.put("data", { id: "flashcards", topic, data: { ...tempFlashcardSet } });
 							if (isMountedRef.current) setFlashcardSet({ ...tempFlashcardSet });
 						}
+						currentStage = 'quiz';
 						localProgress = { currentChapterIndex: i, currentStage: 'quiz' };
 						await updateGenerationProgress(localProgress);
-						currentStage = 'quiz';
 					}
 	
 					// STAGE: QUIZ
@@ -658,23 +661,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 								apiKeys, apiKeyIndex, topic, count: QUIZ_QUESTIONS_PER_CHAPTER, language, model,
 								existingQuestions: tempQuizSet!.questions,
 								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
+								source: chapter.title
 							}), 'Trắc nghiệm'
 						);
 						if (quizResult?.result && Array.isArray(quizResult.result) && quizResult.result.length > 0) {
 							const questionsWithSource = quizResult.result.map((q: QuizQuestion) => ({...q, source: chapter.title}));
 							tempQuizSet.questions.push(...questionsWithSource);
 							handleApiKeyIndexChange(quizResult.newApiKeyIndex);
-							await db.put("data", { id: "quiz", topic, data: tempQuizSet });
+							await db.put("data", { id: "quiz", topic, data: { ...tempQuizSet } });
 							if (isMountedRef.current) setQuizSet({ ...tempQuizSet });
 						}
+						currentStage = 'done'; // Chapter finished
 					}
 
 					if (!isMountedRef.current) break;
 	
+					// Move to next chapter
 					if (i < tempTheorySet.outline.length - 1) {
 						localProgress = { currentChapterIndex: i + 1, currentStage: 'theory' };
 						await updateGenerationProgress(localProgress);
-					} else {
+					} else { // All chapters are done
 						localProgress = { currentChapterIndex: i, currentStage: 'done' };
 						await updateGenerationProgress(localProgress);
 						toast({ title: "Hoàn tất!", description: "Tất cả nội dung cho chủ đề đã được tạo." });
@@ -684,11 +690,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	
 			} catch (error: any) {
 				console.error(`🚫 Lỗi nghiêm trọng trong quá trình tạo:`, error);
-				if (error instanceof AIError) {
-					toast({ title: "Lỗi tạo nội dung", description: error.message, variant: "destructive" });
-				} else {
-					toast({ title: "Lỗi không xác định", description: `Đã xảy ra lỗi: ${error.message}.`, variant: "destructive" });
-				}
+				toast({ title: "Lỗi tạo nội dung", description: `Đã xảy ra lỗi: ${error.message}. Quá trình đã dừng lại.`, variant: "destructive" });
 			} finally {
 				isGeneratingRef.current = false;
 				if (isMountedRef.current) setIsLoading(false);
@@ -723,7 +725,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setIsGeneratingPodcast(true)
 			isGeneratingRef.current = true // Block other generations
 
-			const ttsModel = "text-to-speech-1" // Corrected TTS model name
+			const ttsModel = "gemini-2.5-flash-preview-tts"
 			const db = await getDb()
 			const chapter = theorySet.chapters[chapterIndex]
 
@@ -1110,4 +1112,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
     
+
 
