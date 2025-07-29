@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { GenerateCardsInputSchema, GenerateCardsOutputContainerSchema, GenerateCardsOutput, GenerateCardsJsonSchema } from '@/ai/schemas';
+import { GenerateCardsInputSchema, GenerateCardsOutputContainerSchema, GenerateCardsOutput, GenerateCardsJsonSchema, CardData } from '@/ai/schemas';
 import { performAIOperation } from '@/lib/ai-service';
 
 const GenerateFlashcardsClientInputSchema = GenerateCardsInputSchema.extend({
@@ -50,11 +50,16 @@ export async function generateFlashcards(
         ${theoryContextPrompt}
         
         Populate the "cards" array in the JSON object. Each flashcard should have a "front" (a question or term) and a "back" (the answer or definition).
-        ${existingCardsPrompt}
+        
         The "front" and "back" fields MUST contain valid standard Markdown.
         - Use standard backticks (\`) for inline code blocks.
         - Use triple backticks with a language identifier for multi-line code blocks.
         - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+        
+        The back of the card must end with the source of the information like this:
+        (Nguồn: ${promptInput.source})
+        
+        ${existingCardsPrompt}
         `;
 
         const generationConfig: GenerationConfig = {

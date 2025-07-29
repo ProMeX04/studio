@@ -1,6 +1,3 @@
-
-'use server';
-
 /**
  * @fileOverview Flow to generate a podcast script from theory content.
  */

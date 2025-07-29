@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 import { GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, GenerateQuizJsonSchema } from '@/ai/schemas';
+import { GenerateQuizInputSchema, GenerateQuizOutputContainerSchema, GenerateQuizOutput, GenerateQuizJsonSchema, QuizQuestion } from '@/ai/schemas';
 import { performAIOperation } from '@/lib/ai-service';
 
 const GenerateQuizClientInputSchema = GenerateQuizInputSchema.extend({
@@ -60,6 +60,10 @@ export async function generateQuiz(
         - Use standard backticks (\`) for inline code blocks.
         - Use triple backticks with a language identifier for multi-line code blocks.
         - For mathematical notations, use standard LaTeX syntax: $...$ for inline math and $$...$$ for block-level math.
+        
+        The explanation for each question must end with the source of the information like this:
+        (Nguồn: ${promptInput.source})
+
         ${existingQuestionsPrompt}
         `;
         
