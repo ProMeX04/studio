@@ -150,7 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-1.5-flash-latest")
+	const [model, setModel] = useState("gemini-2.5-flash-lite")
 	const [apiKeys, setApiKeys] = useState<string[]>([])
 	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 
@@ -249,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setShowTheorySummary(false)
 		setTopic("Lịch sử La Mã")
 		setLanguage("Vietnamese")
-		setModel("gemini-1.5-flash-latest")
+		setModel("gemini-2.5-flash-lite")
 		setView("theory")
 		setVisibility({
 			home: true,
@@ -368,7 +368,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
-			(savedModelRes?.data as string) || "gemini-1.5-flash-latest"
+			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
@@ -493,11 +493,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
 					title: "Thiếu API Key",
-					description:
-						"Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
+					description: "Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
 					variant: "destructive",
-				})
-				return
+				});
+				return;
 			}
 	
 			if (!topic.trim()) {
@@ -505,22 +504,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 					title: "Chủ đề trống",
 					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
 					variant: "destructive",
-				})
-				return
+				});
+				return;
 			}
 	
 			if (isGeneratingRef.current) {
 				toast({
 					title: "Đang tạo...",
 					description: `Một quá trình tạo nội dung khác đang chạy.`,
-				})
-				return
+				});
+				return;
 			}
 	
-			isGeneratingRef.current = true
-			setIsLoading(true)
+			isGeneratingRef.current = true;
+			setIsLoading(true);
 	
-			const db = await getDb()
+			const db = await getDb();
 	
 			try {
 				let tempTheorySet = theorySet;
@@ -531,17 +530,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				if (forceNew || !tempTheorySet || !localProgress || localProgress.currentStage === 'done') {
 					toast({ title: "Bắt đầu tạo...", description: "Đang tạo dàn bài cho chủ đề của bạn." });
 					try {
-						const { result: outlineResult, newApiKeyIndex } =
-							await generateTheoryOutline({
-								apiKeys, apiKeyIndex, topic, language, model,
-							});
+						const outlineResponse = await generateTheoryOutline({
+							apiKeys, apiKeyIndex, topic, language, model,
+						});
+						
+						const newApiKeyIndex = outlineResponse.newApiKeyIndex;
+						const outlineResult = outlineResponse.result;
+
 						handleApiKeyIndexChange(newApiKeyIndex);
 	
 						if (!outlineResult?.outline || outlineResult.outline.length === 0) {
 							throw new Error("Không thể tạo dàn bài hợp lệ.");
 						}
 
-						// Only clear old data after successfully getting a new outline
 						await handleClearLearningData();
 	
 						tempTheorySet = {
@@ -570,8 +571,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							setTheoryChapterIndex(0);
 							setFlashcardIndex(0);
 							setCurrentQuestionIndex(0);
-							await updateGenerationProgress(localProgress);
 						}
+						await updateGenerationProgress(localProgress);
 	
 					} catch (error) {
 						console.error("🚫 Lỗi tạo dàn bài:", error);
@@ -593,8 +594,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 				for (let i = localProgress.currentChapterIndex; i < tempTheorySet.outline.length; i++) {
 					const chapter = tempTheorySet.chapters[i];
 					let currentStage = localProgress.currentStage;
-
-					const runWithRetry = async <T>(task: () => Promise<T>, taskName: string): Promise<T | null> => {
+	
+					const runWithRetry = async <T>(task: () => Promise<{ result: T; newApiKeyIndex: number }>, taskName: string): Promise<{ result: T; newApiKeyIndex: number } | null> => {
 						for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 							try {
 								return await task();
@@ -609,10 +610,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 						}
 						return null;
 					};
-
+	
 					// STAGE: THEORY
 					if (currentStage === 'theory' && !chapter.content) {
-						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'theory' });
 						const chapterResult = await runWithRetry(
 							() => generateTheoryChapter({ apiKeys, apiKeyIndex, topic, chapterTitle: chapter.title, language, model }), 'Lý thuyết'
 						);
@@ -621,17 +621,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							handleApiKeyIndexChange(chapterResult.newApiKeyIndex);
 							await db.put("data", { id: "theory", topic, data: tempTheorySet });
 							if (isMountedRef.current) setTheorySet({ ...tempTheorySet });
+
+							localProgress = { currentChapterIndex: i, currentStage: 'flashcards' };
+							await updateGenerationProgress(localProgress);
+							currentStage = 'flashcards';
 						} else {
-							// Skip to next chapter if theory fails
 							continue;
 						}
 					}
 					
-					currentStage = 'flashcards';
-
 					// STAGE: FLASHCARDS
 					if (currentStage === 'flashcards') {
-						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'flashcards' });
 						const flashcardResult = await runWithRetry(
 							() => generateFlashcards({
 								apiKeys, apiKeyIndex, topic, count: FLASHCARDS_PER_CHAPTER, language, model,
@@ -646,13 +646,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 							await db.put("data", { id: "flashcards", topic, data: tempFlashcardSet });
 							if (isMountedRef.current) setFlashcardSet({ ...tempFlashcardSet });
 						}
+						localProgress = { currentChapterIndex: i, currentStage: 'quiz' };
+						await updateGenerationProgress(localProgress);
+						currentStage = 'quiz';
 					}
-					
-					currentStage = 'quiz';
-
+	
 					// STAGE: QUIZ
 					if (currentStage === 'quiz') {
-						await updateGenerationProgress({ currentChapterIndex: i, currentStage: 'quiz' });
 						const quizResult = await runWithRetry(
 							() => generateQuiz({
 								apiKeys, apiKeyIndex, topic, count: QUIZ_QUESTIONS_PER_CHAPTER, language, model,
@@ -673,6 +673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	
 					if (i < tempTheorySet.outline.length - 1) {
 						localProgress = { currentChapterIndex: i + 1, currentStage: 'theory' };
+						await updateGenerationProgress(localProgress);
 					} else {
 						localProgress = { currentChapterIndex: i, currentStage: 'done' };
 						await updateGenerationProgress(localProgress);
@@ -1109,3 +1110,4 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
     
+
