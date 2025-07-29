@@ -135,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemin-2.5-flash-lite")
+	const [model, setModel] = useState("gemini-2.5-flash-lite")
 	const [apiKeys, setApiKeys] = useState<string[]>([])
 	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 
@@ -222,7 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setShowTheorySummary(false)
 		setTopic("Lịch sử La Mã")
 		setLanguage("Vietnamese")
-		setModel("gemin-2.5-flash-lite")
+		setModel("gemini-2.5-flash-lite")
 		setView("theory")
 		setVisibility({
 			home: true,
@@ -336,7 +336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
-			(savedModelRes?.data as string) || "gemin-2.5-flash-lite"
+			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []

@@ -123,8 +123,8 @@ export const languages = [
 
 export const models = [
 	{
-		value: "gemin-2.5-flash-lite",
-		label: "Gemini 2.5 Flash (Nhanh, Hiệu quả)",
+		value: "gemini-2.5-flash-lite",
+		label: "Gemini 2.5 Flash Lite(Nhanh, Hiệu quả)",
 	},
 	{
 		value: "gemini-2.5-pro",
