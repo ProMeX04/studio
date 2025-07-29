@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  output: 'export',
+  assetPrefix: './',
+  trailingSlash: true,
 };
 
 export default nextConfig;
