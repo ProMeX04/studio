@@ -59,7 +59,7 @@ interface AppContextType {
 	hasCompletedOnboarding: boolean
 
 	// Learning State
-	view: "flashcards" | "quiz" | "theory" | "podcast"
+	view: "flashcards" | "quiz" | "theory"
 	topic: string
 	language: string
 	model: string
@@ -86,7 +86,7 @@ interface AppContextType {
 	uploadedBackgrounds: string[]
 
 	// State Setters & Handlers
-	onViewChange: (view: "flashcards" | "quiz" | "theory" | "podcast") => void
+	onViewChange: (view: "flashcards" | "quiz" | "theory") => void
 	onFlashcardIndexChange: (index: number) => void
 	onCurrentQuestionIndexChange: (index: number) => void
 	onTheoryChapterIndexChange: (index: number) => void
@@ -148,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	// Learning State
 	const [view, setView] =
-		useState<"flashcards" | "quiz" | "theory" | "podcast">("theory")
+		useState<"flashcards" | "quiz" | "theory">("theory")
 	const [topic, setTopic] = useState("Lịch sử La Mã")
 	const [language, setLanguage] = useState("Vietnamese")
 	const [model, setModel] = useState("gemini-1.5-flash-latest")
@@ -350,7 +350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		const savedApiKeys = (savedApiKeysRes?.data as string[]) || []
 		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0
 		const savedView =
-			(savedViewRes?.data as "flashcards" | "quiz" | "theory" | "podcast") ||
+			(savedViewRes?.data as "flashcards" | "quiz" | "theory") ||
 			"theory"
 		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
@@ -837,7 +837,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 	// --- Learning UI Callbacks ---
 	const onViewChange = useCallback(
-		async (newView: "flashcards" | "quiz" | "theory" | "podcast") => {
+		async (newView: "flashcards" | "quiz" | "theory") => {
 			if (view === newView) return
 			setView(newView)
 			setShowQuizSummary(false) // Hide summary when switching views

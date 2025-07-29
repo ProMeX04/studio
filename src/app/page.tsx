@@ -123,7 +123,7 @@ function HomePageContent() {
 			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1)
 			else newUnderstoodIndices.push(flashcardIndex)
 			onFlashcardStateChange({ understoodIndices: newUnderstoodIndices })
-		} else if (view === "theory" || view === "podcast") {
+		} else if (view === "theory") {
 			if (!theoryState || !theorySet) return
 			const newUnderstoodIndices = [...theoryState.understoodIndices]
 			const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex)
@@ -138,7 +138,7 @@ function HomePageContent() {
 			if (!flashcardState || !flashcardSet) return false
 			return flashcardState.understoodIndices.includes(flashcardIndex)
 		}
-		if (view === "theory" || view === "podcast") {
+		if (view === "theory") {
 			if (!theoryState || !theorySet) return false
 			return theoryState.understoodIndices.includes(theoryChapterIndex)
 		}
@@ -150,7 +150,7 @@ function HomePageContent() {
 			? flashcardSet?.cards.length ?? 0
 			: view === "quiz"
 			  ? quizSet?.questions.length ?? 0
-			  : view === "theory" || view === "podcast"
+			  : view === "theory"
 			    ? theorySet?.chapters?.filter((c) => c.content).length ?? 0
 			    : 0
 
@@ -251,7 +251,7 @@ function HomePageContent() {
 		theoryState.understoodIndices.length === theorySet.chapters.length
 	const shouldShowTheorySummary =
 		(showTheorySummary || allTheoryChaptersMarked) &&
-		(view === "theory" || view === "podcast")
+		(view === "theory")
 	
 	const isSummaryActive =
 		shouldShowQuizSummary ||
@@ -375,7 +375,6 @@ function HomePageContent() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="theory">Lý thuyết</SelectItem>
-								<SelectItem value="podcast">Podcast</SelectItem>
 								<SelectItem value="flashcards">Flashcard</SelectItem>
 								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
 							</SelectContent>
@@ -415,8 +414,7 @@ function HomePageContent() {
 							</Button>
 
 							{(view === "flashcards" ||
-								view === "theory" ||
-								view === "podcast") && (
+								view === "theory") && (
 								<>
 									<Button
 										onClick={handleToggleUnderstood}

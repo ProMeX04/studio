@@ -13,7 +13,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, BookOpen, Menu, Plus, Loader } from "lucide-react"
+import { CheckCircle, BookOpen, Menu, Plus, Loader, Podcast as PodcastIcon } from "lucide-react"
 import { useAppContext } from "@/contexts/AppContext"
 import { Button } from "./ui/button"
 
@@ -26,6 +26,8 @@ interface TheoryProps {
 	topic: string;
 	chapterIndex: number;
 	isCurrentUnderstood: boolean;
+	onGeneratePodcast: (chapterIndex: number) => void;
+	isGeneratingPodcast: boolean;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -81,7 +83,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic }: TheoryProps) {
+export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic, onGeneratePodcast, isGeneratingPodcast }: TheoryProps) {
 	const { handleGenerate, isLoading } = useAppContext();
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
@@ -92,8 +94,29 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic }: 
 				{hasContent ? (
 					<ScrollArea className="h-full w-full pr-4">
 						<div className="w-full max-w-5xl mx-auto relative pt-4">
-							<h1 className="text-4xl font-bold mb-8 text-center">{currentChapter.title}</h1>
+							<h1 className="text-4xl font-bold mb-4 text-center">{currentChapter.title}</h1>
+							
+							{/* Podcast Section */}
+							<div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg mb-6 flex flex-col items-center gap-4">
+								{!currentChapter.audioDataUri && currentChapter.content && (
+									<Button onClick={() => onGeneratePodcast(chapterIndex)} disabled={isGeneratingPodcast}>
+										{isGeneratingPodcast ? (
+											<Loader className="animate-spin mr-2 h-4 w-4" />
+										) : (
+											<PodcastIcon className="mr-2 h-4 w-4" />
+										)}
+										{isGeneratingPodcast ? "Đang tạo..." : "Tạo Podcast cho chương này"}
+									</Button>
+								)}
+								{currentChapter.audioDataUri && (
+									<audio controls src={currentChapter.audioDataUri} className="w-full">
+										Trình duyệt của bạn không hỗ trợ thẻ audio.
+									</audio>
+								)}
+							</div>
+							
 							{isCurrentUnderstood && <CheckCircle className="absolute top-0 right-0 text-success w-6 h-6" />}
+							
 							<div className="prose dark:prose-invert max-w-none text-xl">
 								{currentChapter.content ? (
 									<MarkdownRenderer>{currentChapter.content}</MarkdownRenderer>

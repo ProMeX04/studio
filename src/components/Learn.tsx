@@ -6,7 +6,6 @@ import { useAppContext } from "@/contexts/AppContext"
 import { Flashcards } from "@/components/Flashcards"
 import { Quiz } from "@/components/Quiz"
 import { Theory } from "@/components/Theory"
-import { Podcast } from "@/components/Podcast"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
@@ -125,14 +124,14 @@ export function Learn() {
 		theorySet && theoryUnderstood === theorySet.chapters.length
 	const shouldShowTheorySummary =
 		(showTheorySummary || allTheoryChaptersMarked) &&
-		(view === "theory" || view === "podcast")
+		(view === "theory")
 
 	const isCurrentItemUnderstood = useMemo(() => {
 		if (view === "flashcards") {
 			if (!flashcardState || !flashcardSet) return false
 			return flashcardState.understoodIndices.includes(flashcardIndex)
 		}
-		if (view === "theory" || view === "podcast") {
+		if (view === "theory") {
 			if (!theoryState || !theorySet) return false
 			return theoryState.understoodIndices.includes(theoryChapterIndex)
 		}
@@ -210,17 +209,8 @@ export function Learn() {
 						topic={topic}
 						chapterIndex={theoryChapterIndex}
 						isCurrentUnderstood={isCurrentItemUnderstood}
-					/>
-				)
-			case "podcast":
-				return (
-					<Podcast
-						theorySet={theorySet}
-						topic={topic}
-						chapterIndex={theoryChapterIndex}
-						isCurrentUnderstood={isCurrentItemUnderstood}
 						onGeneratePodcast={handleGeneratePodcastForChapter}
-						isGenerating={isGeneratingPodcast}
+						isGeneratingPodcast={isGeneratingPodcast}
 					/>
 				)
 			default:
@@ -230,6 +220,8 @@ export function Learn() {
 						topic={topic}
 						chapterIndex={theoryChapterIndex}
 						isCurrentUnderstood={isCurrentItemUnderstood}
+						onGeneratePodcast={handleGeneratePodcastForChapter}
+						isGeneratingPodcast={isGeneratingPodcast}
 					/>
 				)
 		}
