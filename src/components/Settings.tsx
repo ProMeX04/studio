@@ -65,7 +65,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-type SettingsScope = "all" | "learn-onboarding" | "learn-onboarding-generate"
+type SettingsScope = "all" | "learn-onboarding"
 
 interface CommonSettingsProps {
 	scope: SettingsScope
@@ -95,17 +95,15 @@ interface AllSettingsProps {
 	topic: string
 	language: string
 	model: string
-	onModelChange: (model: string) => void
 	onClearLearningData: () => void
 }
 
 // A more limited version of LearnSettingsProps for onboarding
 interface LearnOnboardingSettingsProps {
-	scope: "learn-onboarding" | "learn-onboarding-generate"
+	scope: "learn-onboarding"
 	onApiKeysChange: (apiKeys: string[]) => void
 	onSettingsChanged: () => void // For onboarding
 	apiKeys: string[]
-	onGenerate?: (forceNew: boolean) => void
 	isLoading: boolean
 }
 
@@ -190,10 +188,8 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const handleGenerate = (forceNew: boolean) => {
-		if (scope === "all" || scope === "learn-onboarding-generate") {
-			const currentProps = props as
-				| AllSettingsProps
-				| LearnOnboardingSettingsProps
+		if (scope === "all") {
+			const currentProps = props as AllSettingsProps
 			if (currentProps.onGenerate) {
 				currentProps.onGenerate(forceNew)
 			}
@@ -296,11 +292,29 @@ export function Settings(props: SettingsProps) {
 
 				{scope === "learn-onboarding" && (
 					<Button
-						onClick={learnProps.onSettingsChanged}
-						disabled={localApiKeys.length === 0}
-						className="w-full mt-4"
+						onClick={() => {
+                            const currentProps = props as LearnOnboardingSettingsProps;
+                            if (localApiKeys.length > 0) {
+                                currentProps.onSettingsChanged();
+                            } else {
+                                toast({
+                                    title: "Yêu cầu API Key",
+                                    description: "Vui lòng thêm ít nhất một API key để tiếp tục.",
+                                    variant: "destructive"
+                                });
+                            }
+                        }}
+						disabled={localApiKeys.length === 0 || learnProps.isLoading}
+						className="w-full mt-4 h-12"
 					>
-						Tiếp tục
+                        {learnProps.isLoading ? (
+                            <>
+                                <Loader className="animate-spin mr-2 h-4 w-4" />
+                                Đang tạo...
+                            </>
+                        ) : (
+                            "Bắt đầu học"
+                        )}
 					</Button>
 				)}
 			</div>
@@ -308,12 +322,10 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderContentGenerationControls = () => {
-		if (scope !== "all" && scope !== "learn-onboarding-generate")
+		if (scope !== "all")
 			return null
 
-		const currentProps = props as
-			| AllSettingsProps
-			| LearnOnboardingSettingsProps
+		const currentProps = props as AllSettingsProps
 		const { isLoading } = currentProps
 
 		let theoryCount = 0
@@ -392,7 +404,19 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderLearnSettings = () => {
-		if (scope !== "all" || !allProps) return null
+		if (scope !== "all" || !allProps) return null;
+        
+        const handleSaveSettings = () => {
+            allProps.onSettingsChange({
+                topic: allProps.topic,
+                language: allProps.language,
+                model: allProps.model,
+            });
+            toast({
+                title: "Đã lưu cài đặt",
+                description: "Cài đặt học tập của bạn đã được cập nhật.",
+            })
+        }
 
 		return (
 			<div className="space-y-4">
@@ -555,12 +579,7 @@ export function Settings(props: SettingsProps) {
 	}
 
 	if (isOnboardingScope) {
-		if (scope === "learn-onboarding") {
-			return renderApiKeyManagement()
-		}
-		if (scope === "learn-onboarding-generate") {
-			return renderContentGenerationControls()
-		}
+		return renderApiKeyManagement()
 	}
 
 	return (

@@ -98,7 +98,11 @@ interface AppContextType {
 		language: string,
 		model: string
 	) => void
-	onSettingsSave: (settings: { topic: string; language: string }) => void
+	onSettingsSave: (settings: {
+		topic: string
+		language: string
+		model: string
+	}) => void
 	handleClearLearningData: () => Promise<void>
 	onGenerate: (forceNew: boolean) => void
 	handleResetOnboarding: () => void
@@ -1034,12 +1038,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	)
 
 	const onSettingsSave = useCallback(
-		async (settings: { topic: string; language: string }) => {
+		async (settings: { topic: string; language: string, model: string }) => {
 			setTopic(settings.topic)
 			setLanguage(settings.language)
+			setModel(settings.model)
 			const db = await getDb()
 			await db.put("data", { id: "topic", data: settings.topic })
 			await db.put("data", { id: "language", data: settings.language })
+			await db.put("data", { id: "model", data: settings.model })
 		},
 		[]
 	)
