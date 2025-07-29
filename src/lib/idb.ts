@@ -1,8 +1,9 @@
 
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 13; // Incremented version
+const DB_VERSION = 14; // Incremented version for new state
 const STORE_NAME = 'data';
 
 export type DataKey =
@@ -23,7 +24,8 @@ export type DataKey =
   | 'theoryChapterIndex'
   | 'apiKeys'
   | 'apiKeyIndex'
-  | 'hasCompletedOnboarding';
+  | 'hasCompletedOnboarding'
+  | 'generationProgress'; // Added new key
 
 export type LabeledData<T> = {
   id: string;
@@ -54,7 +56,7 @@ export const getDb = (): Promise<IDBPDatabase<MyDB>> => {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
-        // Migration logic, if needed in the future
+        // Migration logic can be added here if needed in the future
       },
     });
   }

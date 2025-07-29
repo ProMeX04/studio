@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -322,66 +323,52 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderContentGenerationControls = () => {
-		if (scope !== "all")
-			return null
-
-		const currentProps = props as AllSettingsProps
-		const { isLoading } = currentProps
-
-		let theoryCount = 0
-		let theoryMax = 0
-		let flashcardCount = 0
-		let quizCount = 0
-
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
-			theoryCount =
-				allProps.theorySet?.chapters.filter((c) => c.content).length ??
-				0
-			theoryMax = allProps.theorySet?.outline.length ?? 0
-			flashcardCount = allProps.flashcardSet?.cards.length ?? 0
-			quizCount = allProps.quizSet?.questions.length ?? 0
+		if (scope !== "all" || !allProps) return null;
+	
+		const { isLoading, theorySet, flashcardSet, quizSet, generationProgress } = allProps;
+	
+		const theoryCount = theorySet?.chapters.filter(c => c.content).length ?? 0;
+		const theoryMax = theorySet?.outline.length ?? 0;
+		const flashcardCount = flashcardSet?.cards.length ?? 0;
+		const quizCount = quizSet?.questions.length ?? 0;
+	
+		const isCompleted = generationProgress?.currentStage === 'done';
+	
+		let progressPercent = 0;
+		if (theoryMax > 0 && generationProgress) {
+			const chapterProgress = generationProgress.currentChapterIndex / theoryMax;
+			let stageProgress = 0;
+			if (generationProgress.currentStage === 'flashcards') stageProgress = 1/3;
+			if (generationProgress.currentStage === 'quiz') stageProgress = 2/3;
+			if (generationProgress.currentStage === 'done') stageProgress = 1;
+	
+			progressPercent = (chapterProgress + (stageProgress / theoryMax)) * 100;
 		}
-
-		const isCompleted = theoryMax > 0 && theoryCount === theoryMax
-
+	
 		return (
 			<div className="space-y-4">
-				{scope === "all" && (
-					<Label className="font-medium text-foreground">
-						Quản lý nội dung học tập
-					</Label>
-				)}
-
+				<Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>
+	
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
 					<div className="flex justify-between items-center">
-						<Label htmlFor="theory-progress" className="text-sm">
-							Lý thuyết
-						</Label>
-						<span className="text-sm text-muted-foreground">
-							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"}
-						</span>
+						<Label htmlFor="theory-progress" className="text-sm">Tiến độ tổng</Label>
+						<span className="text-sm text-muted-foreground">{progressPercent.toFixed(0)}%</span>
 					</div>
-					<Progress
-						value={
-							theoryMax > 0 ? (theoryCount / theoryMax) * 100 : 0
-						}
-						id="theory-progress"
-					/>
-
+					<Progress value={progressPercent} id="total-progress" />
+	
+					<div className="flex justify-between items-center text-sm pt-2">
+						<Label>Lý thuyết</Label>
+						<span className="text-muted-foreground">{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} chương</span>
+					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Flashcard</Label>
-						<span className="text-muted-foreground">
-							{flashcardCount} thẻ
-						</span>
+						<span className="text-muted-foreground">{flashcardCount} thẻ</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Trắc nghiệm</Label>
-						<span className="text-muted-foreground">
-							{quizCount} câu
-						</span>
+						<span className="text-muted-foreground">{quizCount} câu</span>
 					</div>
-
+	
 					<Button
 						className="w-full"
 						onClick={() => handleGenerate(false)}
@@ -400,8 +387,8 @@ export function Settings(props: SettingsProps) {
 					</Button>
 				</div>
 			</div>
-		)
-	}
+		);
+	};
 
 	const renderLearnSettings = () => {
 		if (scope !== "all" || !allProps) return null;
