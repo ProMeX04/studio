@@ -97,6 +97,7 @@ interface AllSettingsProps {
 	language: string
 	model: string
 	onClearLearningData: () => void
+	generationProgress: any;
 }
 
 // A more limited version of LearnSettingsProps for onboarding
@@ -336,13 +337,19 @@ export function Settings(props: SettingsProps) {
 	
 		let progressPercent = 0;
 		if (theoryMax > 0 && generationProgress) {
+			const STAGES = ['theory', 'flashcards', 'quiz'];
 			const chapterProgress = generationProgress.currentChapterIndex / theoryMax;
-			let stageProgress = 0;
-			if (generationProgress.currentStage === 'flashcards') stageProgress = 1/3;
-			if (generationProgress.currentStage === 'quiz') stageProgress = 2/3;
-			if (generationProgress.currentStage === 'done') stageProgress = 1;
-	
+			const stageIndex = STAGES.indexOf(generationProgress.currentStage);
+			
+			// Each stage is 1/3 of a chapter's progress.
+			const stageProgress = (stageIndex >= 0 ? stageIndex : 2) / STAGES.length;
+			
+			// Total progress is progress of completed chapters + progress within the current chapter.
 			progressPercent = (chapterProgress + (stageProgress / theoryMax)) * 100;
+
+			if(generationProgress.currentStage === 'done') {
+				progressPercent = 100;
+			}
 		}
 	
 		return (
