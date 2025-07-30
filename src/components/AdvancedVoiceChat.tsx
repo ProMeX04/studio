@@ -1,20 +1,14 @@
-
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import {
-	GoogleGenerativeAI,
-	Session,
-	Modality,
-	LiveServerMessage,
-} from "@google/generative-ai"
+import { GoogleGenAI, Session, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, Loader, Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { createBlob, decode, decodeAudioData } from "@/lib/audio-utils"
 
-const MODEL_NAME = "gemini-2.5-flash-preview-native-audio-dialog";
+const MODEL_NAME = "gemini-2.0-flash-live-001";
 
 export function AdvancedVoiceChat({
 	apiKeys,
@@ -27,13 +21,16 @@ export function AdvancedVoiceChat({
 }) {
 	const { toast } = useToast()
 	const [isRecording, setIsRecording] = useState(false);
+const isRecordingRef = useRef(false);
 	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "error">("idle")
+const [responses, setResponses] = useState<string[]>([])
 
-	const clientRef = useRef<GoogleGenerativeAI | null>(null)
+	const clientRef = useRef<GoogleGenAI | null>(null)
 	const sessionRef = useRef<Session | null>(null);
 
 	const inputAudioContextRef = useRef<AudioContext | null>(null);
 	const outputAudioContextRef = useRef<AudioContext | null>(null);
+const outputGainNodeRef = useRef<GainNode | null>(null);
 	const mediaStreamRef = useRef<MediaStream | null>(null);
 	const scriptProcessorNodeRef = useRef<ScriptProcessorNode | null>(null);
 	const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -41,6 +38,11 @@ export function AdvancedVoiceChat({
 	const outputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
 	const isMountedRef = useRef(true);
 
+
+	// Keep ref in sync with state
+	useEffect(() => {
+		isRecordingRef.current = isRecording;
+	}, [isRecording]);
 
 	useEffect(() => {
 		isMountedRef.current = true;
@@ -51,6 +53,11 @@ export function AdvancedVoiceChat({
 		}
 		if (!outputAudioContextRef.current) {
 			outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+		}
+		// Create gain node once and connect to destination
+		if (outputAudioContextRef.current && !outputGainNodeRef.current) {
+			outputGainNodeRef.current = outputAudioContextRef.current.createGain();
+			outputGainNodeRef.current.connect(outputAudioContextRef.current.destination);
 		}
 
 		return () => {
@@ -65,65 +72,108 @@ export function AdvancedVoiceChat({
 
 	const initSession = useCallback(async (currentApiKey: string) => {
 		if (!isMountedRef.current || !clientRef.current) return;
+		
+		if (!currentApiKey || currentApiKey.trim() === '') {
+			console.error("API key is missing or empty");
+			setStatus("error");
+			toast({
+				title: "Lỗi API Key",
+				description: "Vui lòng kiểm tra API key trong file .env.local",
+				variant: "destructive",
+			});
+			return;
+		}
+		
 		setStatus("connecting");
 
 		try {
+			console.log("Connecting to Google GenAI with API key...");
+			console.log("Connecting to Google GenAI with API key...");
 			const newSession = await clientRef.current.live.connect({
 				model: MODEL_NAME,
 				callbacks: {
 					onopen: () => {
 						if (!isMountedRef.current) return;
+						console.log("Live session opened successfully");
 						setStatus("idle"); // Ready to record
 						toast({ title: "Kết nối thành công", description: "Bạn có thể bắt đầu nói." });
 					},
-					onmessage: async (message: LiveServerMessage) => {
+					onmessage: (message: LiveServerMessage) => {
 						if (!isMountedRef.current) return;
-						const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
+						console.log("Received message:", message);
+						const parts = message.serverContent?.modelTurn?.parts;
+							const audio = parts?.[0]?.inlineData;
+							const textPart = parts?.find(p => (p as any).text)?.text as string | undefined;
+
+							if (textPart) {
+								console.log('AI:', textPart);
+							}
 
 						if (audio && outputAudioContextRef.current) {
-							nextStartTimeRef.current = Math.max(
-								nextStartTimeRef.current,
-								outputAudioContextRef.current.currentTime
-							);
+								// Handle AudioContext state asynchronously
+								(async () => {
+									try {
+										const outputContext = outputAudioContextRef.current;
+										if (!outputContext) {
+											console.warn('Output AudioContext is null');
+											outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+											return;
+										}
+										
+										// Check and recreate output AudioContext / Gain if needed
+										if (outputContext.state === 'closed') {
+											console.warn('Output AudioContext is closed, recreating...');
+											outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+											return;
+										}
+										
+										if (outputContext.state === 'suspended') {
+											await outputContext.resume();
+										}
+										
+										nextStartTimeRef.current = Math.max(
+											nextStartTimeRef.current,
+											outputContext.currentTime
+										);
 
-							const audioBuffer = await decodeAudioData(
-								decode(audio.data),
-								outputAudioContextRef.current,
-								24000,
-								1,
-							);
-							const source = outputAudioContextRef.current.createBufferSource();
-							source.buffer = audioBuffer;
-							source.connect(outputAudioContextRef.current.destination);
-							
-							const currentSources = outputSourcesRef.current;
-							source.addEventListener('ended', () => {
-								currentSources.delete(source);
-							});
-							
-							source.start(nextStartTimeRef.current);
-							nextStartTimeRef.current += audioBuffer.duration;
-							currentSources.add(source);
-						}
-
-						const interrupted = message.serverContent?.interrupted;
-						if (interrupted) {
-							outputSourcesRef.current.forEach(source => source.stop());
-							outputSourcesRef.current.clear();
-							nextStartTimeRef.current = 0;
+										const audioBuffer = await decodeAudioData(
+											decode(audio.data!),
+											outputContext,
+											24000,
+											1,
+										);
+										const source = outputContext.createBufferSource();
+										source.buffer = audioBuffer;
+										source.connect(outputContext.destination);
+										source.start(nextStartTimeRef.current);
+										nextStartTimeRef.current += audioBuffer.duration;
+									} catch (error) {
+										console.error('Error processing audio message:', error);
+									}
+								})();
 						}
 					},
 					onerror: (e: ErrorEvent) => {
 						if (!isMountedRef.current) return;
-						console.error("Session Error:", e);
-						toast({ title: "Lỗi Session", description: e.message, variant: "destructive" });
+						console.error("Live session error:", e);
+						console.error("Error details:", e.error);
 						setStatus("error");
-						stopRecording();
+						toast({
+							title: "Lỗi kết nối",
+							description: e.message || "Có lỗi xảy ra khi kết nối.",
+							variant: "destructive",
+						});
 					},
 					onclose: (e: CloseEvent) => {
 						if (!isMountedRef.current) return;
+						console.log("Live session closed:", e);
+						console.log("Close code:", e.code, "Reason:", e.reason);
+						sessionRef.current = null;
 						setStatus("idle");
-						stopRecording(); // Ensure everything is cleaned up
+						toast({
+							title: "Ngắt kết nối",
+							description: e.reason || "Kết nối đã bị đóng.",
+						});
 					},
 				},
 				config: {
@@ -136,10 +186,36 @@ export function AdvancedVoiceChat({
 			sessionRef.current = newSession;
 			return newSession;
 		} catch (e: any) {
-			if (!isMountedRef.current) return;
-			console.error("Failed to initialize session:", e);
-			toast({ title: "Lỗi Khởi tạo", description: e.message, variant: "destructive" });
+			console.error("Connection failed:", e);
+			console.error("Error details:", JSON.stringify(e, null, 2));
+			
+			let errorMessage = "Không thể kết nối";
+			let troubleshooting = "";
+			
+			// Analyze common connection issues
+			if (e.message?.includes('401') || e.message?.includes('authentication')) {
+				errorMessage = "API Key không hợp lệ";
+				troubleshooting = "Kiểm tra API key trong file .env.local";
+			} else if (e.message?.includes('billing')) {
+				errorMessage = "Cần kích hoạt billing";
+				troubleshooting = "Vào Google Cloud Console → Billing → Enable billing cho project";
+			} else if (e.message?.includes('quota')) {
+				errorMessage = "Vượt quá giới hạn";
+				troubleshooting = "Kiểm tra quota trong Google Cloud Console";
+			} else if (e.message?.includes('permission')) {
+				errorMessage = "Thiếu quyền truy cập";
+				troubleshooting = "Kiểm tra quyền API trong Google Cloud Console";
+			} else if (e.message?.includes('API not enabled')) {
+				errorMessage = "API chưa được kích hoạt";
+				troubleshooting = "Vào Google Cloud Console → APIs & Services → Enable GenAI API";
+			}
+			
 			setStatus("error");
+			toast({
+				title: errorMessage,
+				description: troubleshooting || e.message || "Kiểm tra cài đặt Google Cloud",
+				variant: "destructive",
+			});
 			return null;
 		}
 	}, [toast]);
@@ -147,7 +223,15 @@ export function AdvancedVoiceChat({
 	const startRecording = useCallback(async () => {
 		if (isRecording || !isMountedRef.current || !inputAudioContextRef.current) return;
 		
-		await inputAudioContextRef.current.resume();
+		// Check if AudioContext is closed or suspended
+		if (inputAudioContextRef.current.state === 'closed') {
+			console.warn('AudioContext is closed, recreating...');
+			inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+		}
+		
+		if (inputAudioContextRef.current.state === 'suspended') {
+			await inputAudioContextRef.current.resume();
+		}
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -164,17 +248,27 @@ export function AdvancedVoiceChat({
 				1,
 			);
 
+			let chunkCount = 0;
 			scriptProcessorNodeRef.current.onaudioprocess = (audioProcessingEvent) => {
-				if (!isRecording || !sessionRef.current) return;
+				if (!isRecordingRef.current || !sessionRef.current) return;
 				const inputBuffer = audioProcessingEvent.inputBuffer;
 				const pcmData = inputBuffer.getChannelData(0);
-				sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
+				if (chunkCount % 50 === 0) {
+					console.log(`Sending audio chunk #${chunkCount}, length=${pcmData.length}`);
+				}
+				chunkCount++;
+				try {
+					sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
+				} catch (err) {
+					console.error('Error sendRealtimeInput:', err);
+				}
 			};
 
 			sourceNodeRef.current.connect(scriptProcessorNodeRef.current);
 			scriptProcessorNodeRef.current.connect(inputAudioContextRef.current.destination);
 
 			setIsRecording(true);
+
 			setStatus("recording");
 
 		} catch (err: any) {
@@ -189,6 +283,15 @@ export function AdvancedVoiceChat({
 		setIsRecording(false);
 		setStatus("idle");
 
+		// Signal to server that user input is finished
+		if (sessionRef.current) {
+			try {
+				// Optionally, you can implement `sessionRef.current.end()` if SDK supports it
+			} catch (err) {
+				console.error('Error sending finish signal:', err);
+			}
+		}
+
 		if (scriptProcessorNodeRef.current) {
 			scriptProcessorNodeRef.current.disconnect();
 			scriptProcessorNodeRef.current = null;
@@ -201,6 +304,9 @@ export function AdvancedVoiceChat({
 			mediaStreamRef.current.getTracks().forEach((track) => track.stop());
 			mediaStreamRef.current = null;
 		}
+		
+		// Keep the session open to receive responses. We'll close it when conversation ends.
+		// Don't close AudioContext - keep it for reuse
 	}, []);
 	
 	const handleMicClick = useCallback(async () => {
@@ -208,8 +314,7 @@ export function AdvancedVoiceChat({
 
 		if (isRecording) {
 			stopRecording();
-			sessionRef.current?.close();
-			sessionRef.current = null;
+			// Do not close the session immediately; allow server to finish responding
 		} else {
 			if (!apiKeys || apiKeys.length === 0) {
 				toast({
@@ -221,11 +326,14 @@ export function AdvancedVoiceChat({
 			}
 			
 			// Always create a new client with the current key
-			clientRef.current = new GoogleGenerativeAI({ apiKey: apiKeys[apiKeyIndex] });
+			clientRef.current = new GoogleGenAI({ apiKey: apiKeys[apiKeyIndex] });
 			
 			const session = await initSession(apiKeys[apiKeyIndex]);
 			if (session) {
-				await startRecording();
+				if (outputAudioContextRef.current?.state === 'suspended') {
+				await outputAudioContextRef.current.resume();
+			}
+			await startRecording();
 			}
 		}
 	}, [isRecording, status, apiKeys, apiKeyIndex, toast, initSession, startRecording, stopRecording]);
@@ -254,7 +362,8 @@ export function AdvancedVoiceChat({
 	};
 
 	return (
-		<Button
+		<>
+			<Button
 			onClick={handleMicClick}
 			size="icon"
 			className={cn(
@@ -267,6 +376,8 @@ export function AdvancedVoiceChat({
 			disabled={status === "connecting"}
 		>
 			{getButtonContent()}
-		</Button>
+			</Button>
+
+		</>
 	)
 }
