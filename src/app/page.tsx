@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useRef, useMemo } from "react"
+import React, { useRef, useMemo, ReactNode } from "react"
 import { AppProvider, useAppContext } from "@/contexts/AppContext"
 import LeftColumn from "@/components/LeftColumn"
 import RightColumn from "@/components/RightColumn"
@@ -15,18 +15,20 @@ import { Button } from "@/components/ui/button"
 import { 
 	PanelLeftOpen, 
 	PanelRightOpen,
+	CheckCircle,
+	Award,
 } from "lucide-react"
 import { Toolbar } from "@/components/Toolbar"
 import { cn } from "@/lib/utils"
 import type { ToolbarItemConfig } from "@/app/types"
 
 function HomePageContent() {
+	const appContext = useAppContext();
 	const { 
 		isMounted, 
 		backgroundImage, 
 		visibility, 
 		onVisibilityChange,
-		
 		view,
 		onViewChange,
 		flashcardSet,
@@ -41,7 +43,6 @@ function HomePageContent() {
 		showQuizSummary,
 		showFlashcardSummary,
 		showTheorySummary,
-
 		theoryState,
 		onTheoryStateChange,
 		setShowTheorySummary,
@@ -49,7 +50,6 @@ function HomePageContent() {
 		onFlashcardStateChange,
 		setShowFlashcardSummary,
 		setShowQuizSummary,
-
 		onBackgroundChange,
         onUploadedBackgroundsChange,
         uploadedBackgrounds,
@@ -65,8 +65,7 @@ function HomePageContent() {
         apiKeys,
         apiKeyIndex,
 		handleApiKeyIndexChange,
-
-	} = useAppContext()
+	} = appContext;
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
 
@@ -99,32 +98,94 @@ function HomePageContent() {
 		const hasFlashcardContent = flashcardSet && flashcardSet.cards.length > 0;
 		const hasQuizContent = quizSet && quizSet.questions.length > 0;
 		const isSummaryActive = showQuizSummary || showFlashcardSummary || showTheorySummary;
-	
-		const contentMap = {
+
+		const navConfig = {
 			flashcards: {
 				total: flashcardSet?.cards.length ?? 0,
 				current: flashcardIndex,
 				label: "Thẻ",
+				onPrev: () => onFlashcardIndexChange(flashcardIndex - 1),
+				onNext: () => onFlashcardIndexChange(flashcardIndex + 1),
 			},
 			quiz: {
 				total: quizSet?.questions.length ?? 0,
 				current: currentQuestionIndex,
 				label: "Câu hỏi",
+				onPrev: () => onCurrentQuestionIndexChange(currentQuestionIndex - 1),
+				onNext: () => onCurrentQuestionIndexChange(currentQuestionIndex + 1),
 			},
 			theory: {
 				total: theorySet?.outline.length ?? 0,
 				current: theoryChapterIndex,
 				label: "Chương",
+				onPrev: () => onTheoryChapterIndexChange(theoryChapterIndex - 1),
+				onNext: () => onTheoryChapterIndexChange(theoryChapterIndex + 1),
 			},
 		};
-	
-		const { total, current, label } = contentMap[view];
-	
-		const isCurrentTheoryUnderstood = theoryState?.understoodIndices.includes(theoryChapterIndex) ?? false;
-		const isCurrentFlashcardUnderstood = flashcardState?.understoodIndices.includes(flashcardIndex) ?? false;
-	
+
+		const { total, current, label, onPrev, onNext } = navConfig[view];
 		const navDisabled = isSummaryActive || total === 0;
-		
+
+		const viewActions: { [key: string]: ReactNode } = {
+			theory: (
+				<>
+					<Button
+						onClick={() => {
+							if (!theoryState) return;
+							const newUnderstoodIndices = [...theoryState.understoodIndices];
+							const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex);
+							if (indexPosition > -1) {
+								newUnderstoodIndices.splice(indexPosition, 1);
+							} else {
+								newUnderstoodIndices.push(theoryChapterIndex);
+							}
+							onTheoryStateChange({ understoodIndices: newUnderstoodIndices });
+						}}
+						disabled={!hasTheoryContent || isSummaryActive}
+						variant={theoryState?.understoodIndices.includes(theoryChapterIndex) ? "default" : "outline"}
+						size="icon"
+						className="h-9 w-9"
+					>
+						<CheckCircle className="w-4 h-4" />
+					</Button>
+					<Button onClick={() => setShowTheorySummary(true)} disabled={!hasTheoryContent || isSummaryActive} variant="outline" size="icon" className="h-9 w-9">
+						<Award className="w-4 h-4" />
+					</Button>
+				</>
+			),
+			flashcards: (
+				<>
+					<Button
+						onClick={() => {
+							if (!flashcardState) return;
+							const newUnderstoodIndices = [...flashcardState.understoodIndices];
+							const indexPosition = newUnderstoodIndices.indexOf(flashcardIndex);
+							if (indexPosition > -1) {
+								newUnderstoodIndices.splice(indexPosition, 1);
+							} else {
+								newUnderstoodIndices.push(flashcardIndex);
+							}
+							onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
+						}}
+						disabled={!hasFlashcardContent || isSummaryActive}
+						variant={flashcardState?.understoodIndices.includes(flashcardIndex) ? "default" : "outline"}
+						size="icon"
+						className="h-9 w-9"
+					>
+						<CheckCircle className="w-4 h-4" />
+					</Button>
+					<Button onClick={() => setShowFlashcardSummary(true)} disabled={!hasFlashcardContent || isSummaryActive} variant="outline" size="icon" className="h-9 w-9">
+						<Award className="w-4 h-4" />
+					</Button>
+				</>
+			),
+			quiz: (
+				<Button onClick={() => setShowQuizSummary(true)} disabled={!hasQuizContent || isSummaryActive} variant="outline" size="icon" className="h-9 w-9">
+					<Award className="h-4 w-4" />
+				</Button>
+			),
+		};
+
 		const baseConfig: ToolbarItemConfig[] = [
 			{
 				id: 'view-select',
@@ -135,24 +196,8 @@ function HomePageContent() {
 				id: 'nav-controls',
 				component: 'NavControls',
 				props: {
-					onPrev: () => {
-						if (current > 0) {
-							switch (view) {
-								case 'flashcards': onFlashcardIndexChange(current - 1); break;
-								case 'quiz': onCurrentQuestionIndexChange(current - 1); break;
-								case 'theory': onTheoryChapterIndexChange(current - 1); break;
-							}
-						}
-					},
-					onNext: () => {
-						if (current < total - 1) {
-							switch (view) {
-								case 'flashcards': onFlashcardIndexChange(current + 1); break;
-								case 'quiz': onCurrentQuestionIndexChange(current + 1); break;
-								case 'theory': onTheoryChapterIndexChange(current + 1); break;
-							}
-						}
-					},
+					onPrev,
+					onNext,
 					isDisabled: navDisabled,
 					isPrevDisabled: current === 0,
 					isNextDisabled: current >= total - 1,
@@ -161,54 +206,15 @@ function HomePageContent() {
 			},
 			{
 				id: 'view-actions',
-				component: 'ViewActions',
+				component: 'Custom',
 				props: {
-					view,
-					isSummaryActive,
-					hasTheoryContent,
-					hasFlashcardContent,
-					hasQuizContent,
-					isCurrentTheoryUnderstood,
-					isCurrentFlashcardUnderstood,
-					onToggleTheoryUnderstood: () => {
-						if (!theoryState) return;
-						const newUnderstoodIndices = [...theoryState.understoodIndices];
-						const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex);
-						if (indexPosition > -1) {
-							newUnderstoodIndices.splice(indexPosition, 1);
-						} else {
-							newUnderstoodIndices.push(theoryChapterIndex);
-						}
-						onTheoryStateChange({ understoodIndices: newUnderstoodIndices });
-					},
-					onShowTheorySummary: () => setShowTheorySummary(true),
-					onToggleFlashcardUnderstood: () => {
-						if (!flashcardState) return;
-						const newUnderstoodIndices = [...flashcardState.understoodIndices];
-						const indexPosition = newUnderstoodIndices.indexOf(flashcardIndex);
-						if (indexPosition > -1) {
-							newUnderstoodIndices.splice(indexPosition, 1);
-						} else {
-							newUnderstoodIndices.push(flashcardIndex);
-						}
-						onFlashcardStateChange({ understoodIndices: newUnderstoodIndices });
-					},
-					onShowFlashcardSummary: () => setShowFlashcardSummary(true),
-					onShowQuizSummary: () => setShowQuizSummary(true),
+					children: viewActions[view] || null
 				}
 			},
 			{
 				id: 'settings',
 				component: 'Settings',
-				props: {
-					scope: "all",
-					onVisibilityChange, onBackgroundChange, onUploadedBackgroundsChange,
-					visibility, uploadedBackgrounds, currentBackgroundImage: backgroundImage,
-					onSettingsChange: onSettingsSave, onGenerate, onClearLearningData: handleClearLearningData,
-					isLoading, topic, language, model,
-					onApiKeysChange, onResetOnboarding: handleResetOnboarding, apiKeys,
-					theorySet, flashcardSet, quizSet,
-				}
+				props: { ...appContext, scope: "all" }
 			}
 		];
 
@@ -227,13 +233,9 @@ function HomePageContent() {
 		return baseConfig;
 
 	}, [
-		view, flashcardSet, quizSet, theorySet, flashcardIndex, currentQuestionIndex, theoryChapterIndex,
+		appContext, view, flashcardSet, quizSet, theorySet, flashcardIndex, currentQuestionIndex, theoryChapterIndex,
 		showQuizSummary, showFlashcardSummary, showTheorySummary, theoryState, flashcardState,
-		visibility, backgroundImage, uploadedBackgrounds, isLoading, topic, language, model, apiKeys, apiKeyIndex,
-		onViewChange, onFlashcardIndexChange, onCurrentQuestionIndexChange, onTheoryChapterIndexChange,
-		onTheoryStateChange, setShowTheorySummary, onFlashcardStateChange, setShowFlashcardSummary, setShowQuizSummary,
-		onVisibilityChange, onBackgroundChange, onUploadedBackgroundsChange, onSettingsSave, onGenerate,
-		handleClearLearningData, onApiKeysChange, handleResetOnboarding, handleApiKeyIndexChange
+		visibility.advancedVoiceChat, apiKeys, apiKeyIndex
 	]);
 
 
