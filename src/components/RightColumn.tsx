@@ -40,7 +40,7 @@ function FirebaseConfigError() {
 
 export default function RightColumn() {
 	const { user, loading, isFirebaseConfigured } = useAuthContext();
-	const { visibility, hasCompletedOnboarding } = useSettingsContext()
+	const { visibility } = useSettingsContext()
 
 	if (!visibility.learn) {
 		return null
@@ -63,10 +63,8 @@ export default function RightColumn() {
 			<div className="flex flex-col w-full h-full">
 				{!user ? (
 					<Login />
-				) : hasCompletedOnboarding ? (
-					<Learn />
 				) : (
-					<ApiKeyGuide />
+					<Learn />
 				)}
 			</div>
 		</div>
