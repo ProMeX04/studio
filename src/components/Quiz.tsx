@@ -7,42 +7,35 @@ import React, {
 	useMemo,
 	useEffect,
 	useCallback,
-	useRef,
-	Fragment,
 } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
 import { Label } from "./ui/label"
 import {
-	ChevronLeft,
-	ChevronRight,
 	HelpCircle,
 	Loader,
 	Plus,
 	BookOpen,
-	Menu,
 } from "lucide-react"
 import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import type {
-	QuizQuestion,
 	QuizSet,
-	ExplainQuizOptionOutput,
 } from "@/ai/schemas"
-import type { QuizState, AnswerState } from "@/app/types"
+import type { QuizState } from "@/app/types"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { QuizSummary } from "./QuizSummary"
 import { AIError } from "@/lib/ai-service"
 import { ScrollArea } from "./ui/scroll-area"
-import { useAppContext } from "@/contexts/AppContext"
+import { useLearningContext } from "@/contexts/LearningContext"
+import { useSettingsContext } from "@/contexts/SettingsContext"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
@@ -50,15 +43,6 @@ const Syntax: any = SyntaxHighlighter
 interface QuizProps {
 	quizSet: QuizSet | null
 	quizState: QuizState | null
-	onQuizStateChange: (newState: QuizState) => void
-	language: string
-	topic: string;
-	model: string;
-	currentQuestionIndex: number;
-	onCurrentQuestionIndexChange: (index: number) => void;
-	apiKeys: string[];
-	apiKeyIndex: number;
-	onApiKeyIndexChange: (index: number) => void;
 }
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
@@ -119,17 +103,17 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 export function Quiz({
 	quizSet,
 	quizState,
-	onQuizStateChange,
-	language,
-	topic,
-	model,
-	currentQuestionIndex,
-	onCurrentQuestionIndexChange,
-	apiKeys,
-	apiKeyIndex,
-	onApiKeyIndexChange,
 }: QuizProps) {
-	const { handleGenerate, isLoading } = useAppContext();
+	const {
+		onQuizStateChange,
+		language,
+		topic,
+		model,
+		currentQuestionIndex,
+		handleGenerate,
+		isLoading,
+	} = useLearningContext();
+	const { apiKeys, apiKeyIndex, handleApiKeyIndexChange } = useSettingsContext();
 	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
 	const [visibleExplanations, setVisibleExplanations] = useState<
@@ -218,7 +202,7 @@ export function Quiz({
 					model: model,
 				});
 
-				onApiKeyIndexChange(newApiKeyIndex);
+				handleApiKeyIndexChange(newApiKeyIndex);
 	
 				if (result?.explanation) {
 					const newState: QuizState = {
@@ -271,7 +255,7 @@ export function Quiz({
 			onQuizStateChange,
 			apiKeys,
 			apiKeyIndex,
-			onApiKeyIndexChange
+			handleApiKeyIndexChange
 		]
 	);
 

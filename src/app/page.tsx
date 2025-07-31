@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useRef, useMemo, ReactNode } from "react"
@@ -23,7 +24,6 @@ import { cn } from "@/lib/utils"
 import type { ToolbarItemConfig } from "@/app/types"
 
 function HomePageContent() {
-	const appContext = useAppContext();
 	const { 
 		isMounted, 
 		backgroundImage, 
@@ -50,22 +50,10 @@ function HomePageContent() {
 		onFlashcardStateChange,
 		setShowFlashcardSummary,
 		setShowQuizSummary,
-		onBackgroundChange,
-        onUploadedBackgroundsChange,
-        uploadedBackgrounds,
-        onSettingsSave,
-        onGenerate,
-        handleClearLearningData,
-        isLoading,
-        topic,
-        language,
-        model,
-        onApiKeysChange,
-        handleResetOnboarding,
-        apiKeys,
-        apiKeyIndex,
+		apiKeys,
+		apiKeyIndex,
 		handleApiKeyIndexChange,
-	} = appContext;
+	} = useAppContext();
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
 
@@ -214,7 +202,7 @@ function HomePageContent() {
 			{
 				id: 'settings',
 				component: 'Settings',
-				props: { ...appContext, scope: "all" }
+				props: { scope: "all" } // Settings now gets its props from its own context
 			}
 		];
 
@@ -233,9 +221,11 @@ function HomePageContent() {
 		return baseConfig;
 
 	}, [
-		appContext, view, flashcardSet, quizSet, theorySet, flashcardIndex, currentQuestionIndex, theoryChapterIndex,
-		showQuizSummary, showFlashcardSummary, showTheorySummary, theoryState, flashcardState,
-		visibility.advancedVoiceChat, apiKeys, apiKeyIndex
+		view, onViewChange, flashcardSet, quizSet, theorySet, flashcardIndex, onFlashcardIndexChange, currentQuestionIndex, 
+		onCurrentQuestionIndexChange, theoryChapterIndex, onTheoryChapterIndexChange, showQuizSummary, setShowQuizSummary, 
+		showFlashcardSummary, setShowFlashcardSummary, showTheorySummary, setShowTheorySummary, theoryState, 
+		onTheoryStateChange, flashcardState, onFlashcardStateChange, visibility.advancedVoiceChat, apiKeys, apiKeyIndex, 
+		handleApiKeyIndexChange
 	]);
 
 

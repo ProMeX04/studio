@@ -1,22 +1,17 @@
 
+
 "use client"
 
-import React, { useState, useCallback } from "react"
-import { useAppContext } from "@/contexts/AppContext"
+import React, { useState } from "react"
+import { useSettingsContext } from "@/contexts/SettingsContext"
+import { useLearningContext } from "@/contexts/LearningContext"
 import {
 	Loader,
 	ChevronLeft,
-	Award,
-	Settings as SettingsIcon,
-	CheckCircle,
 	KeyRound,
 	ExternalLink,
 	Sparkles,
-	BookOpen,
-	Menu,
-	Languages,
-	Plus,
-	BrainCircuit,
+	Settings as SettingsIcon,
 } from "lucide-react"
 import {
 	Card,
@@ -38,44 +33,46 @@ import {
 } from "@/components/ui/select"
 import { languages, models } from "./Settings"
 import { Label } from "./ui/label"
-import { on } from "events"
 
 export function ApiKeyGuide() {
-    const {
-        onOnboardingComplete,
-        topic,
-        language,
-        model,
-        apiKeys,
-        onApiKeysChange,
-        onSettingsSave,
-        onGenerate,
-        isLoading,
-    } = useAppContext();
+	const {
+		onOnboardingComplete,
+		apiKeys,
+		onApiKeysChange,
+		setHasCompletedOnboarding,
+	} = useSettingsContext()
+	const {
+		onGenerate,
+		isLoading,
+		topic,
+		language,
+		model,
+		onSettingsSave,
+	} = useLearningContext()
 
 	const [onboardingStep, setOnboardingStep] = useState(1)
 	const [localTopic, setLocalTopic] = useState(topic)
 	const [localLanguage, setLocalLanguage] = useState(language || "Vietnamese")
 	const [localModel, setLocalModel] = useState(model)
 
-    const handleFinishOnboarding = () => {
-        // 1. Save all settings
-        onSettingsSave({
-            topic: localTopic,
-            language: localLanguage,
-            model: localModel,
-        })
-        // 2. Mark onboarding as complete in context
-        onOnboardingComplete(localTopic, localLanguage, localModel)
-        // 3. Trigger the first generation automatically
-        onGenerate(true)
-    }
+	const handleFinishOnboarding = () => {
+		// 1. Save all settings
+		onSettingsSave({
+			topic: localTopic,
+			language: localLanguage,
+			model: localModel,
+		})
+		// 2. Mark onboarding as complete in context
+		onOnboardingComplete(localTopic, localLanguage, localModel)
+		// 3. Trigger the first generation automatically
+		onGenerate(true)
+	}
 
 	const handleNextStep = (e?: React.FormEvent) => {
 		e?.preventDefault()
-        if (onboardingStep === 1) {
-            if (!localTopic.trim()) return;
-        }
+		if (onboardingStep === 1) {
+			if (!localTopic.trim()) return
+		}
 		setOnboardingStep(onboardingStep + 1)
 	}
 
@@ -89,7 +86,7 @@ export function ApiKeyGuide() {
 		apiKeys: apiKeys,
 		onApiKeysChange: onApiKeysChange,
 		onSettingsChanged: handleFinishOnboarding,
-        isLoading: isLoading,
+		isLoading: isLoading,
 	}
 
 	if (onboardingStep === 1) {
@@ -156,40 +153,62 @@ export function ApiKeyGuide() {
 							onSubmit={handleNextStep}
 							className="space-y-4 animate-in fade-in duration-500 delay-300"
 						>
-                            <div className="space-y-2">
-                                <Label htmlFor="language-select">Ngôn ngữ</Label>
-                                <Select value={localLanguage} onValueChange={setLocalLanguage}>
-                                    <SelectTrigger id="language-select" className="text-base h-12">
-                                        <SelectValue placeholder="Chọn một ngôn ngữ" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {languages.map((lang) => (
-                                            <SelectItem key={lang.value} value={lang.value}>
-                                                {lang.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="model-select">Model AI</Label>
-                                <Select value={localModel} onValueChange={setLocalModel}>
-                                    <SelectTrigger id="model-select" className="text-base h-12">
-                                        <SelectValue placeholder="Chọn một model" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {models.map((m) => (
-                                            <SelectItem key={m.value} value={m.value}>
-                                                {m.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground px-1">
-                                    Gemini Flash nhanh và hiệu quả, trong khi Pro mạnh mẽ và chính xác hơn.
-                                </p>
-                            </div>
-                            <Button type="submit" className="w-full h-12 !mt-6">
+							<div className="space-y-2">
+								<Label htmlFor="language-select">Ngôn ngữ</Label>
+								<Select
+									value={localLanguage}
+									onValueChange={setLocalLanguage}
+								>
+									<SelectTrigger
+										id="language-select"
+										className="text-base h-12"
+									>
+										<SelectValue placeholder="Chọn một ngôn ngữ" />
+									</SelectTrigger>
+									<SelectContent>
+										{languages.map((lang) => (
+											<SelectItem
+												key={lang.value}
+												value={lang.value}
+											>
+												{lang.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="model-select">Model AI</Label>
+								<Select
+									value={localModel}
+									onValueChange={setLocalModel}
+								>
+									<SelectTrigger
+										id="model-select"
+										className="text-base h-12"
+									>
+										<SelectValue placeholder="Chọn một model" />
+									</SelectTrigger>
+									<SelectContent>
+										{models.map((m) => (
+											<SelectItem
+												key={m.value}
+												value={m.value}
+											>
+												{m.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<p className="text-xs text-muted-foreground px-1">
+									Gemini Flash nhanh và hiệu quả, trong khi Pro mạnh mẽ
+									và chính xác hơn.
+								</p>
+							</div>
+							<Button
+								type="submit"
+								className="w-full h-12 !mt-6"
+							>
 								Tiếp tục
 							</Button>
 						</form>
@@ -222,21 +241,26 @@ export function ApiKeyGuide() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
-                        <p className="text-muted-foreground mb-4">
-                            Nó giống như một chiếc chìa khóa cho phép ứng dụng này truy cập
-                            vào khả năng của Google Gemini AI. Việc sử dụng key của riêng bạn là hoàn toàn miễn phí trong
-                            giới hạn cho phép của Google.
-                        </p>
-                        <Button asChild className="w-full h-12 mb-4">
+						<p className="text-muted-foreground mb-4">
+							Nó giống như một chiếc chìa khóa cho phép ứng dụng này
+							truy cập vào khả năng của Google Gemini AI. Việc sử dụng
+							key của riêng bạn là hoàn toàn miễn phí trong giới hạn cho
+							phép của Google.
+						</p>
+						<Button asChild className="w-full h-12 mb-4">
 							<a
 								href="https://aistudio.google.com/app/apikey"
 								target="_blank"
 								rel="noopener noreferrer"
 							>
-								Lấy API Key tại đây <ExternalLink className="ml-2 h-4 w-4" />
+								Lấy API Key tại đây{" "}
+								<ExternalLink className="ml-2 h-4 w-4" />
 							</a>
 						</Button>
-						<Settings {...onboardingApiKeysProps} scope="learn-onboarding" />
+						<Settings
+							{...onboardingApiKeysProps}
+							scope="learn-onboarding"
+						/>
 					</CardContent>
 				</Card>
 			</div>

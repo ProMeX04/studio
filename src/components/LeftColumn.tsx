@@ -1,18 +1,16 @@
 
+
 "use client"
 
 import React from 'react';
-import { useAppContext } from "@/contexts/AppContext"
+import { useSettingsContext } from "@/contexts/SettingsContext"
 import { Greeting } from "@/components/Greeting"
 import { Clock } from "@/components/Clock"
 import { Search } from "@/components/Search"
 import { QuickLinks } from "@/components/QuickLinks"
-import { Settings } from './Settings';
 
 export default function LeftColumn() {
-    const { 
-        visibility,
-    } = useAppContext();
+    const { visibility } = useSettingsContext();
 
     return (
         <div className="relative flex h-screen flex-col justify-center overflow-hidden p-4 sm:p-8 md:p-12">

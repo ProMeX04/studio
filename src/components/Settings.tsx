@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
 	Settings as SettingsIcon,
 	CheckCircle,
@@ -10,18 +10,12 @@ import {
 	Trash2,
 	RefreshCw,
 	AlertTriangle,
-	Brush,
-	BookOpen,
 	KeyRound,
 	Plus,
 	X,
 	Loader,
 	ExternalLink,
-	HelpCircle,
 	Menu,
-	Save,
-	BrainCircuit,
-	Minus,
 	Mic,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -32,23 +26,14 @@ import {
 	SheetTitle,
 	SheetTrigger,
 	SheetFooter,
-	SheetClose,
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
-import type { ComponentVisibility } from "@/contexts/AppContext"
+import type { ComponentVisibility } from "@/contexts/SettingsContext"
 import { Switch } from "./ui/switch"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
-import { getDb } from "@/lib/idb"
 import { Progress } from "@/components/ui/progress"
 import {
 	AlertDialog,
@@ -62,9 +47,9 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type { CardSet, QuizSet, TheorySet } from "@/ai/schemas"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useSettingsContext } from "@/contexts/SettingsContext"
+import { useLearningContext } from "@/contexts/LearningContext"
 
 type SettingsScope = "all" | "learn-onboarding"
 
@@ -72,45 +57,16 @@ interface CommonSettingsProps {
 	scope: SettingsScope
 }
 
-interface AllSettingsProps {
-	scope: "all"
-	onVisibilityChange: (visibility: ComponentVisibility) => void
-	onBackgroundChange: (background: string | null) => void
-	onUploadedBackgroundsChange: (backgrounds: string[]) => void
-	visibility: ComponentVisibility
-	uploadedBackgrounds: string[]
-	currentBackgroundImage: string | null
-	onGenerate?: (forceNew: boolean) => void
-	onApiKeysChange: (apiKeys: string[]) => void
-	onResetOnboarding: () => void
-	isLoading: boolean
-	apiKeys: string[]
-	theorySet: TheorySet | null
-	flashcardSet: CardSet | null
-	quizSet: QuizSet | null
-	onSettingsChange: (settings: {
-		topic: string
-		language: string
-		model: string
-	}) => void
-	topic: string
-	language: string
-	model: string
-	onClearLearningData: () => void
-	generationProgress: any;
-}
-
-// A more limited version of LearnSettingsProps for onboarding
+// This represents the props passed during the onboarding flow
 interface LearnOnboardingSettingsProps {
 	scope: "learn-onboarding"
 	onApiKeysChange: (apiKeys: string[]) => void
-	onSettingsChanged: () => void // For onboarding
+	onSettingsChanged: () => void
 	apiKeys: string[]
 	isLoading: boolean
 }
 
-type SettingsProps = CommonSettingsProps &
-	(AllSettingsProps | LearnOnboardingSettingsProps)
+type SettingsProps = CommonSettingsProps | LearnOnboardingSettingsProps
 
 export const languages = [
 	{ value: "Vietnamese", label: "Tiếng Việt" },
@@ -141,73 +97,62 @@ export function Settings(props: SettingsProps) {
 	const { toast } = useToast()
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
 
-	// Local state for API keys (now managed in learn settings)
+	// Local state for API keys
 	const [localApiKeys, setLocalApiKeys] = useState<string[]>(
-		scope.startsWith("learn") || scope === "all"
-			? (props as AllSettingsProps | LearnOnboardingSettingsProps).apiKeys
-			: []
+		(props as any).apiKeys || []
 	)
 	const [newApiKey, setNewApiKey] = useState("")
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
-	const allProps = scope === "all" ? (props as AllSettingsProps) : undefined
+	// --- CONTEXT HOOKS ---
+	// We use them conditionally to avoid breaking rules of hooks
+	const settingsContext = scope === 'all' ? useSettingsContext() : null;
+    const learningContext = scope === 'all' ? useLearningContext() : null;
 
-	// Sync local state with props when the sheet opens or props change
 	useEffect(() => {
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
+		if (scope === "all" && settingsContext) {
 			if (isSheetOpen) {
-				setLocalApiKeys(allProps.apiKeys)
+				setLocalApiKeys(settingsContext.apiKeys)
 			}
 		} else if (isOnboardingScope) {
-			const learnProps = props as LearnOnboardingSettingsProps
-			setLocalApiKeys(learnProps.apiKeys)
+			setLocalApiKeys((props as LearnOnboardingSettingsProps).apiKeys)
 		}
-	}, [props, scope, isSheetOpen, isOnboardingScope])
+	}, [props, scope, isSheetOpen, settingsContext])
 
 	const handleAddNewApiKey = () => {
-		if (!scope.startsWith("learn") && scope !== "all") return
 		if (newApiKey.trim()) {
+			const currentProps = props as (LearnOnboardingSettingsProps);
 			if (!localApiKeys.includes(newApiKey.trim())) {
 				const newKeys = [...localApiKeys, newApiKey.trim()]
 				setLocalApiKeys(newKeys)
-				;(
-					props as AllSettingsProps | LearnOnboardingSettingsProps
-				).onApiKeysChange(newKeys)
+				currentProps.onApiKeysChange(newKeys);
 			}
 			setNewApiKey("")
 		}
 	}
 
 	const handleRemoveApiKey = (keyToRemove: string) => {
-		if (!scope.startsWith("learn") && scope !== "all") return
+		const currentProps = props as (LearnOnboardingSettingsProps);
 		const newKeys = localApiKeys.filter((key) => key !== keyToRemove)
 		setLocalApiKeys(newKeys)
-		;(
-			props as AllSettingsProps | LearnOnboardingSettingsProps
-		).onApiKeysChange(newKeys)
+		currentProps.onApiKeysChange(newKeys);
 	}
 
 	const handleGenerate = (forceNew: boolean) => {
-		if (scope === "all") {
-			const currentProps = props as AllSettingsProps
-			if (currentProps.onGenerate) {
-				currentProps.onGenerate(forceNew)
-			}
+		if (scope === "all" && learningContext) {
+			learningContext.onGenerate(forceNew)
 		}
 	}
 
 	const handleResetOnboarding = () => {
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
-			allProps.onResetOnboarding()
+		if (scope === "all" && settingsContext) {
+			settingsContext.handleResetOnboarding()
 		}
 	}
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (scope === "all") {
-			const allProps = props as AllSettingsProps
+		if (scope === "all" && settingsContext) {
 			const file = e.target.files?.[0]
 			if (file) {
 				const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -225,10 +170,10 @@ export function Settings(props: SettingsProps) {
 					const result = event.target?.result as string
 					const newUploadedBgs = [
 						result,
-						...allProps.uploadedBackgrounds,
+						...settingsContext.uploadedBackgrounds,
 					].slice(0, MAX_UPLOADED_IMAGES)
-					allProps.onUploadedBackgroundsChange(newUploadedBgs)
-					allProps.onBackgroundChange(result)
+					settingsContext.onUploadedBackgroundsChange(newUploadedBgs)
+					settingsContext.onBackgroundChange(result)
 				}
 				reader.readAsDataURL(file)
 			}
@@ -236,10 +181,7 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderApiKeyManagement = () => {
-		if (!scope.startsWith("learn") && scope !== "all") return null
-		const learnProps = props as
-			| LearnOnboardingSettingsProps
-			| AllSettingsProps
+		const currentProps = props as (LearnOnboardingSettingsProps)
 
 		return (
 			<div className="space-y-2">
@@ -295,28 +237,28 @@ export function Settings(props: SettingsProps) {
 				{scope === "learn-onboarding" && (
 					<Button
 						onClick={() => {
-                            const currentProps = props as LearnOnboardingSettingsProps;
-                            if (localApiKeys.length > 0) {
-                                currentProps.onSettingsChanged();
-                            } else {
-                                toast({
-                                    title: "Yêu cầu API Key",
-                                    description: "Vui lòng thêm ít nhất một API key để tiếp tục.",
-                                    variant: "destructive"
-                                });
-                            }
-                        }}
-						disabled={localApiKeys.length === 0 || learnProps.isLoading}
+							if (localApiKeys.length > 0) {
+								currentProps.onSettingsChanged()
+							} else {
+								toast({
+									title: "Yêu cầu API Key",
+									description:
+										"Vui lòng thêm ít nhất một API key để tiếp tục.",
+									variant: "destructive",
+								})
+							}
+						}}
+						disabled={localApiKeys.length === 0 || currentProps.isLoading}
 						className="w-full mt-4 h-12"
 					>
-                        {learnProps.isLoading ? (
-                            <>
-                                <Loader className="animate-spin mr-2 h-4 w-4" />
-                                Đang tạo...
-                            </>
-                        ) : (
-                            "Bắt đầu học"
-                        )}
+						{currentProps.isLoading ? (
+							<>
+								<Loader className="animate-spin mr-2 h-4 w-4" />
+								Đang tạo...
+							</>
+						) : (
+							"Bắt đầu học"
+						)}
 					</Button>
 				)}
 			</div>
@@ -324,58 +266,72 @@ export function Settings(props: SettingsProps) {
 	}
 
 	const renderContentGenerationControls = () => {
-		if (scope !== "all" || !allProps) return null;
-	
-		const { isLoading, theorySet, flashcardSet, quizSet, generationProgress } = allProps;
-	
-		const theoryCount = theorySet?.chapters.filter(c => c.content).length ?? 0;
-		const theoryMax = theorySet?.outline.length ?? 0;
-		const flashcardCount = flashcardSet?.cards.length ?? 0;
-		const quizCount = quizSet?.questions.length ?? 0;
-	
-		const isCompleted = generationProgress?.currentStage === 'done';
-	
-		let progressPercent = 0;
-		if (theoryMax > 0 && generationProgress) {
-			const STAGES = ['theory', 'flashcards', 'quiz'];
-			const chapterProgress = generationProgress.currentChapterIndex / theoryMax;
-			const stageIndex = STAGES.indexOf(generationProgress.currentStage);
-			
-			// Each stage is 1/3 of a chapter's progress.
-			const stageProgress = (stageIndex >= 0 ? stageIndex : 2) / STAGES.length;
-			
-			// Total progress is progress of completed chapters + progress within the current chapter.
-			progressPercent = (chapterProgress + (stageProgress / theoryMax)) * 100;
+		if (scope !== "all" || !learningContext) return null
 
-			if(generationProgress.currentStage === 'done') {
-				progressPercent = 100;
+		const { isLoading, theorySet, flashcardSet, quizSet, generationProgress } =
+			learningContext
+
+		const theoryCount =
+			theorySet?.chapters.filter((c) => c.content).length ?? 0
+		const theoryMax = theorySet?.outline.length ?? 0
+		const flashcardCount = flashcardSet?.cards.length ?? 0
+		const quizCount = quizSet?.questions.length ?? 0
+
+		const isCompleted = generationProgress?.currentStage === "done"
+
+		let progressPercent = 0
+		if (theoryMax > 0 && generationProgress) {
+			const STAGES = ["theory", "flashcards", "quiz"]
+			const chapterProgress =
+				generationProgress.currentChapterIndex / theoryMax
+			const stageIndex = STAGES.indexOf(generationProgress.currentStage)
+
+			const stageProgress = (stageIndex >= 0 ? stageIndex : 2) / STAGES.length
+
+			progressPercent =
+				(chapterProgress + stageProgress / theoryMax) * 100
+
+			if (generationProgress.currentStage === "done") {
+				progressPercent = 100
 			}
 		}
-	
+
 		return (
 			<div className="space-y-4">
-				<Label className="font-medium text-foreground">Quản lý nội dung học tập</Label>
-	
+				<Label className="font-medium text-foreground">
+					Quản lý nội dung học tập
+				</Label>
+
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
 					<div className="flex justify-between items-center">
-						<Label htmlFor="theory-progress" className="text-sm">Tiến độ tổng</Label>
-						<span className="text-sm text-muted-foreground">{progressPercent.toFixed(0)}%</span>
+						<Label htmlFor="theory-progress" className="text-sm">
+							Tiến độ tổng
+						</Label>
+						<span className="text-sm text-muted-foreground">
+							{progressPercent.toFixed(0)}%
+						</span>
 					</div>
 					<Progress value={progressPercent} id="total-progress" />
-	
+
 					<div className="flex justify-between items-center text-sm pt-2">
 						<Label>Lý thuyết</Label>
-						<span className="text-muted-foreground">{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} chương</span>
+						<span className="text-muted-foreground">
+							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} chương
+						</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Flashcard</Label>
-						<span className="text-muted-foreground">{flashcardCount} thẻ</span>
+						<span className="text-muted-foreground">
+							{flashcardCount} thẻ
+						</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Trắc nghiệm</Label>
-						<span className="text-muted-foreground">{quizCount} câu</span>
+						<span className="text-muted-foreground">
+							{quizCount} câu
+						</span>
 					</div>
-	
+
 					<Button
 						className="w-full"
 						onClick={() => handleGenerate(false)}
@@ -394,23 +350,11 @@ export function Settings(props: SettingsProps) {
 					</Button>
 				</div>
 			</div>
-		);
-	};
+		)
+	}
 
 	const renderLearnSettings = () => {
-		if (scope !== "all" || !allProps) return null;
-        
-        const handleSaveSettings = () => {
-            allProps.onSettingsChange({
-                topic: allProps.topic,
-                language: allProps.language,
-                model: allProps.model,
-            });
-            toast({
-                title: "Đã lưu cài đặt",
-                description: "Cài đặt học tập của bạn đã được cập nhật.",
-            })
-        }
+		if (scope !== "all" || !settingsContext) return null;
 
 		return (
 			<div className="space-y-4">
@@ -419,23 +363,21 @@ export function Settings(props: SettingsProps) {
 						<KeyRound className="w-4 h-4" />
 						<span>Quản lý Gemini API Keys</span>
 					</Label>
-					{renderApiKeyManagement()}
+					<renderApiKeyManagement />
 				</div>
 				<Separator />
 				{renderContentGenerationControls()}
 			</div>
 		)
 	}
-
+	
 	const renderGlobalSettings = () => {
-		if (scope !== "all") return null
-		const allProps = props as AllSettingsProps
+		if (scope !== "all" || !settingsContext) return null;
+
 		return (
 			<div className="space-y-4">
 				<div className="space-y-4">
-					<Label className="font-medium text-foreground">
-						Hình nền
-					</Label>
+					<Label className="font-medium text-foreground">Hình nền</Label>
 					<div className="flex items-center gap-2">
 						<Button
 							variant="outline"
@@ -448,7 +390,7 @@ export function Settings(props: SettingsProps) {
 						<Button
 							variant="ghost"
 							size="icon"
-							onClick={() => allProps.onBackgroundChange(null)}
+							onClick={() => settingsContext.onBackgroundChange(null)}
 							aria-label="Xóa hình nền"
 						>
 							<Trash2 className="h-4 w-4" />
@@ -462,11 +404,11 @@ export function Settings(props: SettingsProps) {
 						accept="image/*"
 					/>
 					<div className="grid grid-cols-3 gap-2">
-						{allProps.uploadedBackgrounds.map((bg, index) => (
+						{settingsContext.uploadedBackgrounds.map((bg, index) => (
 							<div
 								key={`uploaded-${index}`}
 								className="relative cursor-pointer group"
-								onClick={() => allProps.onBackgroundChange(bg)}
+								onClick={() => settingsContext.onBackgroundChange(bg)}
 							>
 								<Image
 									src={bg}
@@ -475,12 +417,11 @@ export function Settings(props: SettingsProps) {
 									height={60}
 									className={cn(
 										"rounded-md object-cover aspect-video",
-										allProps.currentBackgroundImage ===
-											bg &&
+										settingsContext.backgroundImage === bg &&
 											"ring-2 ring-primary ring-offset-2 ring-offset-background"
 									)}
 								/>
-								{allProps.currentBackgroundImage === bg && (
+								{settingsContext.backgroundImage === bg && (
 									<CheckCircle className="absolute top-1 right-1 h-5 w-5 text-primary bg-background rounded-full" />
 								)}
 							</div>
@@ -503,10 +444,10 @@ export function Settings(props: SettingsProps) {
 							</Label>
 							<Switch
 								id="advanced-voice-chat-visible"
-								checked={allProps.visibility.advancedVoiceChat}
+								checked={settingsContext.visibility.advancedVoiceChat}
 								onCheckedChange={(checked) =>
-									allProps.onVisibilityChange({
-										...allProps.visibility,
+									settingsContext.onVisibilityChange({
+										...settingsContext.visibility,
 										advancedVoiceChat: checked,
 									})
 								}
@@ -516,10 +457,10 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="clock-visible">Đồng hồ</Label>
 							<Switch
 								id="clock-visible"
-								checked={allProps.visibility.clock}
+								checked={settingsContext.visibility.clock}
 								onCheckedChange={(checked) =>
-									allProps.onVisibilityChange({
-										...allProps.visibility,
+									settingsContext.onVisibilityChange({
+										...settingsContext.visibility,
 										clock: checked,
 									})
 								}
@@ -529,10 +470,10 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="greeting-visible">Lời chào</Label>
 							<Switch
 								id="greeting-visible"
-								checked={allProps.visibility.greeting}
+								checked={settingsContext.visibility.greeting}
 								onCheckedChange={(checked) =>
-									allProps.onVisibilityChange({
-										...allProps.visibility,
+									settingsContext.onVisibilityChange({
+										...settingsContext.visibility,
 										greeting: checked,
 									})
 								}
@@ -542,25 +483,23 @@ export function Settings(props: SettingsProps) {
 							<Label htmlFor="search-visible">Tìm kiếm</Label>
 							<Switch
 								id="search-visible"
-								checked={allProps.visibility.search}
+								checked={settingsContext.visibility.search}
 								onCheckedChange={(checked) =>
-									allProps.onVisibilityChange({
-										...allProps.visibility,
+									settingsContext.onVisibilityChange({
+										...settingsContext.visibility,
 										search: checked,
 									})
 								}
 							/>
 						</div>
 						<div className="flex items-center justify-between">
-							<Label htmlFor="quicklinks-visible">
-								Liên kết nhanh
-							</Label>
+							<Label htmlFor="quicklinks-visible">Liên kết nhanh</Label>
 							<Switch
 								id="quicklinks-visible"
-								checked={allProps.visibility.quickLinks}
+								checked={settingsContext.visibility.quickLinks}
 								onCheckedChange={(checked) =>
-									allProps.onVisibilityChange({
-										...allProps.visibility,
+									settingsContext.onVisibilityChange({
+										...settingsContext.visibility,
 										quickLinks: checked,
 									})
 								}
@@ -575,6 +514,10 @@ export function Settings(props: SettingsProps) {
 	if (isOnboardingScope) {
 		return renderApiKeyManagement()
 	}
+
+	if (!settingsContext || !learningContext) {
+        return null; // Or a loading spinner
+    }
 
 	return (
 		<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -613,17 +556,13 @@ export function Settings(props: SettingsProps) {
 						value="learn"
 						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
 					>
-						<div className="grid gap-6">
-							{renderLearnSettings()}
-						</div>
+						<div className="grid gap-6">{renderLearnSettings()}</div>
 					</TabsContent>
 					<TabsContent
 						value="global"
 						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
 					>
-						<div className="grid gap-6">
-							{renderGlobalSettings()}
-						</div>
+						<div className="grid gap-6">{renderGlobalSettings()}</div>
 					</TabsContent>
 				</Tabs>
 
@@ -644,12 +583,11 @@ export function Settings(props: SettingsProps) {
 									</div>
 								</AlertDialogTitle>
 								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả dữ
-									liệu học tập hiện tại (lý thuyết, flashcard,
-									trắc nghiệm) và bắt đầu lại quá trình tạo
-									chủ đề mới. Cài đặt chung của bạn sẽ được
-									giữ lại. Bạn có chắc chắn muốn tiếp tục
-									không?
+									Hành động này sẽ xóa vĩnh viễn tất cả dữ liệu học
+									tập hiện tại (lý thuyết, flashcard, trắc nghiệm) và
+									bắt đầu lại quá trình tạo chủ đề mới. Cài đặt chung
+									của bạn sẽ được giữ lại. Bạn có chắc chắn muốn tiếp
+									tục không?
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>

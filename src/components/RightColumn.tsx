@@ -1,8 +1,9 @@
 
+
 "use client"
 
 import React from "react"
-import { useAppContext } from "@/contexts/AppContext"
+import { useSettingsContext } from "@/contexts/SettingsContext"
 import { ApiKeyGuide } from "@/components/ApiKeyGuide"
 import { Learn } from "@/components/Learn"
 
@@ -10,7 +11,7 @@ export default function RightColumn() {
 	const {
 		visibility,
 		hasCompletedOnboarding,
-	} = useAppContext()
+	} = useSettingsContext()
 
 	if (!visibility.learn) {
 		return null

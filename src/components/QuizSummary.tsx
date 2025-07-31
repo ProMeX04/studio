@@ -1,16 +1,17 @@
 
+
 "use client";
 
-import { Award, Target, RefreshCw, Undo2, CircleHelp } from 'lucide-react';
+import { Award, Target, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { useLearningContext } from '@/contexts/LearningContext';
 
 interface QuizSummaryProps {
     correctAnswers: number;
     incorrectAnswers: number;
     unansweredQuestions: number;
     totalQuestions: number;
-    onReset: () => void;
     onBack: () => void;
     isCompleted: boolean;
 }
@@ -20,12 +21,11 @@ export function QuizSummary({
     incorrectAnswers,
     unansweredQuestions,
     totalQuestions, 
-    onReset, 
     onBack, 
     isCompleted 
 }: QuizSummaryProps) {
+    const { onQuizReset } = useLearningContext();
     const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-    const answeredCount = correctAnswers + incorrectAnswers;
 
     let medalColor = "text-gray-400";
     if (accuracy >= 90) {
@@ -71,7 +71,7 @@ export function QuizSummary({
                     </div>
                 </CardContent>
                 <CardFooter className="flex-col gap-4">
-                    <Button onClick={onReset} className="w-full">
+                    <Button onClick={onQuizReset} className="w-full">
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Làm lại từ đầu
                     </Button>

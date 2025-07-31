@@ -5,24 +5,15 @@
 import React, {
 	useState,
 	useEffect,
-	useCallback,
-	Fragment,
-	ReactNode,
-	useRef,
 } from "react"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
 import {
-	ChevronLeft,
-	ChevronRight,
-	Plus,
 	Loader,
-	Droplets,
+	Plus,
 	CheckCircle,
 	BookOpen,
-	Menu,
-	Settings,
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -31,7 +22,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { CardData, CardSet } from "@/ai/schemas"
-import { useAppContext } from "@/contexts/AppContext"
+import { useLearningContext } from "@/contexts/LearningContext"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,7 +32,6 @@ const Syntax: any = SyntaxHighlighter
 interface FlashcardsProps {
 	flashcardSet: CardSet | null
 	flashcardIndex: number
-	topic: string;
 	isCurrentUnderstood: boolean;
 }
 
@@ -145,10 +135,9 @@ function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: b
 export function Flashcards({
 	flashcardSet,
 	flashcardIndex,
-	topic,
 	isCurrentUnderstood,
 }: FlashcardsProps) {
-	const { handleGenerate, isLoading } = useAppContext();
+	const { handleGenerate, isLoading, topic } = useLearningContext();
 	
 	const totalCards = flashcardSet?.cards.length ?? 0
 	const currentCard = flashcardSet?.cards[flashcardIndex];

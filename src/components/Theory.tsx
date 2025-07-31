@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React from "react"
@@ -13,8 +14,8 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
-import { CheckCircle, BookOpen, Menu, Plus, Loader, Podcast as PodcastIcon } from "lucide-react"
-import { useAppContext } from "@/contexts/AppContext"
+import { CheckCircle, BookOpen, Loader, Podcast as PodcastIcon, Plus } from "lucide-react"
+import { useLearningContext } from "@/contexts/LearningContext"
 import { Button } from "./ui/button"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
@@ -23,10 +24,8 @@ const Syntax: any = SyntaxHighlighter
 
 interface TheoryProps {
 	theorySet: TheorySet | null
-	topic: string;
 	chapterIndex: number;
 	isCurrentUnderstood: boolean;
-	onGeneratePodcast: (chapterIndex: number) => void;
 	isGeneratingPodcast: boolean;
 }
 
@@ -83,8 +82,8 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic, onGeneratePodcast, isGeneratingPodcast }: TheoryProps) {
-	const { handleGenerate, isLoading } = useAppContext();
+export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, isGeneratingPodcast }: TheoryProps) {
+	const { handleGenerate, isLoading, topic, handleGeneratePodcastForChapter } = useLearningContext();
 	const currentChapter = theorySet?.chapters?.[chapterIndex];
 	const hasContent = !!currentChapter;
 
@@ -99,7 +98,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, topic, on
 							{/* Podcast Section */}
 							<div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg mb-6 flex flex-col items-center gap-4">
 								{!currentChapter.audioDataUri && currentChapter.content && (
-									<Button onClick={() => onGeneratePodcast(chapterIndex)} disabled={isGeneratingPodcast}>
+									<Button onClick={() => handleGeneratePodcastForChapter(chapterIndex)} disabled={isGeneratingPodcast}>
 										{isGeneratingPodcast ? (
 											<Loader className="animate-spin mr-2 h-4 w-4" />
 										) : (

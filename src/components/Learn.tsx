@@ -1,14 +1,15 @@
 
+
 "use client"
 
 import React, { useMemo } from "react"
-import { useAppContext } from "@/contexts/AppContext"
 import { Flashcards } from "@/components/Flashcards"
 import { Quiz } from "@/components/Quiz"
 import { Theory } from "@/components/Theory"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
+import { useLearningContext } from "@/contexts/LearningContext"
 
 // --- Component Registries ---
 const viewRegistry = {
@@ -31,8 +32,6 @@ export function Learn() {
 		quizSet,
 		theorySet,
 		quizState,
-		onQuizStateChange,
-		onQuizReset,
 		flashcardIndex,
 		showQuizSummary,
 		setShowQuizSummary,
@@ -44,18 +43,9 @@ export function Learn() {
 		onFlashcardReset,
 		theoryState,
 		onTheoryReset,
-		topic,
-		model,
-		language,
-		currentQuestionIndex,
-		onCurrentQuestionIndexChange,
 		theoryChapterIndex,
-		apiKeys,
-		apiKeyIndex,
-		handleApiKeyIndexChange,
-		handleGeneratePodcastForChapter,
 		isGeneratingPodcast,
-	} = useAppContext()
+	} = useLearningContext()
 
 	const quizSummaryData = React.useMemo(() => {
 		if (!quizSet || !quizState) {
@@ -120,28 +110,16 @@ export function Learn() {
         flashcards: {
             flashcardSet,
             flashcardIndex,
-            topic,
             isCurrentUnderstood: isCurrentItemUnderstood,
         },
         quiz: {
             quizSet,
             quizState,
-            onQuizStateChange,
-            language,
-            topic,
-            model,
-            currentQuestionIndex,
-            onCurrentQuestionIndexChange,
-            apiKeys,
-            apiKeyIndex,
-            onApiKeyIndexChange: handleApiKeyIndexChange,
         },
         theory: {
             theorySet,
-            topic,
             chapterIndex: theoryChapterIndex,
             isCurrentUnderstood: isCurrentItemUnderstood,
-            onGeneratePodcast: handleGeneratePodcastForChapter,
             isGeneratingPodcast,
         },
     }
@@ -157,7 +135,6 @@ export function Learn() {
         quiz: {
             ...quizSummaryData,
             totalQuestions: quizSet?.questions.length ?? 0,
-            onReset: onQuizReset,
             onBack: () => setShowQuizSummary(false),
             isCompleted: allQuestionsAnswered,
         },
