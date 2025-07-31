@@ -25,6 +25,12 @@ import type {
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
 import { useAuthContext } from "./AuthContext"
+import { MOCK_CARD_SET, MOCK_QUIZ_SET, MOCK_THEORY_SET, MOCK_TOPIC } from "@/lib/mock-data";
+
+// --- DEV FLAG ---
+// Set to true to use mock data and skip the onboarding/generation flow.
+const USE_MOCK_DATA = true;
+// ----------------
 
 interface PersonalizationOptions {
     knowledgeLevel: string;
@@ -167,6 +173,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	// Main Firestore listener for real-time data synchronization
 	useEffect(() => {
+		if (USE_MOCK_DATA) return;
 		if (!user || !db) return;
 
 		const learningDocRef = getLearningDocRef(user.uid);
@@ -209,6 +216,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	// Firestore listener for real-time generation updates
 	useEffect(() => {
+		if (USE_MOCK_DATA) return;
 		if (!generationJobId || !db || !user) {
 			if (generationStatus) setGenerationStatus(null);
 			return;
@@ -267,6 +275,10 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	// --- Data Handling Callbacks ---
 	const handleClearLearningData = useCallback(async () => {
+		if (USE_MOCK_DATA) {
+			toast({ title: "Chế độ Mock", description: "Không thể xóa dữ liệu trong chế độ mock." });
+			return;
+		}
 		if (!user) return;
 		const db = await getDb();
 		const keysToDelete: DataKey[] = [
@@ -311,6 +323,18 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	}, [toast, user, getUIDBKey, topic, language, model]);
 
 	const loadInitialData = useCallback(async () => {
+		if (USE_MOCK_DATA) {
+			setTopic(MOCK_TOPIC);
+			setTheorySet(MOCK_THEORY_SET);
+			setFlashcardSet(MOCK_CARD_SET);
+			setQuizSet(MOCK_QUIZ_SET);
+			setQuizState({ currentQuestionIndex: 0, answers: {} });
+			setFlashcardState({ understoodIndices: [] });
+			setTheoryState({ understoodIndices: [] });
+			setHasCompletedOnboarding(true);
+			return;
+		}
+
 		if (!user) {
 			// If no user, reset all learning state
 			setFlashcardSet(null);
@@ -371,10 +395,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setGenerationJobId(jobIdRes.data)
 		}
 
-	}, [user, getUIDBKey]);
+	}, [user, getUIDBKey, setHasCompletedOnboarding]);
 
 	// --- AI Generation Callbacks ---
 	const handleCloneTopic = useCallback(async (publicTopicId: string) => {
+		if (USE_MOCK_DATA) {
+			toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
+			return;
+		}
 		if (!user) {
 			throw new Error("Bạn phải đăng nhập để tải về chủ đề.");
 		}
@@ -398,6 +426,10 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	
 	const handleGenerate = useCallback(
 		async (options: GenerateOptions) => {
+			if (USE_MOCK_DATA) {
+				toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
+				return;
+			}
 			const { forceNew, personalization } = options;
 	
 			if (!topic.trim()) {
@@ -473,6 +505,10 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const handleGeneratePodcastForChapter = useCallback(
 		async (chapterIndex: number) => {
+			if (USE_MOCK_DATA) {
+				toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
+				return;
+			}
 			if (!user) return;
 			if (!theorySet || !theorySet.chapters[chapterIndex]?.content) {
 				toast({
@@ -532,6 +568,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			language: string
 			model: string
 		}) => {
+			if (USE_MOCK_DATA) return;
 			setTopic(settings.topic)
 			setLanguage(settings.language)
 			setModel(settings.model)
@@ -554,23 +591,23 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	// --- Learning UI Callbacks (reordered to fix initialization error) ---
 
 	const onQuizStateChange = useCallback(async (newState: QuizState) => {
-		if (!user) return;
 		setQuizState(newState);
+		if (USE_MOCK_DATA || !user) return;
 		await updateDoc(getLearningDocRef(user.uid), { quizState: newState });
 	}, [user]);
 
 	const onFlashcardStateChange = useCallback(
 		async (newState: FlashcardState) => {
-			if (!user) return;
 			setFlashcardState(newState);
+			if (USE_MOCK_DATA || !user) return;
 			await updateDoc(getLearningDocRef(user.uid), { flashcardState: newState });
 		},
 		[user]
 	);
 
 	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
-		if (!user) return;
 		setTheoryState(newState);
+		if (USE_MOCK_DATA || !user) return;
 		await updateDoc(getLearningDocRef(user.uid), { theoryState: newState });
 	}, [user]);
 
@@ -581,6 +618,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setShowQuizSummary(false)
 			setShowFlashcardSummary(false)
 			setShowTheorySummary(false)
+			if (USE_MOCK_DATA) return;
 			const db = await getDb()
 			await db.put("data", { id: getUIDBKey("view"), data: newView })
 		},
@@ -589,6 +627,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const onFlashcardIndexChange = useCallback(async (index: number) => {
 		setFlashcardIndex(index)
+		if (USE_MOCK_DATA) return;
 		const db = await getDb()
 		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: index })
 	}, [getUIDBKey]);
@@ -606,6 +645,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const onTheoryChapterIndexChange = useCallback(async (index: number) => {
 		setTheoryChapterIndex(index)
+		if (USE_MOCK_DATA) return;
 		const db = await getDb()
 		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: index })
 	}, [getUIDBKey]);
