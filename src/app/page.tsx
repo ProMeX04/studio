@@ -22,6 +22,7 @@ import {
 import { Toolbar } from "@/components/Toolbar"
 import { cn } from "@/lib/utils"
 import type { ToolbarItemConfig } from "@/app/types"
+import { Settings } from "@/components/Settings"
 
 function HomePageContent() {
 	const { 
@@ -50,6 +51,7 @@ function HomePageContent() {
 		onFlashcardStateChange,
 		setShowFlashcardSummary,
 		setShowQuizSummary,
+		hasCompletedOnboarding,
 	} = useAppContext();
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
@@ -196,11 +198,6 @@ function HomePageContent() {
 					children: viewActions[view] || null
 				}
 			},
-			{
-				id: 'settings',
-				component: 'Settings',
-				props: { scope: "all" } // Settings now gets its props from its own context
-			}
 		];
 
 		if (visibility.advancedVoiceChat) {
@@ -275,10 +272,10 @@ function HomePageContent() {
 				</ResizablePanelGroup>
 			</div>
 			
-			<div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-2 z-40">
+			<div className="absolute bottom-0 left-0 right-0 flex justify-between items-end p-2 z-40 pointer-events-none">
 				<div className="flex-1 flex justify-start">
 					{!visibility.home && (
-						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md">
+						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md pointer-events-auto">
 							<Button
 								variant="outline"
 								size="icon"
@@ -291,13 +288,15 @@ function HomePageContent() {
 					)}
 				</div>
 
-				<div className="flex-shrink-0">
-					<Toolbar config={toolbarConfig} />
+				<div className="flex-shrink-0 pointer-events-auto">
+					{hasCompletedOnboarding && (
+						<Toolbar config={toolbarConfig} />
+					)}
 				</div>
 
-				<div className="flex-1 flex justify-end">
+				<div className="flex-1 flex justify-end items-center gap-2">
 					{!visibility.learn && (
-						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md">
+						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md pointer-events-auto">
 							<Button
 								variant="outline"
 								size="icon"
@@ -308,6 +307,9 @@ function HomePageContent() {
 							</Button>
 						</div>
 					)}
+					<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md pointer-events-auto">
+						<Settings scope="all" />
+					</div>
 				</div>
 			</div>
 		</main>
