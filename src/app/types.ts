@@ -1,5 +1,6 @@
 
 import type { ExplainQuizOptionOutput } from "@/ai/schemas";
+import type { ComponentType } from "react";
 
 /**
  * @fileOverview UI-specific types and interfaces.
@@ -26,4 +27,13 @@ export interface FlashcardState {
 
 export interface TheoryState {
   understoodIndices: number[];
+}
+
+// --- Toolbar Configuration Types ---
+
+// Defines the shape of a configuration object for a single item in the toolbar.
+export interface ToolbarItemConfig {
+  id: string; // Unique identifier for the item
+  component: string; // Key to look up the component in the registry
+  props: any; // Props to be passed to the rendered component
 }
