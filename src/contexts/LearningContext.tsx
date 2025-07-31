@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import React, {
@@ -14,7 +13,7 @@ import React, {
 import { useToast } from "@/hooks/use-toast"
 import { getDb, AppData, DataKey } from "@/lib/idb"
 import * as api from "@/services/api";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type {
 	CardSet,
@@ -94,6 +93,10 @@ export function useLearningContext() {
 	return context
 }
 
+// Helper to get the Firestore document for the current user's learning data
+const getLearningDocRef = (uid: string) => doc(db, "learningData", uid);
+
+
 export function LearningProvider({ children }: { children: ReactNode }) {
 	const { user } = useAuthContext();
 	const { setHasCompletedOnboarding } = useSettingsContext()
@@ -140,17 +143,59 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		isMountedRef.current = true;
-		if (user !== undefined) { // Check if user state is resolved
+		if (user !== undefined) {
 			loadInitialData();
 		}
 		return () => {
 			isMountedRef.current = false;
 		};
-	}, [user]); // Rerun when user logs in/out
+	}, [user]);
+
+	// Main Firestore listener for real-time data synchronization
+	useEffect(() => {
+		if (!user || !db) return;
+
+		const learningDocRef = getLearningDocRef(user.uid);
+		const unsubscribe = onSnapshot(learningDocRef, async (doc) => {
+			if (!isMountedRef.current) return;
+			const data = doc.data();
+			if (!data) return;
+
+			// Update state and IndexedDB cache from Firestore
+			const db = await getDb();
+			if (data.theorySet) {
+				setTheorySet(data.theorySet);
+				await db.put("data", { id: getUIDBKey("theory"), data: data.theorySet });
+			}
+			if (data.flashcardSet) {
+				setFlashcardSet(data.flashcardSet);
+				await db.put("data", { id: getUIDBKey("flashcards"), data: data.flashcardSet });
+			}
+			if (data.quizSet) {
+				setQuizSet(data.quizSet);
+				await db.put("data", { id: getUIDBKey("quiz"), data: data.quizSet });
+			}
+			if (data.quizState) {
+				setQuizState(data.quizState);
+				await db.put("data", { id: getUIDBKey("quizState"), data: data.quizState });
+			}
+			if (data.flashcardState) {
+				setFlashcardState(data.flashcardState);
+				await db.put("data", { id: getUIDBKey("flashcardState"), data: data.flashcardState });
+			}
+			if (data.theoryState) {
+				setTheoryState(data.theoryState);
+				await db.put("data", { id: getUIDBKey("theoryState"), data: data.theoryState });
+			}
+		});
+
+		return () => unsubscribe();
+	}, [user, getUIDBKey]);
+
 
 	// Firestore listener for real-time generation updates
 	useEffect(() => {
-		if (!generationJobId || !db) {
+		if (!generationJobId || !db || !user) {
 			if (generationStatus) setGenerationStatus(null);
 			return;
 		}
@@ -168,19 +213,17 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	
 				setGenerationStatus(jobData.statusMessage);
 	
-				const dbInstance = await getDb();
-	
+				const learningDocRef = getLearningDocRef(user.uid);
+
+				// Update data incrementally in Firestore, which will trigger the main listener
 				if (jobData.theorySet && JSON.stringify(jobData.theorySet) !== JSON.stringify(theorySet)) {
-					setTheorySet(jobData.theorySet);
-					await dbInstance.put("data", { id: getUIDBKey("theory"), data: jobData.theorySet });
+					await updateDoc(learningDocRef, { theorySet: jobData.theorySet });
 				}
 				if (jobData.flashcardSet && JSON.stringify(jobData.flashcardSet) !== JSON.stringify(flashcardSet)) {
-					setFlashcardSet(jobData.flashcardSet);
-					await dbInstance.put("data", { id: getUIDBKey("flashcards"), data: jobData.flashcardSet });
+					await updateDoc(learningDocRef, { flashcardSet: jobData.flashcardSet });
 				}
 				if (jobData.quizSet && JSON.stringify(jobData.quizSet) !== JSON.stringify(quizSet)) {
-					setQuizSet(jobData.quizSet);
-					await dbInstance.put("data", { id: getUIDBKey("quiz"), data: jobData.quizSet });
+					await updateDoc(learningDocRef, { quizSet: jobData.quizSet });
 				}
 	
 				if (jobData.status === "completed") {
@@ -190,7 +233,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					});
 					setGenerationJobId(null);
 					setGenerationStatus(null);
-					await dbInstance.delete("data", getUIDBKey("generationJobId"));
+					await updateDoc(learningDocRef, { generationJobId: null });
 				} else if (jobData.status === "failed") {
 					toast({
 						title: "Lỗi tạo nội dung",
@@ -199,14 +242,13 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					});
 					setGenerationJobId(null);
 					setGenerationStatus(null);
-					await dbInstance.delete("data", getUIDBKey("generationJobId"));
+					await updateDoc(learningDocRef, { generationJobId: null });
 				}
 			}
 		);
 	
-		// Cleanup listener on unmount or when jobId changes
 		return () => unsubscribe();
-	}, [generationJobId, user, getUIDBKey]);
+	}, [generationJobId, user]);
 
 
 	// --- Data Handling Callbacks ---
@@ -223,6 +265,13 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		const store = tx.objectStore("data");
 		await Promise.all(userKeysToDelete.map(key => store.delete(key)));
 		await tx.done;
+
+		// Reset Firestore document
+		await setDoc(getLearningDocRef(user.uid), {
+			topic, // keep current settings
+			language,
+			model,
+		}, { merge: false }); // `merge: false` overwrites the document
 
 		// Reset state in memory
 		setFlashcardSet(null)
@@ -245,7 +294,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			description:
 				"Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
 		})
-	}, [toast, user, getUIDBKey]);
+	}, [toast, user, getUIDBKey, topic, language, model]);
 
 	const loadInitialData = useCallback(async () => {
 		if (!user) {
@@ -266,6 +315,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setGenerationStatus(null);
 			return;
 		};
+		// Load from cache first for instant UI
 		const db = await getDb()
 		const [
 			savedViewRes,
@@ -273,11 +323,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			savedLanguageRes,
 			savedModelRes,
 			flashcardDataRes,
-			flashcardStateRes,
 			quizDataRes,
-			quizStateRes,
 			theoryDataRes,
-			theoryStateRes,
 			jobIdRes,
 		] = await Promise.all([
 			db.get("data", getUIDBKey("view")),
@@ -285,73 +332,29 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			db.get("data", getUIDBKey("language")),
 			db.get("data", getUIDBKey("model")),
 			db.get("data", getUIDBKey("flashcards")),
-			db.get("data", getUIDBKey("flashcardState")),
 			db.get("data", getUIDBKey("quiz")),
-			db.get("data", getUIDBKey("quizState")),
 			db.get("data", getUIDBKey("theory")),
-			db.get("data", getUIDBKey("theoryState")),
 			db.get("data", getUIDBKey("generationJobId")),
 		])
 
-		const savedView =
-			(savedViewRes?.data as "flashcards" | "quiz" | "theory") || "theory"
-		const savedTopic = (savedTopicRes?.data as string) || "Lịch sử La Mã"
-		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
-		const savedModel =
-			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
+		// Settings are still loaded from IndexedDB for persistence across sessions
+		if(savedViewRes?.data) setView(savedViewRes.data);
+		if(savedTopicRes?.data) setTopic(savedTopicRes.data);
+		if(savedLanguageRes?.data) setLanguage(savedLanguageRes.data);
+		if(savedModelRes?.data) setModel(savedModelRes.data);
 
-		setView(savedView)
-		setTopic(savedTopic)
-		setLanguage(savedLanguage)
-		setModel(savedModel)
-		setGenerationJobId((jobIdRes?.data as string) || null);
+		// Learning content is also loaded from cache for speed, but will be overwritten by Firestore listener
+		if(flashcardDataRes?.data) setFlashcardSet(flashcardDataRes.data);
+		if(quizDataRes?.data) setQuizSet(quizDataRes.data);
+		if(theoryDataRes?.data) setTheorySet(theoryDataRes.data);
 
-
-		const flashcardData = flashcardDataRes?.data as CardSet;
-		const quizData = quizDataRes?.data as QuizSet;
-		const theoryData = theoryDataRes?.data as TheorySet;
-		const flashcardStateData = flashcardStateRes?.data as FlashcardState;
-		const quizStateData = quizStateRes?.data as QuizState;
-		const theoryStateData = theoryStateRes?.data as TheoryState;
-		
-		setFlashcardSet(flashcardData || null);
-		setQuizSet(quizData || null);
-		setTheorySet(theoryData || null);
-
-		setFlashcardState(flashcardStateData || { understoodIndices: [] });
-		if (flashcardData) {
-			const firstUnseenIndex = flashcardData.cards.findIndex(
-				(_, index) => !(flashcardStateData?.understoodIndices.includes(index))
-			);
-			setFlashcardIndex(firstUnseenIndex !== -1 ? firstUnseenIndex : 0);
-		} else {
-			setFlashcardIndex(0);
-		}
-		
-		setQuizState(quizStateData || { currentQuestionIndex: 0, answers: {} });
-		if (quizData) {
-			const firstUnansweredIndex = quizData.questions.findIndex(
-				(_, index) => !quizStateData?.answers[index]
-			);
-			const newCurrentQuestionIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0;
-			setCurrentQuestionIndex(newCurrentQuestionIndex);
-			if(quizStateData) {
-				setQuizState({...quizStateData, currentQuestionIndex: newCurrentQuestionIndex});
-			} else {
-				setQuizState({ currentQuestionIndex: newCurrentQuestionIndex, answers: {} });
-			}
-		} else {
-			setCurrentQuestionIndex(0);
-		}
-
-		setTheoryState(theoryStateData || { understoodIndices: [] });
-		if (theoryData) {
-			const firstUnseenIndex = theoryData.chapters.findIndex(
-				(_, index) => !theoryStateData?.understoodIndices.includes(index)
-			);
-			setTheoryChapterIndex(firstUnseenIndex !== -1 ? firstUnseenIndex : 0);
-		} else {
-			setTheoryChapterIndex(0);
+		// Check Firestore for a running job that might have been missed
+		const learningDoc = await getDoc(getLearningDocRef(user.uid));
+		const firestoreJobId = learningDoc.data()?.generationJobId;
+		if (firestoreJobId) {
+			setGenerationJobId(firestoreJobId);
+		} else if (jobIdRes?.data) {
+			setGenerationJobId(jobIdRes.data)
 		}
 
 	}, [user, getUIDBKey]);
@@ -383,7 +386,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				return;
 			}
 
-			setIsLoading(true); // Indicate that we are starting the process
+			setIsLoading(true);
 
 			try {
 				await handleClearLearningData();
@@ -399,6 +402,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				
 				if (isMountedRef.current) {
 					setGenerationJobId(jobId);
+					// Store Job ID in both Firestore and local cache
+					await updateDoc(getLearningDocRef(user.uid), { generationJobId: jobId });
 					const db = await getDb();
 					await db.put("data", { id: getUIDBKey("generationJobId"), data: jobId });
 				}
@@ -431,6 +436,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const handleGeneratePodcastForChapter = useCallback(
 		async (chapterIndex: number) => {
+			if (!user) return;
 			if (!theorySet || !theorySet.chapters[chapterIndex]?.content) {
 				toast({
 					title: "Thiếu nội dung",
@@ -449,92 +455,36 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			}
 
 			setIsGeneratingPodcast(true)
-			isGeneratingRef.current = true // Block other generations
-
-			const db = await getDb()
+			isGeneratingRef.current = true
+			
 			const chapter = theorySet.chapters[chapterIndex]
+			const learningDocRef = getLearningDocRef(user.uid);
 
 			try {
-				let tempTheorySet = { ...theorySet }
-
-				// Generate Script if it doesn't exist
+				let tempTheorySet = { ...theorySet };
 				if (!chapter.podcastScript) {
-					toast({
-						title: "Đang tạo kịch bản...",
-						description: `Bắt đầu tạo kịch bản cho chương "${chapter.title}".`,
-					})
-					const scriptResult =
-						await api.generatePodcastScript({
-							topic,
-							chapterTitle: chapter.title,
-							theoryContent: chapter.content!,
-							language,
-						})
-					if (!scriptResult?.script)
-						throw new Error("Không thể tạo kịch bản podcast.")
-
-					tempTheorySet.chapters[chapterIndex].podcastScript =
-						scriptResult.script
-					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
-					await db.put("data", {
-						id: getUIDBKey("theory"),
-						data: tempTheorySet,
-					})
+					const scriptResult = await api.generatePodcastScript({ topic, chapterTitle: chapter.title, theoryContent: chapter.content!, language });
+					if (!scriptResult?.script) throw new Error("Không thể tạo kịch bản podcast.");
+					tempTheorySet.chapters[chapterIndex].podcastScript = scriptResult.script;
+				}
+				if (!chapter.audioDataUri) {
+					const audioResult = await api.generateAudio({ script: tempTheorySet.chapters[chapterIndex].podcastScript! });
+					if (!audioResult?.audioDataUri) throw new Error("Không thể tạo file âm thanh podcast.");
+					tempTheorySet.chapters[chapterIndex].audioDataUri = audioResult.audioDataUri;
 				}
 
-				// Generate Audio if it doesn't exist
-				if (
-					tempTheorySet.chapters[chapterIndex].podcastScript &&
-					!tempTheorySet.chapters[chapterIndex].audioDataUri
-				) {
-					toast({
-						title: "Đang tạo âm thanh...",
-						description: `Bắt đầu tạo file âm thanh cho chương "${chapter.title}".`,
-					})
-					const audioResult = await api.generateAudio({
-						script: tempTheorySet.chapters[chapterIndex]
-							.podcastScript!,
-					})
-					if (!audioResult?.audioDataUri)
-						throw new Error("Không thể tạo file âm thanh podcast.")
+				await updateDoc(learningDocRef, { theorySet: tempTheorySet });
+				toast({ title: "Hoàn tất!", description: `Podcast cho chương "${chapter.title}" đã được tạo.` });
 
-					tempTheorySet.chapters[chapterIndex].audioDataUri =
-						audioResult.audioDataUri
-					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
-					await db.put("data", {
-						id: getUIDBKey("theory"),
-						data: tempTheorySet,
-					})
-				}
-
-				toast({
-					title: "Hoàn tất!",
-					description: `Podcast cho chương "${chapter.title}" đã được tạo.`,
-				})
 			} catch (error: any) {
-				console.error(
-					`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`,
-					error
-				)
-				toast({
-					title: "Lỗi không xác định",
-					description: `Đã xảy ra lỗi: ${error.message}.`,
-					variant: "destructive",
-				})
+				console.error(`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`, error);
+				toast({ title: "Lỗi không xác định", description: `Đã xảy ra lỗi: ${error.message}.`, variant: "destructive", });
 			} finally {
 				setIsGeneratingPodcast(false)
 				isGeneratingRef.current = false
 			}
 		},
-		[
-			theorySet,
-			topic,
-			language,
-			isGeneratingPodcast,
-			toast,
-			user,
-			getUIDBKey,
-		]
+		[ theorySet, topic, language, isGeneratingPodcast, toast, user ]
 	)
 
 	// --- Settings Callbacks ---
@@ -552,133 +502,107 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			await db.put("data", { id: getUIDBKey("topic"), data: settings.topic })
 			await db.put("data", { id: getUIDBKey("language"), data: settings.language })
 			await db.put("data", { id: getUIDBKey("model"), data: settings.model })
+
+			if (user) {
+				await updateDoc(getLearningDocRef(user.uid), {
+					topic: settings.topic,
+					language: settings.language,
+					model: settings.model,
+				});
+			}
 		},
-		[getUIDBKey]
+		[getUIDBKey, user]
 	)
 
-	// --- Learning UI Callbacks ---
+	// --- Learning UI Callbacks (reordered to fix initialization error) ---
+
+	const onQuizStateChange = useCallback(async (newState: QuizState) => {
+		if (!user) return;
+		setQuizState(newState);
+		await updateDoc(getLearningDocRef(user.uid), { quizState: newState });
+	}, [user]);
+
+	const onFlashcardStateChange = useCallback(
+		async (newState: FlashcardState) => {
+			if (!user) return;
+			setFlashcardState(newState);
+			await updateDoc(getLearningDocRef(user.uid), { flashcardState: newState });
+		},
+		[user]
+	);
+
+	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
+		if (!user) return;
+		setTheoryState(newState);
+		await updateDoc(getLearningDocRef(user.uid), { theoryState: newState });
+	}, [user]);
+
 	const onViewChange = useCallback(
 		async (newView: "flashcards" | "quiz" | "theory") => {
 			if (view === newView) return
 			setView(newView)
-			setShowQuizSummary(false) // Hide summary when switching views
+			setShowQuizSummary(false)
 			setShowFlashcardSummary(false)
 			setShowTheorySummary(false)
 			const db = await getDb()
 			await db.put("data", { id: getUIDBKey("view"), data: newView })
 		},
 		[view, getUIDBKey]
-	)
+	);
 
 	const onFlashcardIndexChange = useCallback(async (index: number) => {
 		setFlashcardIndex(index)
 		const db = await getDb()
 		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: index })
-	}, [getUIDBKey])
+	}, [getUIDBKey]);
 
 	const onCurrentQuestionIndexChange = useCallback(
 		(index: number) => {
 			setCurrentQuestionIndex(index)
 			if (quizState) {
 				const newState = { ...quizState, currentQuestionIndex: index }
-				setQuizState(newState)
-				// Debounce or directly write to DB
-				const db = getDb()
-				db.then((d) =>
-					d.put("data", { id: getUIDBKey("quizState"), data: newState })
-				)
+				onQuizStateChange(newState); // This will handle Firestore update
 			}
 		},
-		[quizState, getUIDBKey]
-	)
+		[quizState, onQuizStateChange]
+	);
 
 	const onTheoryChapterIndexChange = useCallback(async (index: number) => {
 		setTheoryChapterIndex(index)
 		const db = await getDb()
 		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: index })
-	}, [getUIDBKey])
-
-	const onQuizStateChange = useCallback(async (newState: QuizState) => {
-		setQuizState(newState)
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("quizState"), data: newState })
-	}, [getUIDBKey])
+	}, [getUIDBKey]);
 
 	const onQuizReset = useCallback(async () => {
-		const newQuizState: QuizState = {
-			currentQuestionIndex: 0,
-			answers: {},
-		}
-		setQuizState(newQuizState)
-		setCurrentQuestionIndex(0)
-		setShowQuizSummary(false)
-
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("quizState"), data: newQuizState })
-
-		toast({
-			title: "Bắt đầu lại",
-			description: "Bạn có thể bắt đầu lại bài trắc nghiệm.",
-		})
-	}, [toast, getUIDBKey])
-
-	const onFlashcardStateChange = useCallback(
-		async (newState: FlashcardState) => {
-			setFlashcardState(newState)
-			const db = await getDb()
-			await db.put("data", { id: getUIDBKey("flashcardState"), data: newState })
-		},
-		[getUIDBKey]
-	)
+		const newQuizState: QuizState = { currentQuestionIndex: 0, answers: {} }
+		onQuizStateChange(newQuizState);
+		setCurrentQuestionIndex(0);
+		setShowQuizSummary(false);
+		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại bài trắc nghiệm." });
+	}, [toast, onQuizStateChange]);
 
 	const onFlashcardReset = useCallback(async () => {
-		const newFlashcardState: FlashcardState = {
-			understoodIndices: [],
-		}
-		setFlashcardState(newFlashcardState)
-		setShowFlashcardSummary(false)
-		setFlashcardIndex(0) // Go back to the first card
-
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("flashcardState"), data: newFlashcardState })
-		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: 0 })
-
-		toast({
-			title: "Bắt đầu lại",
-			description: "Bạn có thể bắt đầu lại bộ thẻ này.",
-		})
-	}, [toast, getUIDBKey])
-
-	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
-		setTheoryState(newState)
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("theoryState"), data: newState })
-	}, [getUIDBKey])
+		const newFlashcardState: FlashcardState = { understoodIndices: [] }
+		onFlashcardStateChange(newFlashcardState);
+        setShowFlashcardSummary(false);
+		setFlashcardIndex(0);
+		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại bộ thẻ này." });
+	}, [toast, onFlashcardStateChange]);
 
 	const onTheoryReset = useCallback(async () => {
-		const newTheoryState: TheoryState = {
-			understoodIndices: [],
-		}
-		setTheoryState(newTheoryState)
-		setShowTheorySummary(false)
-		setTheoryChapterIndex(0)
-
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("theoryState"), data: newTheoryState })
-		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: 0 })
-
-		toast({
-			title: "Bắt đầu lại",
-			description: "Bạn có thể bắt đầu lại phần lý thuyết.",
-		})
-	}, [toast, getUIDBKey])
+		const newTheoryState: TheoryState = { understoodIndices: [] }
+		onTheoryStateChange(newTheoryState);
+		setShowTheorySummary(false);
+		setTheoryChapterIndex(0);
+		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại phần lý thuyết." });
+	}, [toast, onTheoryStateChange]);
 
 	const onGenerate = useCallback(
 		(forceNew: boolean) => {
 			handleGenerate(forceNew)
 		},
 		[handleGenerate]
-	)
+	);
 
 	const value: LearningContextType = {
 		isLoading,
