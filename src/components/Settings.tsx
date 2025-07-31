@@ -21,7 +21,6 @@ import {
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
-	SheetFooter,
 	SheetTrigger,
 } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
@@ -388,10 +387,19 @@ export function Settings(props: SettingsProps) {
 	return (
 		<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
 			<SheetTrigger asChild>
-				<Button variant="outline" size="icon" className="h-9 w-9">
-					<Menu />
-					<span className="sr-only">Cài đặt</span>
-				</Button>
+				{user ? (
+					<Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+						<Avatar className="h-9 w-9">
+							<AvatarImage src={user.photoURL ?? ''} alt={user.displayName ?? 'User'} />
+							<AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+						</Avatar>
+					</Button>
+				) : (
+					<Button variant="outline" size="icon" className="h-9 w-9">
+						<Menu />
+						<span className="sr-only">Cài đặt</span>
+					</Button>
+				)}
 			</SheetTrigger>
 			<SheetContent
 				side="right"
@@ -496,3 +504,5 @@ export function Settings(props: SettingsProps) {
 		</Sheet>
 	)
 }
+
+    
