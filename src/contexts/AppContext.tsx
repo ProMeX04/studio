@@ -43,6 +43,13 @@ interface GenerationProgress {
     currentStage: GenerationStage;
 }
 
+export interface ToolbarItem {
+	id: string
+	component: React.ReactNode
+	area: "left" | "center" | "right"
+	order: number
+}
+
 interface AppContextType {
 	// State
 	isMounted: boolean
@@ -115,6 +122,9 @@ interface AppContextType {
 	handleClearLearningData: () => Promise<void>
 	onGenerate: (forceNew: boolean) => void
 	handleResetOnboarding: () => void
+	toolbarItems: ToolbarItem[]
+	registerToolbarItem: (item: ToolbarItem) => void
+	unregisterToolbarItem: (id: string) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -171,6 +181,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	const [showQuizSummary, setShowQuizSummary] = useState(false)
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false)
 	const [showTheorySummary, setShowTheorySummary] = useState(false)
+	const [toolbarItems, setToolbarItems] = useState<ToolbarItem[]>([])
+
+	const registerToolbarItem = useCallback((item: ToolbarItem) => {
+		setToolbarItems((prevItems) => {
+			const existingIndex = prevItems.findIndex((i) => i.id === item.id)
+			if (existingIndex > -1) {
+				const newItems = [...prevItems]
+				newItems[existingIndex] = item
+				return newItems
+			}
+			return [...prevItems, item]
+		})
+	}, [])
+
+	const unregisterToolbarItem = useCallback((id: string) => {
+		setToolbarItems((prevItems) =>
+			prevItems.filter((item) => item.id !== id)
+		)
+	}, [])
 
 	const { toast } = useToast()
 	const isGeneratingRef = useRef(false)
@@ -1106,6 +1135,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		handleClearLearningData,
 		onGenerate,
 		handleResetOnboarding,
+		toolbarItems,
+		registerToolbarItem,
+		unregisterToolbarItem,
 	}
 
 	return <AppContext.Provider value={value}>{children}</AppContext.Provider>

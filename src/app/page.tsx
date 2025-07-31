@@ -15,8 +15,8 @@ import type { ImperativePanelGroupHandle } from "react-resizable-panels"
 import { Settings } from "@/components/Settings"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { 
-	PanelLeftOpen, 
+import {
+	PanelLeftOpen,
 	PanelRightOpen,
 	ChevronLeft,
 	ChevronRight,
@@ -33,12 +33,13 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { AdvancedVoiceChat } from "@/components/AdvancedVoiceChat"
+import { Toolbar } from "@/components/Toolbar"
 
 function HomePageContent() {
-	const { 
-		isMounted, 
-		backgroundImage, 
-		visibility, 
+	const {
+		isMounted,
+		backgroundImage,
+		visibility,
 		onVisibilityChange,
 		view,
 		isLoading,
@@ -85,6 +86,8 @@ function HomePageContent() {
 		onBackgroundChange,
 		uploadedBackgrounds,
 		onUploadedBackgroundsChange,
+		registerToolbarItem,
+		unregisterToolbarItem,
 	} = useAppContext()
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
@@ -101,7 +104,7 @@ function HomePageContent() {
 			}
 		}
 	}
-	
+
 	const handleOpenRight = () => {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
@@ -120,14 +123,17 @@ function HomePageContent() {
 			if (!flashcardState || !flashcardSet) return
 			const newUnderstoodIndices = [...flashcardState.understoodIndices]
 			const indexPosition = newUnderstoodIndices.indexOf(flashcardIndex)
-			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1)
+			if (indexPosition > -1)
+				newUnderstoodIndices.splice(indexPosition, 1)
 			else newUnderstoodIndices.push(flashcardIndex)
 			onFlashcardStateChange({ understoodIndices: newUnderstoodIndices })
 		} else if (view === "theory") {
 			if (!theoryState || !theorySet) return
 			const newUnderstoodIndices = [...theoryState.understoodIndices]
-			const indexPosition = newUnderstoodIndices.indexOf(theoryChapterIndex)
-			if (indexPosition > -1) newUnderstoodIndices.splice(indexPosition, 1)
+			const indexPosition =
+				newUnderstoodIndices.indexOf(theoryChapterIndex)
+			if (indexPosition > -1)
+				newUnderstoodIndices.splice(indexPosition, 1)
 			else newUnderstoodIndices.push(theoryChapterIndex)
 			onTheoryStateChange({ understoodIndices: newUnderstoodIndices })
 		}
@@ -224,9 +230,7 @@ function HomePageContent() {
 	const shouldShowQuizSummary =
 		(showQuizSummary || allQuestionsAnswered) && view === "quiz"
 
-	const {
-		understoodCount: flashcardUnderstood,
-	} = React.useMemo(() => {
+	const { understoodCount: flashcardUnderstood } = React.useMemo(() => {
 		if (!flashcardSet || !flashcardState) {
 			return {
 				understoodCount: 0,
@@ -236,7 +240,8 @@ function HomePageContent() {
 		const understood = flashcardState.understoodIndices.length
 		return {
 			understoodCount: understood,
-			notUnderstoodCount: (flashcardSet.cards.length ?? 0) - understood,
+			notUnderstoodCount:
+				(flashcardSet.cards.length ?? 0) - understood,
 		}
 	}, [flashcardSet, flashcardState])
 
@@ -250,27 +255,219 @@ function HomePageContent() {
 		theoryState &&
 		theoryState.understoodIndices.length === theorySet.chapters.length
 	const shouldShowTheorySummary =
-		(showTheorySummary || allTheoryChaptersMarked) &&
-		(view === "theory")
-	
+		(showTheorySummary || allTheoryChaptersMarked) && view === "theory"
+
 	const isSummaryActive =
 		shouldShowQuizSummary ||
 		shouldShowFlashcardSummary ||
 		shouldShowTheorySummary
 	const isNavDisabled = isSummaryActive
 
+	React.useEffect(() => {
+		const items = [
+			{
+				id: "open-left",
+				component: !visibility.home && (
+					<Button
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+						onClick={handleOpenLeft}
+					>
+						<PanelLeftOpen className="h-4 w-4" />
+					</Button>
+				),
+				area: "left",
+				order: 1,
+			},
+			{
+				id: "mode-selector",
+				component: (
+					<Select
+						value={view}
+						onValueChange={(value) => onViewChange(value as any)}
+					>
+						<SelectTrigger className="w-[150px]">
+							<SelectValue placeholder="Chọn chế độ" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="theory">Lý thuyết</SelectItem>
+							<SelectItem value="flashcards">
+								Flashcard
+							</SelectItem>
+							<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+						</SelectContent>
+					</Select>
+				),
+				area: "center",
+				order: 1,
+			},
+			{
+				id: "prev-button",
+				component: (
+					<Button
+						onClick={handlePrev}
+						disabled={
+							currentIndex === 0 || !hasContent || isNavDisabled
+						}
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+					>
+						<ChevronLeft className="h-4 w-4" />
+					</Button>
+				),
+				area: "center",
+				order: 2,
+			},
+			{
+				id: "item-counter",
+				component: (
+					<span className="text-sm text-muted-foreground w-24 text-center">
+						{view === "flashcards"
+							? "Thẻ"
+							: view === "quiz"
+							  ? "Câu hỏi"
+							  : "Chương"}{" "}
+						{hasContent ? currentIndex + 1 : 0} / {totalItems}
+					</span>
+				),
+				area: "center",
+				order: 3,
+			},
+			{
+				id: "next-button",
+				component: (
+					<Button
+						onClick={handleNext}
+						disabled={
+							!hasContent ||
+							currentIndex >= totalItems - 1 ||
+							isNavDisabled
+						}
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+					>
+						<ChevronRight className="h-4 w-4" />
+					</Button>
+				),
+				area: "center",
+				order: 4,
+			},
+			{
+				id: "understood-button",
+				component: (view === "flashcards" || view === "theory") && (
+					<Button
+						onClick={handleToggleUnderstood}
+						disabled={!hasContent || isSummaryActive}
+						variant={
+							isCurrentItemUnderstood ? "default" : "outline"
+						}
+						size="icon"
+						className="h-9 w-9"
+					>
+						<CheckCircle className="w-4 h-4" />
+					</Button>
+				),
+				area: "center",
+				order: 5,
+			},
+			{
+				id: "summary-button",
+				component: (view === "flashcards" || view === "theory") && (
+					<Button
+						onClick={() => {
+							if (view === "flashcards")
+								setShowFlashcardSummary(true)
+							else setShowTheorySummary(true)
+						}}
+						disabled={!hasContent || isSummaryActive}
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+					>
+						<Award className="w-4 h-4" />
+					</Button>
+				),
+				area: "center",
+				order: 6,
+			},
+			{
+				id: "quiz-summary-button",
+				component: view === "quiz" && (
+					<Button
+						onClick={() => setShowQuizSummary(true)}
+						disabled={!hasContent || isSummaryActive}
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+					>
+						<Award className="h-4 w-4" />
+					</Button>
+				),
+				area: "center",
+				order: 7,
+			},
+			{
+				id: "open-right",
+				component: !visibility.learn && (
+					<Button
+						variant="outline"
+						size="icon"
+						className="h-9 w-9"
+						onClick={handleOpenRight}
+					>
+						<PanelRightOpen className="h-4 w-4" />
+					</Button>
+				),
+				area: "right",
+				order: 1,
+			},
+		]
+
+		items.forEach((item) => {
+			if (item.component) {
+				registerToolbarItem(item)
+			}
+		})
+
+		return () => {
+			items.forEach((item) => unregisterToolbarItem(item.id))
+		}
+	}, [
+		visibility,
+		view,
+		currentIndex,
+		totalItems,
+		hasContent,
+		isNavDisabled,
+		isCurrentItemUnderstood,
+		isSummaryActive,
+		handleOpenLeft,
+		handleOpenRight,
+		handlePrev,
+		handleNext,
+		handleToggleUnderstood,
+		setShowFlashcardSummary,
+		setShowTheorySummary,
+		setShowQuizSummary,
+		registerToolbarItem,
+		unregisterToolbarItem,
+	])
+
 	if (!isMounted) {
 		return null
 	}
 
 	const settingsProps = {
-        onClearAllData,
-        onVisibilityChange,
-        onBackgroundChange,
-        onUploadedBackgroundsChange,
-        visibility,
-        uploadedBackgrounds,
-        currentBackgroundImage: backgroundImage,
+		onClearAllData,
+		onVisibilityChange,
+		onBackgroundChange,
+		onUploadedBackgroundsChange,
+		visibility,
+		uploadedBackgrounds,
+		currentBackgroundImage: backgroundImage,
 		onSettingsChange: onSettingsSave,
 		onGenerate: onGenerate,
 		onClearLearningData: handleClearLearningData,
@@ -285,7 +482,7 @@ function HomePageContent() {
 		theorySet: theorySet,
 		flashcardSet: flashcardSet,
 		quizSet: quizSet,
-    };
+	}
 
 	const voiceChatProps = {
 		apiKeys: apiKeys,
@@ -344,139 +541,7 @@ function HomePageContent() {
 			</div>
 			
 			{/* Unified Toolbar */}
-			<div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-2 z-40">
-				{/* Left Slot for Open Left Button */}
-				<div className="flex-1 flex justify-start">
-					{!visibility.home && (
-						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md">
-							<Button
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-								onClick={handleOpenLeft}
-							>
-								<PanelLeftOpen className="h-4 w-4" />
-							</Button>
-						</div>
-					)}
-				</div>
-
-				{/* Center Toolbar */}
-				<div className="flex-shrink-0">
-					<div className="flex flex-wrap items-center justify-center gap-2 bg-background/30 backdrop-blur-sm p-2 rounded-md">
-						
-						{/* Learning Mode Selector */}
-						<Select
-							value={view}
-							onValueChange={(value) => onViewChange(value as any)}
-						>
-							<SelectTrigger className="w-[150px]">
-								<SelectValue placeholder="Chọn chế độ" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="theory">Lý thuyết</SelectItem>
-								<SelectItem value="flashcards">Flashcard</SelectItem>
-								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
-							</SelectContent>
-						</Select>
-
-						{/* Navigation and Actions */}
-						<div className="flex items-center gap-2">
-							<Button
-								onClick={handlePrev}
-								disabled={currentIndex === 0 || !hasContent || isNavDisabled}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								<ChevronLeft className="h-4 w-4" />
-							</Button>
-
-							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards"
-									? "Thẻ"
-									: view === "quiz"
-									  ? "Câu hỏi"
-									  : "Chương"}{" "}
-								{hasContent ? currentIndex + 1 : 0} / {totalItems}
-							</span>
-
-							<Button
-								onClick={handleNext}
-								disabled={
-									!hasContent || currentIndex >= totalItems - 1 || isNavDisabled
-								}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								<ChevronRight className="h-4 w-4" />
-							</Button>
-
-							{(view === "flashcards" ||
-								view === "theory") && (
-								<>
-									<Button
-										onClick={handleToggleUnderstood}
-										disabled={!hasContent || isSummaryActive}
-										variant={isCurrentItemUnderstood ? "default" : "outline"}
-										size="icon"
-										className="h-9 w-9"
-									>
-										<CheckCircle className="w-4 h-4" />
-									</Button>
-									<Button
-										onClick={() => {
-											if (view === "flashcards") setShowFlashcardSummary(true)
-											else setShowTheorySummary(true)
-										}}
-										disabled={!hasContent || isSummaryActive}
-										variant="outline"
-										size="icon"
-										className="h-9 w-9"
-									>
-										<Award className="w-4 h-4" />
-									</Button>
-								</>
-							)}
-
-							{view === "quiz" && (
-								<Button
-									onClick={() => setShowQuizSummary(true)}
-									disabled={!hasContent || isSummaryActive}
-									variant="outline"
-									size="icon"
-									className="h-9 w-9"
-								>
-									<Award className="h-4 w-4" />
-								</Button>
-							)}
-
-							<Settings {...settingsProps} scope="all" />
-
-							{visibility.advancedVoiceChat && (
-								<AdvancedVoiceChat {...voiceChatProps} />
-							)}
-						</div>
-					</div>
-				</div>
-
-				{/* Right Slot for Open Right Button */}
-				<div className="flex-1 flex justify-end">
-					{!visibility.learn && (
-						<div className="bg-background/30 backdrop-blur-sm p-2 rounded-md">
-							<Button
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-								onClick={handleOpenRight}
-							>
-								<PanelRightOpen className="h-4 w-4" />
-							</Button>
-						</div>
-					)}
-				</div>
-			</div>
+			<Toolbar />
 		</main>
 	)
 }

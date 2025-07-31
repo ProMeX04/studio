@@ -10,6 +10,8 @@ import { createBlob, decode, decodeAudioData } from "@/lib/audio-utils"
 
 const MODEL_NAME = "gemini-2.0-flash-live-001";
 
+import { useAppContext } from "@/contexts/AppContext"
+
 export function AdvancedVoiceChat({
 	apiKeys,
 	apiKeyIndex,
@@ -20,54 +22,92 @@ export function AdvancedVoiceChat({
 	onApiKeyIndexChange: (index: number) => void
 }) {
 	const { toast } = useToast()
-	const [isRecording, setIsRecording] = useState(false);
-const isRecordingRef = useRef(false);
-	const [status, setStatus] = useState<"idle" | "connecting" | "recording" | "error">("idle")
-const [responses, setResponses] = useState<string[]>([])
+	const { registerToolbarItem, unregisterToolbarItem } = useAppContext()
+	const [isRecording, setIsRecording] = useState(false)
+	const isRecordingRef = useRef(false)
+	const [status, setStatus] = useState<
+		"idle" | "connecting" | "recording" | "error"
+	>("idle")
+	const [responses, setResponses] = useState<string[]>([])
 
 	const clientRef = useRef<GoogleGenAI | null>(null)
-	const sessionRef = useRef<Session | null>(null);
+	const sessionRef = useRef<Session | null>(null)
 
-	const inputAudioContextRef = useRef<AudioContext | null>(null);
-	const outputAudioContextRef = useRef<AudioContext | null>(null);
-const outputGainNodeRef = useRef<GainNode | null>(null);
-	const mediaStreamRef = useRef<MediaStream | null>(null);
-	const scriptProcessorNodeRef = useRef<ScriptProcessorNode | null>(null);
-	const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-	const nextStartTimeRef = useRef(0);
-	const outputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
-	const isMountedRef = useRef(true);
-
+	const inputAudioContextRef = useRef<AudioContext | null>(null)
+	const outputAudioContextRef = useRef<AudioContext | null>(null)
+	const outputGainNodeRef = useRef<GainNode | null>(null)
+	const mediaStreamRef = useRef<MediaStream | null>(null)
+	const scriptProcessorNodeRef = useRef<ScriptProcessorNode | null>(null)
+	const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null)
+	const nextStartTimeRef = useRef(0)
+	const outputSourcesRef = useRef(new Set<AudioBufferSourceNode>())
+	const isMountedRef = useRef(true)
 
 	// Keep ref in sync with state
 	useEffect(() => {
-		isRecordingRef.current = isRecording;
-	}, [isRecording]);
+		isRecordingRef.current = isRecording
+	}, [isRecording])
 
 	useEffect(() => {
-		isMountedRef.current = true;
-		
+		isMountedRef.current = true
+
 		// Initialize AudioContexts once
 		if (!inputAudioContextRef.current) {
-			inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+			inputAudioContextRef.current = new (window.AudioContext ||
+				(window as any).webkitAudioContext)({ sampleRate: 16000 })
 		}
 		if (!outputAudioContextRef.current) {
-			outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+			outputAudioContextRef.current = new (window.AudioContext ||
+				(window as any).webkitAudioContext)({ sampleRate: 24000 })
 		}
 		// Create gain node once and connect to destination
 		if (outputAudioContextRef.current && !outputGainNodeRef.current) {
-			outputGainNodeRef.current = outputAudioContextRef.current.createGain();
-			outputGainNodeRef.current.connect(outputAudioContextRef.current.destination);
+			outputGainNodeRef.current =
+				outputAudioContextRef.current.createGain()
+			outputGainNodeRef.current.connect(
+				outputAudioContextRef.current.destination
+			)
 		}
 
 		return () => {
-			isMountedRef.current = false;
-			stopRecording();
-			sessionRef.current?.close();
-			inputAudioContextRef.current?.close();
-			outputAudioContextRef.current?.close();
+			isMountedRef.current = false
+			stopRecording()
+			sessionRef.current?.close()
+			inputAudioContextRef.current?.close()
+			outputAudioContextRef.current?.close()
 		}
 	}, [])
+
+	useEffect(() => {
+		const item = {
+			id: "voice-chat",
+			component: (
+				<Button
+					onClick={handleMicClick}
+					size="icon"
+					className={cn(
+						"relative h-9 w-9 rounded-full transition-all duration-300",
+						status === "recording" &&
+							"bg-destructive/20 hover:bg-destructive/30",
+						status === "idle" && "bg-secondary hover:bg-secondary/90",
+						status === "error" &&
+							"bg-secondary hover:bg-secondary/90",
+						status === "connecting" && "bg-muted cursor-not-allowed"
+					)}
+					disabled={status === "connecting"}
+				>
+					{getButtonContent()}
+				</Button>
+			),
+			area: "center",
+			order: 9,
+		}
+		registerToolbarItem(item)
+
+		return () => {
+			unregisterToolbarItem("voice-chat")
+		}
+	}, [status, registerToolbarItem, unregisterToolbarItem, handleMicClick])
 
 
 	const initSession = useCallback(async (currentApiKey: string) => {
@@ -342,42 +382,20 @@ const outputGainNodeRef = useRef<GainNode | null>(null);
 	const getButtonContent = () => {
 		switch (status) {
 			case "connecting":
-				return <Loader className="w-5 h-5 animate-spin" />;
+				return <Loader className="w-5 h-5 animate-spin" />
 			case "recording":
 				return (
 					<>
 						<Power className="w-5 h-5 text-destructive" />
-						<div
-							className="absolute inset-[-4px] rounded-full border-2 border-destructive/50 animate-pulse"
-						></div>
+						<div className="absolute inset-[-4px] rounded-full border-2 border-destructive/50 animate-pulse"></div>
 					</>
-				);
+				)
 			case "idle":
 			case "error":
 			default:
-				return (
-					<Mic className="w-5 h-5" />
-				);
+				return <Mic className="w-5 h-5" />
 		}
-	};
+	}
 
-	return (
-		<>
-			<Button
-			onClick={handleMicClick}
-			size="icon"
-			className={cn(
-				"relative h-9 w-9 rounded-full transition-all duration-300",
-				status === "recording" && "bg-destructive/20 hover:bg-destructive/30",
-				status === "idle" && "bg-secondary hover:bg-secondary/90",
-				status === "error" && "bg-secondary hover:bg-secondary/90",
-				(status === "connecting") && "bg-muted cursor-not-allowed"
-			)}
-			disabled={status === "connecting"}
-		>
-			{getButtonContent()}
-			</Button>
-
-		</>
-	)
+	return null
 }

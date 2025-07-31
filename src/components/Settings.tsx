@@ -135,8 +135,11 @@ export const models = [
 
 const MAX_UPLOADED_IMAGES = 6
 
+import { useAppContext } from "@/contexts/AppContext"
+
 export function Settings(props: SettingsProps) {
 	const { scope } = props
+	const { registerToolbarItem, unregisterToolbarItem } = useAppContext()
 	const isOnboardingScope = scope.startsWith("learn-onboarding")
 	const { toast } = useToast()
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -165,6 +168,142 @@ export function Settings(props: SettingsProps) {
 			setLocalApiKeys(learnProps.apiKeys)
 		}
 	}, [props, scope, isSheetOpen, isOnboardingScope])
+
+	useEffect(() => {
+		if (scope === "all") {
+			const item = {
+				id: "settings",
+				component: (
+					<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+						<SheetTrigger asChild>
+							<Button
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<Menu />
+								<span className="sr-only">Cài đặt</span>
+							</Button>
+						</SheetTrigger>
+						<SheetContent
+							side="right"
+							className="flex flex-col max-h-[100vh] w-[400px] sm:max-w-[540px]"
+						>
+							<SheetHeader>
+								<SheetTitle>
+									<div className="flex items-center gap-2">
+										<SettingsIcon />
+										<span>Cài đặt</span>
+									</div>
+								</SheetTitle>
+							</SheetHeader>
+
+							<Tabs
+								defaultValue="learn"
+								className="flex-grow flex flex-col mt-4"
+							>
+								<TabsList className="w-full">
+									<TabsTrigger
+										value="learn"
+										className="flex-1"
+									>
+										Học tập
+									</TabsTrigger>
+									<TabsTrigger
+										value="global"
+										className="flex-1"
+									>
+										Giao diện
+									</TabsTrigger>
+								</TabsList>
+								<TabsContent
+									value="learn"
+									className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
+								>
+									<div className="grid gap-6">
+										{renderLearnSettings()}
+									</div>
+								</TabsContent>
+								<TabsContent
+									value="global"
+									className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
+								>
+									<div className="grid gap-6">
+										{renderGlobalSettings()}
+									</div>
+								</TabsContent>
+							</Tabs>
+
+							<SheetFooter className="mt-auto pt-4 border-t">
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button
+											variant="destructive"
+											className="w-full"
+										>
+											<RefreshCw className="mr-2 h-4 w-4" />
+											Tạo chủ đề mới
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>
+												<div className="flex items-center gap-2">
+													<AlertTriangle className="text-destructive" />
+													<span>Tạo chủ đề mới?</span>
+												</div>
+											</AlertDialogTitle>
+											<AlertDialogDescription>
+												Hành động này sẽ xóa vĩnh viễn
+												tất cả dữ liệu học tập hiện tại
+												(lý thuyết, flashcard, trắc
+												nghiệm) và bắt đầu lại quá
+												trình tạo chủ đề mới. Cài đặt
+												chung của bạn sẽ được giữ lại.
+												Bạn có chắc chắn muốn tiếp tục
+												không?
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>
+												Hủy
+											</AlertDialogCancel>
+											<AlertDialogAction
+												onClick={handleResetOnboarding}
+												className={cn(
+													buttonVariants({
+														variant: "destructive",
+													})
+												)}
+											>
+												Vâng, tạo mới
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
+							</SheetFooter>
+						</SheetContent>
+					</Sheet>
+				),
+				area: "center",
+				order: 8,
+			}
+			registerToolbarItem(item)
+		}
+
+		return () => {
+			if (scope === "all") {
+				unregisterToolbarItem("settings")
+			}
+		}
+	}, [
+		scope,
+		registerToolbarItem,
+		unregisterToolbarItem,
+		isSheetOpen,
+		setIsSheetOpen,
+		props,
+	])
 
 	const handleAddNewApiKey = () => {
 		if (!scope.startsWith("learn") && scope !== "all") return
@@ -576,99 +715,6 @@ export function Settings(props: SettingsProps) {
 		return renderApiKeyManagement()
 	}
 
-	return (
-		<Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-			<SheetTrigger asChild>
-				<Button variant="outline" size="icon" className="h-9 w-9">
-					<Menu />
-					<span className="sr-only">Cài đặt</span>
-				</Button>
-			</SheetTrigger>
-			<SheetContent
-				side="right"
-				className="flex flex-col max-h-[100vh] w-[400px] sm:max-w-[540px]"
-			>
-				<SheetHeader>
-					<SheetTitle>
-						<div className="flex items-center gap-2">
-							<SettingsIcon />
-							<span>Cài đặt</span>
-						</div>
-					</SheetTitle>
-				</SheetHeader>
-
-				<Tabs
-					defaultValue="learn"
-					className="flex-grow flex flex-col mt-4"
-				>
-					<TabsList className="w-full">
-						<TabsTrigger value="learn" className="flex-1">
-							Học tập
-						</TabsTrigger>
-						<TabsTrigger value="global" className="flex-1">
-							Giao diện
-						</TabsTrigger>
-					</TabsList>
-					<TabsContent
-						value="learn"
-						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
-					>
-						<div className="grid gap-6">
-							{renderLearnSettings()}
-						</div>
-					</TabsContent>
-					<TabsContent
-						value="global"
-						className="flex-grow overflow-y-auto pr-6 pl-1 -mr-6 mt-4"
-					>
-						<div className="grid gap-6">
-							{renderGlobalSettings()}
-						</div>
-					</TabsContent>
-				</Tabs>
-
-				<SheetFooter className="mt-auto pt-4 border-t">
-					<AlertDialog>
-						<AlertDialogTrigger asChild>
-							<Button variant="destructive" className="w-full">
-								<RefreshCw className="mr-2 h-4 w-4" />
-								Tạo chủ đề mới
-							</Button>
-						</AlertDialogTrigger>
-						<AlertDialogContent>
-							<AlertDialogHeader>
-								<AlertDialogTitle>
-									<div className="flex items-center gap-2">
-										<AlertTriangle className="text-destructive" />
-										<span>Tạo chủ đề mới?</span>
-									</div>
-								</AlertDialogTitle>
-								<AlertDialogDescription>
-									Hành động này sẽ xóa vĩnh viễn tất cả dữ
-									liệu học tập hiện tại (lý thuyết, flashcard,
-									trắc nghiệm) và bắt đầu lại quá trình tạo
-									chủ đề mới. Cài đặt chung của bạn sẽ được
-									giữ lại. Bạn có chắc chắn muốn tiếp tục
-									không?
-								</AlertDialogDescription>
-							</AlertDialogHeader>
-							<AlertDialogFooter>
-								<AlertDialogCancel>Hủy</AlertDialogCancel>
-								<AlertDialogAction
-									onClick={handleResetOnboarding}
-									className={cn(
-										buttonVariants({
-											variant: "destructive",
-										})
-									)}
-								>
-									Vâng, tạo mới
-								</AlertDialogAction>
-							</AlertDialogFooter>
-						</AlertDialogContent>
-					</AlertDialog>
-				</SheetFooter>
-			</SheetContent>
-		</Sheet>
-	)
+	// The button is now rendered via the toolbar item, so we don't need to render anything here for the "all" scope.
+	return null
 }
