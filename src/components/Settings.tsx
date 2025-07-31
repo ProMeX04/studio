@@ -139,8 +139,8 @@ export function Settings(props: SettingsProps) {
 						canvas.height = height
 						ctx.drawImage(img, 0, 0, width, height)
 	
-						// Compress and get data URL
-						const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7) // 70% quality
+						// Compress and get data URL as WebP
+						const compressedDataUrl = canvas.toDataURL("image/webp", 0.8) // 80% quality
 	
 						const newUploadedBgs = [
 							compressedDataUrl,
@@ -149,7 +149,7 @@ export function Settings(props: SettingsProps) {
 						
 						settingsContext.onUploadedBackgroundsChange(newUploadedBgs)
 						settingsContext.onBackgroundChange(compressedDataUrl)
-						toast({ title: "Thành công!", description: "Hình nền đã được nén và tải lên."})
+						toast({ title: "Thành công!", description: "Hình nền đã được nén sang WebP và tải lên."})
 					}
 					img.onerror = () => {
 						toast({ title: "Lỗi", description: "Không thể đọc file ảnh.", variant: "destructive" })
