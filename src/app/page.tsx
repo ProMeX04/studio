@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import React, { useRef, useMemo } from "react"
@@ -18,10 +17,20 @@ import {
 	PanelRightOpen,
 	Award,
 	CheckCircle,
+	ChevronLeft,
+	ChevronRight,
 } from "lucide-react"
 import { Toolbar } from "@/components/Toolbar"
 import { cn } from "@/lib/utils"
-
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Settings } from "@/components/Settings";
+import { AdvancedVoiceChat } from "@/components/AdvancedVoiceChat";
 
 function HomePageContent() {
 	const { 
@@ -29,23 +38,50 @@ function HomePageContent() {
 		backgroundImage, 
 		visibility, 
 		onVisibilityChange,
-		// Props for Toolbar Actions Logic
+		
+		// Toolbar State & Logic
 		view,
-		theorySet,
-		theoryState,
-		theoryChapterIndex,
-		onTheoryStateChange,
-		showTheorySummary,
-		setShowTheorySummary,
+		onViewChange,
 		flashcardSet,
-		flashcardState,
-		flashcardIndex,
-		onFlashcardStateChange,
-		showFlashcardSummary,
-		setShowFlashcardSummary,
 		quizSet,
+		theorySet,
+		flashcardIndex,
+		currentQuestionIndex,
+		theoryChapterIndex,
+		onFlashcardIndexChange,
+		onCurrentQuestionIndexChange,
+		onTheoryChapterIndexChange,
 		showQuizSummary,
+		showFlashcardSummary,
+		showTheorySummary,
+
+		// State for Action buttons
+		theoryState,
+		onTheoryStateChange,
+		setShowTheorySummary,
+		flashcardState,
+		onFlashcardStateChange,
+		setShowFlashcardSummary,
+		quizState,
 		setShowQuizSummary,
+
+		// Settings props
+		onBackgroundChange,
+        onUploadedBackgroundsChange,
+        uploadedBackgrounds,
+        onSettingsSave,
+        onGenerate,
+        handleClearLearningData,
+        isLoading,
+        topic,
+        language,
+        model,
+        onApiKeysChange,
+        handleResetOnboarding,
+        apiKeys,
+        apiKeyIndex,
+		handleApiKeyIndexChange,
+
 	} = useAppContext()
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
@@ -54,7 +90,6 @@ function HomePageContent() {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
 			const layout = panelGroup.getLayout()
-			// If right is closed, open both to 50/50. Otherwise, open left to 45.
 			if (layout[1] === 0) {
 				panelGroup.setLayout([50, 50])
 			} else {
@@ -67,7 +102,6 @@ function HomePageContent() {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
 			const layout = panelGroup.getLayout()
-			// If left is closed, open both to 50/50. Otherwise, open right to 55.
 			if (layout[0] === 0) {
 				panelGroup.setLayout([50, 50])
 			} else {
@@ -76,11 +110,56 @@ function HomePageContent() {
 		}
 	}
 
+	const { totalItems, currentIndex, isNavDisabled } = useMemo(() => {
+        let total = 0;
+        let current = 0;
+        switch (view) {
+            case 'flashcards':
+                total = flashcardSet?.cards.length ?? 0;
+                current = flashcardIndex;
+                break;
+            case 'quiz':
+                total = quizSet?.questions.length ?? 0;
+                current = currentQuestionIndex;
+                break;
+            case 'theory':
+                total = theorySet?.outline?.length ?? 0;
+                current = theoryChapterIndex;
+                break;
+        }
+        const hasContent = total > 0;
+        const isSummaryActive = showQuizSummary || showFlashcardSummary || showTheorySummary;
+        const navDisabled = isSummaryActive || !hasContent;
+
+        return { totalItems: total, currentIndex: current, isNavDisabled: navDisabled };
+    }, [view, flashcardSet, quizSet, theorySet, flashcardIndex, currentQuestionIndex, theoryChapterIndex, showQuizSummary, showFlashcardSummary, showTheorySummary]);
+
+    const handleNext = () => {
+        if (currentIndex < totalItems - 1) {
+            switch (view) {
+                case 'flashcards': onFlashcardIndexChange(currentIndex + 1); break;
+                case 'quiz': onCurrentQuestionIndexChange(currentIndex + 1); break;
+                case 'theory': onTheoryChapterIndexChange(currentIndex + 1); break;
+            }
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentIndex > 0) {
+            switch (view) {
+                case 'flashcards': onFlashcardIndexChange(currentIndex - 1); break;
+                case 'quiz': onCurrentQuestionIndexChange(currentIndex - 1); break;
+                case 'theory': onTheoryChapterIndexChange(currentIndex - 1); break;
+            }
+        }
+    };
+
 	const renderToolbarActions = useMemo(() => {
+		const hasContent = totalItems > 0;
+		const isSummaryActive = showQuizSummary || showFlashcardSummary || showTheorySummary;
+
 		switch (view) {
 			case 'theory': {
-				const hasContent = (theorySet?.chapters.length ?? 0) > 0;
-				const isSummaryActive = showTheorySummary;
 				const isCurrentItemUnderstood = theoryState?.understoodIndices.includes(theoryChapterIndex) ?? false;
 				const handleToggleUnderstood = () => {
 					if (!theoryState) return;
@@ -105,8 +184,6 @@ function HomePageContent() {
 				);
 			}
 			case 'flashcards': {
-				const hasContent = (flashcardSet?.cards.length ?? 0) > 0;
-				const isSummaryActive = showFlashcardSummary;
 				const isCurrentItemUnderstood = flashcardState?.understoodIndices.includes(flashcardIndex) ?? false;
 				const handleToggleUnderstood = () => {
 					if (!flashcardState) return;
@@ -131,8 +208,6 @@ function HomePageContent() {
 				);
 			}
 			case 'quiz': {
-				const hasContent = (quizSet?.questions.length ?? 0) > 0;
-				const isSummaryActive = showQuizSummary;
 				return (
 					<Button onClick={() => setShowQuizSummary(true)} disabled={!hasContent || isSummaryActive} variant="outline" size="icon" className="h-9 w-9">
 						<Award className="h-4 w-4" />
@@ -143,11 +218,40 @@ function HomePageContent() {
 				return null;
 		}
 	}, [
-		view,
-		theorySet, theoryState, theoryChapterIndex, onTheoryStateChange, showTheorySummary, setShowTheorySummary,
-		flashcardSet, flashcardState, flashcardIndex, onFlashcardStateChange, showFlashcardSummary, setShowFlashcardSummary,
-		quizSet, showQuizSummary, setShowQuizSummary
+		view, totalItems, showQuizSummary, showFlashcardSummary, showTheorySummary,
+		theorySet, theoryState, theoryChapterIndex, onTheoryStateChange, setShowTheorySummary,
+		flashcardSet, flashcardState, flashcardIndex, onFlashcardStateChange, setShowFlashcardSummary,
+		quizSet, setShowQuizSummary
 	]);
+
+	const settingsProps = {
+        scope: "all" as const,
+        onVisibilityChange,
+        onBackgroundChange,
+        onUploadedBackgroundsChange,
+        visibility,
+        uploadedBackgrounds,
+        currentBackgroundImage: backgroundImage,
+        onSettingsChange: onSettingsSave,
+        onGenerate,
+        onClearLearningData: handleClearLearningData,
+        isLoading,
+        topic,
+        language,
+        model,
+        onApiKeysChange,
+        onResetOnboarding: handleResetOnboarding,
+        apiKeys,
+        theorySet,
+        flashcardSet,
+        quizSet,
+    };
+
+    const voiceChatProps = {
+        apiKeys,
+        apiKeyIndex,
+        onApiKeyIndexChange: handleApiKeyIndexChange,
+    };
 
 
 	if (!isMounted) {
@@ -221,7 +325,56 @@ function HomePageContent() {
 				</div>
 
 				<div className="flex-shrink-0">
-					<Toolbar actions={renderToolbarActions} />
+					<Toolbar>
+						<Select
+							value={view}
+							onValueChange={(value) => onViewChange(value as any)}
+						>
+							<SelectTrigger className="w-[150px]">
+								<SelectValue placeholder="Chọn chế độ" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="theory">Lý thuyết</SelectItem>
+								<SelectItem value="flashcards">Flashcard</SelectItem>
+								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+							</SelectContent>
+						</Select>
+
+						<div className="flex items-center gap-2">
+							<Button
+								onClick={handlePrev}
+								disabled={isNavDisabled || currentIndex === 0}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<ChevronLeft className="h-4 w-4" />
+							</Button>
+
+							<span className="text-sm text-muted-foreground w-24 text-center">
+								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"}{" "}
+								{totalItems > 0 ? currentIndex + 1 : 0} / {totalItems}
+							</span>
+
+							<Button
+								onClick={handleNext}
+								disabled={isNavDisabled || currentIndex >= totalItems - 1}
+								variant="outline"
+								size="icon"
+								className="h-9 w-9"
+							>
+								<ChevronRight className="h-4 w-4" />
+							</Button>
+
+							{renderToolbarActions}
+
+							<Settings {...settingsProps} />
+
+							{visibility.advancedVoiceChat && (
+								<AdvancedVoiceChat {...voiceChatProps} />
+							)}
+						</div>
+					</Toolbar>
 				</div>
 
 				<div className="flex-1 flex justify-end">
@@ -250,3 +403,4 @@ export default function Home() {
 		</AppProvider>
 	)
 }
+
