@@ -13,6 +13,7 @@ import {
 	Loader,
 	Menu,
 	Mic,
+	LogOut,
 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -20,7 +21,6 @@ import {
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
-	SheetTrigger,
 	SheetFooter,
 } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
@@ -44,6 +44,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSettingsContext } from "@/contexts/SettingsContext"
 import { useLearningContext } from "@/contexts/LearningContext"
+import { useAuthContext } from "@/contexts/AuthContext"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 
 type SettingsScope = "all" 
 
@@ -76,6 +78,15 @@ export const models = [
 
 const MAX_UPLOADED_IMAGES = 6
 
+const getInitials = (name: string | null | undefined) => {
+	if (!name) return 'AI';
+	const names = name.split(' ');
+	if (names.length > 1) {
+		return names[0].charAt(0) + names[names.length - 1].charAt(0);
+	}
+	return name.charAt(0);
+};
+
 export function Settings(props: SettingsProps) {
 	const { scope } = props
 	const { toast } = useToast()
@@ -86,6 +97,7 @@ export function Settings(props: SettingsProps) {
 	// --- CONTEXT HOOKS ---
 	const settingsContext = useSettingsContext()
     const learningContext = useLearningContext()
+	const { user, signOut } = useAuthContext();
 
 	const handleGenerate = (forceNew: boolean) => {
 		if (learningContext) {
@@ -392,6 +404,26 @@ export function Settings(props: SettingsProps) {
 						</div>
 					</SheetTitle>
 				</SheetHeader>
+				
+				{user && (
+                    <div className="mt-4 p-4 bg-secondary/30 rounded-lg">
+                        <div className="flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<Avatar>
+									<AvatarImage src={user.photoURL ?? ''} alt={user.displayName ?? 'User'} />
+									<AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+								</Avatar>
+								<div className="flex flex-col">
+									<span className="font-semibold">{user.displayName}</span>
+									<span className="text-sm text-muted-foreground">{user.email}</span>
+								</div>
+							</div>
+                            <Button variant="ghost" size="icon" onClick={signOut}>
+                                <LogOut className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
 				<Tabs
 					defaultValue="learn"
