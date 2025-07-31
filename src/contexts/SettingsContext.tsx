@@ -202,7 +202,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		const learningKeys: DataKey[] = [
 			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
 			"theory", "theoryState", "theoryChapterIndex", "topic", "language",
-			"model", "view", "generationProgress", "hasCompletedOnboarding"
+			"model", "view", "hasCompletedOnboarding"
 		];
 		const userKeysToDelete = learningKeys.map(key => getUIDBKey(key));
 		

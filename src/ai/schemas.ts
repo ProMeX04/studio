@@ -93,28 +93,21 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 
 
 // Theory
-export const GenerateTheoryOutlineInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate a theory document outline.'),
-  language: z.string().describe('The language for the theory document.'),
+export const TheoryChapterSchema = z.object({
+  title: z.string(),
+  content: z.string().nullable(),
+  podcastScript: z.string().nullable(),
+  audioDataUri: z.string().nullable(),
 });
-export type GenerateTheoryOutlineInput = z.infer<typeof GenerateTheoryOutlineInputSchema>;
+export type TheoryChapter = z.infer<typeof TheoryChapterSchema>;
 
-export const GenerateTheoryOutlineOutputSchema = z.object({
-  outline: z.array(z.string()).describe('A structured outline of topics to cover.'),
+export const TheorySetSchema = z.object({
+    id: z.string(),
+    topic: z.string(),
+    outline: z.array(z.string()),
+    chapters: z.array(TheoryChapterSchema),
 });
-export type GenerateTheoryOutlineOutput = z.infer<typeof GenerateTheoryOutlineOutputSchema>;
-
-export const GenerateTheoryChapterInputSchema = z.object({
-  topic: z.string().describe('The overall topic of the document.'),
-  chapterTitle: z.string().describe('The title of the specific chapter to generate content for.'),
-  language: z.string().describe('The language for the chapter content.'),
-});
-export type GenerateTheoryChapterInput = z.infer<typeof GenerateTheoryChapterInputSchema>;
-
-export const GenerateTheoryChapterOutputSchema = z.object({
-  content: z.string().describe('The detailed content for the chapter in Markdown format.'),
-});
-export type GenerateTheoryChapterOutput = z.infer<typeof GenerateTheoryChapterOutputSchema>;
+export type TheorySet = z.infer<typeof TheorySetSchema>;
 
 
 // Podcast
@@ -142,18 +135,28 @@ export const GenerateAudioOutputSchema = z.object({
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
-export interface TheoryChapter {
-  title: string;
-  content: string | null; // Null while generating
-  podcastScript: string | null;
-  audioDataUri: string | null;
-}
-export interface TheorySet {
-  id: string;
-  topic: string;
-  outline: string[];
-  chapters: TheoryChapter[];
-}
+// Full Content Generation
+export const GenerateAllContentInputSchema = z.object({
+    topic: z.string().describe('The topic for which to generate all content.'),
+    language: z.string().describe('The language for the content.'),
+});
+export type GenerateAllContentInput = z.infer<typeof GenerateAllContentInputSchema>;
+
+export const GenerateAllContentOutputSchema = z.object({
+    theorySet: TheorySetSchema,
+    flashcardSet: z.object({
+        id: z.string(),
+        topic: z.string(),
+        cards: GenerateCardsOutputSchema,
+    }),
+    quizSet: z.object({
+        id: z.string(),
+        topic: z.string(),
+        questions: GenerateQuizOutputSchema,
+    }),
+});
+export type GenerateAllContentOutput = z.infer<typeof GenerateAllContentOutputSchema>;
+
 
 // Live Dialog
 export const LiveDialogResponsePartSchema = z.object({

@@ -18,28 +18,15 @@ import type {
 	CardSet,
 	QuizSet,
 	TheorySet,
-	QuizQuestion,
-	CardData,
 } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
 import { useAuthContext } from "./AuthContext"
 
-const FLASHCARDS_PER_CHAPTER = 5
-const QUIZ_QUESTIONS_PER_CHAPTER = 4
-const MAX_RETRIES = 3
-
-type GenerationStage = "theory" | "flashcards" | "quiz" | "done"
-interface GenerationProgress {
-	currentChapterIndex: number
-	currentStage: GenerationStage
-}
-
 interface LearningContextType {
 	// State
 	isLoading: boolean
 	isGeneratingPodcast: boolean
-	generationProgress: GenerationProgress | null
 
 	// Learning State
 	view: "flashcards" | "quiz" | "theory"
@@ -109,8 +96,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	// Global State
 	const [isLoading, setIsLoading] = useState(false)
 	const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false)
-	const [generationProgress, setGenerationProgress] =
-		useState<GenerationProgress | null>(null)
 
 	// Learning State
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
@@ -157,27 +142,12 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	}, [user]); // Rerun when user logs in/out
 
 	// --- Data Handling Callbacks ---
-	const updateGenerationProgress = useCallback(
-		async (progress: GenerationProgress | null) => {
-			if (!isMountedRef.current || !user) return
-			setGenerationProgress(progress)
-			const db = await getDb()
-			const dbKey = getUIDBKey("generationProgress");
-			if (progress) {
-				await db.put("data", { id: dbKey, data: progress })
-			} else {
-				await db.delete("data", dbKey)
-			}
-		},
-		[user, getUIDBKey]
-	)
-
 	const handleClearLearningData = useCallback(async () => {
 		if (!user) return;
 		const db = await getDb();
 		const keysToDelete: DataKey[] = [
 			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
-			"theory", "theoryState", "theoryChapterIndex", "generationProgress"
+			"theory", "theoryState", "theoryChapterIndex"
 		];
 		const userKeysToDelete = keysToDelete.map(key => getUIDBKey(key));
 
@@ -199,7 +169,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setShowFlashcardSummary(false)
 		setShowQuizSummary(false)
 		setShowTheorySummary(false)
-		setGenerationProgress(null)
 
 		toast({
 			title: "Đã xóa dữ liệu học tập",
@@ -237,7 +206,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			quizStateRes,
 			theoryDataRes,
 			theoryStateRes,
-			generationProgressRes,
 		] = await Promise.all([
 			db.get("data", getUIDBKey("view")),
 			db.get("data", getUIDBKey("topic")),
@@ -249,7 +217,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			db.get("data", getUIDBKey("quizState")),
 			db.get("data", getUIDBKey("theory")),
 			db.get("data", getUIDBKey("theoryState")),
-			db.get("data", getUIDBKey("generationProgress")),
 		])
 
 		const savedView =
@@ -258,10 +225,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		const savedLanguage = (savedLanguageRes?.data as string) || "Vietnamese"
 		const savedModel =
 			(savedModelRes?.data as string) || "gemini-2.5-flash-lite"
-		const savedGenerationProgress =
-			(generationProgressRes?.data as GenerationProgress) || null
-
-		setGenerationProgress(savedGenerationProgress)
 
 		setView(savedView)
 		setTopic(savedTopic)
@@ -351,266 +314,56 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			const db = await getDb()
 
 			try {
-				let tempTheorySet = theorySet
-				let tempFlashcardSet = flashcardSet
-				let tempQuizSet = quizSet
-				let localProgress = generationProgress
+				toast({
+					title: "Bắt đầu tạo...",
+					description: "Đang yêu cầu nội dung từ máy chủ. Quá trình này có thể mất một lúc.",
+				})
 
-				// Stage 0: Create outline if forced or doesn't exist
-				if (
-					forceNew ||
-					!tempTheorySet ||
-					!localProgress ||
-					localProgress.currentStage === "done"
-				) {
-					toast({
-						title: "Bắt đầu tạo...",
-						description: "Đang tạo dàn bài cho chủ đề của bạn.",
-					})
-					try {
-						const outlineResponse = await api.generateTheoryOutline({
-							topic,
-							language,
-						})
+				// Clear old data before fetching new data
+				await handleClearLearningData();
 
-						if (
-							!outlineResponse?.outline ||
-							outlineResponse.outline.length === 0
-						) {
-							throw new Error("Không thể tạo dàn bài hợp lệ.")
-						}
+				// Single API call to the backend
+				const response = await api.generateAllContent({
+					topic,
+					language,
+				});
 
-						// Clear old learning data AFTER new outline is successfully fetched
-						await handleClearLearningData()
-
-						tempTheorySet = {
-							id: "idb-theory",
-							topic,
-							outline: outlineResponse.outline,
-							chapters: outlineResponse.outline.map(
-								(title) => ({
-									title,
-									content: null,
-									podcastScript: null,
-									audioDataUri: null,
-								})
-							),
-						}
-						tempFlashcardSet = {
-							id: "idb-flashcards",
-							topic,
-							cards: [],
-						}
-						tempQuizSet = { id: "idb-quiz", topic, questions: [] }
-						localProgress = {
-							currentChapterIndex: 0,
-							currentStage: "theory",
-						}
-
-						await db.put("data", { id: getUIDBKey("theory"), data: tempTheorySet, })
-						await db.put("data", { id: getUIDBKey("flashcards"), data: tempFlashcardSet })
-						await db.put("data", { id: getUIDBKey("quiz"), data: tempQuizSet })
-
-						if (isMountedRef.current) {
-							setTheorySet(tempTheorySet)
-							setFlashcardSet(tempFlashcardSet)
-							setQuizSet(tempQuizSet)
-							setTheoryState({ understoodIndices: [] })
-							setFlashcardState({ understoodIndices: [] })
-							setQuizState({
-								currentQuestionIndex: 0,
-								answers: {},
-							})
-							setTheoryChapterIndex(0)
-							setFlashcardIndex(0)
-							setCurrentQuestionIndex(0)
-						}
-						await updateGenerationProgress(localProgress)
-					} catch (error) {
-						console.error("🚫 Lỗi tạo dàn bài:", error)
-						toast({
-							title: "Lỗi tạo dàn bài",
-							description:
-								"Không thể tạo dàn bài cho chủ đề. Vui lòng thử lại.",
-							variant: "destructive",
-						})
-						isGeneratingRef.current = false
-						if (isMountedRef.current) setIsLoading(false)
-						return
-					}
+				if (!response || !response.theorySet || !response.flashcardSet || !response.quizSet) {
+					throw new Error("Phản hồi từ máy chủ không hợp lệ.");
 				}
 
-				if (!tempTheorySet || !tempFlashcardSet || !tempQuizSet || !localProgress) {
-					throw new Error(
-						"State không hợp lệ để bắt đầu tạo nội dung."
-					)
+				// Destructure the complete data sets
+				const { theorySet: newTheorySet, flashcardSet: newFlashcardSet, quizSet: newQuizSet } = response;
+
+				// Save all data to IndexedDB
+				await Promise.all([
+					db.put("data", { id: getUIDBKey("theory"), data: newTheorySet }),
+					db.put("data", { id: getUIDBKey("flashcards"), data: newFlashcardSet }),
+					db.put("data", { id: getUIDBKey("quiz"), data: newQuizSet }),
+				]);
+
+				// Update state in one go
+				if (isMountedRef.current) {
+					setTheorySet(newTheorySet);
+					setFlashcardSet(newFlashcardSet);
+					setQuizSet(newQuizSet);
+					
+					// Reset progress states
+					setTheoryState({ understoodIndices: [] });
+					setFlashcardState({ understoodIndices: [] });
+					setQuizState({ currentQuestionIndex: 0, answers: {} });
+					
+					// Reset indices
+					setTheoryChapterIndex(0);
+					setFlashcardIndex(0);
+					setCurrentQuestionIndex(0);
 				}
 
-				// Main generation loop
-				for (
-					let i = localProgress.currentChapterIndex;
-					i < tempTheorySet.outline.length;
-					i++
-				) {
-					let chapter = tempTheorySet.chapters[i]
-					let currentStage = localProgress.currentStage
+				toast({
+					title: "Hoàn tất!",
+					description: "Tất cả nội dung cho chủ đề đã được tạo và tải về.",
+				})
 
-					const runWithRetry = async <T, U>(
-						task: (params: T) => Promise<U>,
-						params: T,
-						taskName: string
-					): Promise<U | null> => {
-						for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-							try {
-								return await task(params);
-							} catch (error) {
-								console.error(
-									`🚫 Lỗi ${taskName} cho chương "${chapter.title}" (lần ${attempt}):`,
-									error
-								)
-								if (attempt === MAX_RETRIES) {
-									toast({
-										title: `Lỗi tạo ${taskName}`,
-										description: `Không thể tạo nội dung cho chương: "${chapter.title}".`,
-										variant: "destructive",
-									})
-									return null
-								}
-								await new Promise((res) =>
-									setTimeout(res, 1000 * attempt)
-								)
-							}
-						}
-						return null
-					}
-
-					// STAGE: THEORY
-					if (currentStage === "theory") {
-						if (!chapter.content) {
-							const chapterResult = await runWithRetry(
-								api.generateTheoryChapter,
-								{
-									topic,
-									chapterTitle: chapter.title,
-									language,
-								},
-								"Lý thuyết"
-							)
-							if (chapterResult?.content) {
-								tempTheorySet.chapters[i].content =
-									chapterResult.content
-								await db.put("data", { id: getUIDBKey("theory"), data: { ...tempTheorySet } })
-								if (isMountedRef.current)
-									setTheorySet({ ...tempTheorySet })
-							} else {
-								// If theory fails after retries, stop the whole process for this topic.
-								throw new Error(
-									`Failed to generate theory for chapter "${chapter.title}"`
-								)
-							}
-						}
-						currentStage = "flashcards"
-						localProgress = {
-							currentChapterIndex: i,
-							currentStage: "flashcards",
-						}
-						await updateGenerationProgress(localProgress)
-					}
-
-					// STAGE: FLASHCARDS
-					if (currentStage === "flashcards") {
-						const flashcardResult = await runWithRetry(
-							api.generateFlashcards,
-							{
-								topic,
-								count: FLASHCARDS_PER_CHAPTER,
-								language,
-								existingCards: tempFlashcardSet!.cards,
-								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
-								source: chapter.title,
-							},
-							"Flashcards"
-						)
-						if (
-							flashcardResult &&
-							Array.isArray(flashcardResult) &&
-							flashcardResult.length > 0
-						) {
-							const cardsWithSource = flashcardResult.map(
-								(card: CardData) => ({
-									...card,
-									source: chapter.title,
-								})
-							)
-							tempFlashcardSet.cards.push(...cardsWithSource)
-							await db.put("data", { id: getUIDBKey("flashcards"), data: { ...tempFlashcardSet } })
-							if (isMountedRef.current)
-								setFlashcardSet({ ...tempFlashcardSet })
-						}
-						currentStage = "quiz"
-						localProgress = {
-							currentChapterIndex: i,
-							currentStage: "quiz",
-						}
-						await updateGenerationProgress(localProgress)
-					}
-
-					// STAGE: QUIZ
-					if (currentStage === "quiz") {
-						const quizResult = await runWithRetry(
-							api.generateQuiz,
-							{
-								topic,
-								count: QUIZ_QUESTIONS_PER_CHAPTER,
-								language,
-								existingQuestions: tempQuizSet!.questions,
-								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
-								source: chapter.title,
-							},
-							"Trắc nghiệm"
-						)
-						if (
-							quizResult &&
-							Array.isArray(quizResult) &&
-							quizResult.length > 0
-						) {
-							const questionsWithSource =
-								quizResult.map((q: QuizQuestion) => ({
-									...q,
-									source: chapter.title,
-								}))
-							tempQuizSet.questions.push(...questionsWithSource)
-							await db.put("data", { id: getUIDBKey("quiz"), data: { ...tempQuizSet } })
-							if (isMountedRef.current)
-								setQuizSet({ ...tempQuizSet })
-						}
-						currentStage = "done" // Chapter finished
-					}
-
-					if (!isMountedRef.current) break
-
-					// Move to next chapter
-					if (i < tempTheorySet.outline.length - 1) {
-						localProgress = {
-							currentChapterIndex: i + 1,
-							currentStage: "theory",
-						}
-						await updateGenerationProgress(localProgress)
-					} else {
-						// All chapters are done
-						localProgress = {
-							currentChapterIndex: i,
-							currentStage: "done",
-						}
-						await updateGenerationProgress(localProgress)
-						toast({
-							title: "Hoàn tất!",
-							description:
-								"Tất cả nội dung cho chủ đề đã được tạo.",
-						})
-						break
-					}
-				}
 			} catch (error: any) {
 				console.error(
 					`🚫 Lỗi nghiêm trọng trong quá trình tạo:`,
@@ -618,7 +371,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				)
 				toast({
 					title: "Lỗi tạo nội dung",
-					description: `Đã xảy ra lỗi: ${error.message}. Quá trình đã dừng lại.`,
+					description: `Đã xảy ra lỗi: ${error.message}.`,
 					variant: "destructive",
 				})
 			} finally {
@@ -630,13 +383,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			toast,
 			topic,
 			language,
-			model,
 			handleClearLearningData,
-			theorySet,
-			flashcardSet,
-			quizSet,
-			generationProgress,
-			updateGenerationProgress,
 			user,
 			getUIDBKey,
 		]
@@ -743,9 +490,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			theorySet,
 			topic,
 			language,
-			model,
-			toast,
 			isGeneratingPodcast,
+			toast,
 			user,
 			getUIDBKey,
 		]
@@ -897,7 +643,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	const value: LearningContextType = {
 		isLoading,
 		isGeneratingPodcast,
-		generationProgress,
 		view,
 		topic,
 		language,
@@ -920,7 +665,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		onTheoryChapterIndexChange,
 		setShowQuizSummary,
 		setShowFlashcardSummary,
-setShowTheorySummary,
+		setShowTheorySummary,
 		handleGenerate,
 		handleGeneratePodcastForChapter,
 		onQuizStateChange,

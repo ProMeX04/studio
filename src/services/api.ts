@@ -4,14 +4,8 @@
  */
 
 import {
-  GenerateTheoryOutlineInput,
-  GenerateTheoryOutlineOutputSchema,
-  GenerateTheoryChapterInput,
-  GenerateTheoryChapterOutputSchema,
-  GenerateCardsInput,
-  GenerateCardsOutputSchema,
-  GenerateQuizInput,
-  GenerateQuizOutputSchema,
+  GenerateAllContentInput,
+  GenerateAllContentOutputSchema,
   ExplainQuizOptionInput,
   ExplainQuizOptionOutputSchema,
   GeneratePodcastScriptInput,
@@ -58,17 +52,8 @@ async function post<T>(endpoint: string, body: unknown, schema: Zod.Schema<T>): 
 
 // --- API Functions ---
 
-export const generateTheoryOutline = (body: GenerateTheoryOutlineInput) =>
-  post("/generate-theory-outline", body, GenerateTheoryOutlineOutputSchema);
-
-export const generateTheoryChapter = (body: GenerateTheoryChapterInput) =>
-  post("/generate-theory-chapter", body, GenerateTheoryChapterOutputSchema);
-
-export const generateFlashcards = (body: GenerateCardsInput) =>
-  post("/generate-flashcards", body, GenerateCardsOutputSchema);
-
-export const generateQuiz = (body: GenerateQuizInput) =>
-  post("/generate-quiz", body, GenerateQuizOutputSchema);
+export const generateAllContent = (body: GenerateAllContentInput) =>
+  post("/generate-all-content", body, GenerateAllContentOutputSchema);
 
 export const explainQuizOption = (body: ExplainQuizOptionInput) =>
   post("/explain-quiz-option", body, ExplainQuizOptionOutputSchema);
@@ -78,4 +63,3 @@ export const generatePodcastScript = (body: GeneratePodcastScriptInput) =>
 
 export const generateAudio = (body: GenerateAudioInput) =>
   post("/generate-audio", body, GenerateAudioOutputSchema);
-

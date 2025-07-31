@@ -29,7 +29,6 @@ import type { ComponentVisibility } from "@/contexts/SettingsContext"
 import { Switch } from "./ui/switch"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
-import { Progress } from "@/components/ui/progress"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -132,33 +131,9 @@ export function Settings(props: SettingsProps) {
 	const renderContentGenerationControls = () => {
 		if (!learningContext) return null
 
-		const { isLoading, theorySet, flashcardSet, quizSet, generationProgress } =
-			learningContext
+		const { isLoading, theorySet, flashcardSet, quizSet } = learningContext;
 
-		const theoryCount =
-			theorySet?.chapters.filter((c) => c.content).length ?? 0
-		const theoryMax = theorySet?.outline.length ?? 0
-		const flashcardCount = flashcardSet?.cards.length ?? 0
-		const quizCount = quizSet?.questions.length ?? 0
-
-		const isCompleted = generationProgress?.currentStage === "done"
-
-		let progressPercent = 0
-		if (theoryMax > 0 && generationProgress) {
-			const STAGES = ["theory", "flashcards", "quiz"]
-			const chapterProgress =
-				generationProgress.currentChapterIndex / theoryMax
-			const stageIndex = STAGES.indexOf(generationProgress.currentStage)
-
-			const stageProgress = (stageIndex >= 0 ? stageIndex : 2) / STAGES.length
-
-			progressPercent =
-				(chapterProgress + stageProgress / theoryMax) * 100
-
-			if (generationProgress.currentStage === "done") {
-				progressPercent = 100
-			}
-		}
+		const hasContent = theorySet || flashcardSet || quizSet;
 
 		return (
 			<div className="space-y-4">
@@ -167,32 +142,29 @@ export function Settings(props: SettingsProps) {
 				</Label>
 
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
-					<div className="flex justify-between items-center">
-						<Label htmlFor="theory-progress" className="text-sm">
-							Tiến độ tổng
-						</Label>
-						<span className="text-sm text-muted-foreground">
-							{progressPercent.toFixed(0)}%
-						</span>
-					</div>
-					<Progress value={progressPercent} id="total-progress" />
-
+					<p className="text-sm text-muted-foreground">
+						{hasContent 
+							? `Bạn đang học về chủ đề "${learningContext.topic}". Nhấp vào nút bên dưới để bắt đầu lại với một chủ đề mới.`
+							: "Chưa có nội dung học tập nào được tạo."
+						}
+					</p>
+					
 					<div className="flex justify-between items-center text-sm pt-2">
 						<Label>Lý thuyết</Label>
 						<span className="text-muted-foreground">
-							{theoryCount} / {theoryMax > 0 ? theoryMax : "?"} chương
+							{theorySet?.chapters?.length ?? 0} chương
 						</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Flashcard</Label>
 						<span className="text-muted-foreground">
-							{flashcardCount} thẻ
+							{flashcardSet?.cards?.length ?? 0} thẻ
 						</span>
 					</div>
 					<div className="flex justify-between items-center text-sm">
 						<Label>Trắc nghiệm</Label>
 						<span className="text-muted-foreground">
-							{quizCount} câu
+							{quizSet?.questions?.length ?? 0} câu
 						</span>
 					</div>
 				</div>
@@ -200,16 +172,10 @@ export function Settings(props: SettingsProps) {
 				<Button
 					className="w-full"
 					onClick={() => handleGenerate(false)}
-					disabled={isLoading || isCompleted}
+					disabled={isLoading}
 				>
-					{isLoading ? (
-						<Loader className="animate-spin h-4 w-4 mr-2" />
-					) : null}
-					{isCompleted
-						? "Đã hoàn tất"
-						: isLoading
-						? "Đang tạo..."
-						: "Tiếp tục tạo nội dung"}
+					{isLoading && <Loader className="animate-spin h-4 w-4 mr-2" />}
+					{isLoading ? "Đang tạo..." : "Tạo lại nội dung"}
 				</Button>
 			</div>
 		)
