@@ -85,7 +85,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		}
 
 		return () => {
-			closeDb()
 			clearAllToastTimeouts()
 		}
 	}, [user])
