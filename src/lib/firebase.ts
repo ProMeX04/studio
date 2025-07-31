@@ -1,18 +1,21 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApp, getApps, type FirebaseOptions } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyBPSB7ksOBZbijXchd89RIVFpTr2F5nFyg",
-  authDomain: "newtab-ai.firebaseapp.com",
-  projectId: "newtab-ai",
-  storageBucket: "newtab-ai.appspot.com",
-  messagingSenderId: "894589314623",
-  appId: "1:894589314623:web:40d5cec82d81286b8afa8a",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID",
   measurementId: "G-XXXXXXXXXX"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-export { app, db };
+export { app, db, auth };

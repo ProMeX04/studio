@@ -5,6 +5,7 @@
 import React, { ReactNode } from "react"
 import { SettingsProvider } from "./SettingsContext"
 import { LearningProvider } from "./LearningContext"
+import { AuthProvider } from "./AuthContext"
 
 /**
  * @fileOverview AppProvider component that nests all individual context providers.
@@ -14,11 +15,13 @@ import { LearningProvider } from "./LearningContext"
 
 export function AppProvider({ children }: { children: ReactNode }) {
 	return (
-		<SettingsProvider>
-			<LearningProvider>
-                {children}
-            </LearningProvider>
-		</SettingsProvider>
+		<AuthProvider>
+			<SettingsProvider>
+				<LearningProvider>
+					{children}
+				</LearningProvider>
+			</SettingsProvider>
+		</AuthProvider>
 	)
 }
 
@@ -28,9 +31,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 // This is provided for convenience in components like the main page layout.
 import { useSettingsContext } from "./SettingsContext"
 import { useLearningContext } from "./LearningContext"
+import { useAuthContext } from "./AuthContext"
 
 export const useAppContext = () => {
     const settings = useSettingsContext();
     const learning = useLearningContext();
-    return { ...settings, ...learning };
+		const auth = useAuthContext();
+    return { ...settings, ...learning, ...auth };
 }

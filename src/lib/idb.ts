@@ -2,10 +2,11 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
-const DB_NAME = 'NewTabAI-DB-guest';
-const DB_VERSION = 14; // Incremented version for new state
+const DB_NAME = 'NewTabAI-DB-v2';
+const DB_VERSION = 1; 
 const STORE_NAME = 'data';
 
+// These keys will be prefixed with the user's UID
 export type DataKey =
   | 'flashcards'
   | 'flashcardState'
@@ -22,28 +23,18 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardIndex'
   | 'theoryChapterIndex'
-  | 'apiKeys'
-  | 'apiKeyIndex'
   | 'hasCompletedOnboarding'
-  | 'generationProgress'; // Added new key
-
-export type LabeledData<T> = {
-  id: string;
-  topic: string;
-  data: T;
-};
+  | 'generationProgress';
 
 export type AppData = {
-  id: DataKey;
+  id: string; // Will be in the format `uid-key` e.g., `_HqV...-topic`
   data: any;
 };
-
-export type StoredData = LabeledData<any> | AppData;
 
 interface MyDB extends DBSchema {
   data: {
     key: string;
-    value: StoredData;
+    value: AppData;
   };
 }
 

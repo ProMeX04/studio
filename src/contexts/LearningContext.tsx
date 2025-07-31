@@ -12,7 +12,7 @@ import React, {
 	ReactNode,
 } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { getDb, LabeledData, AppData, DataKey } from "@/lib/idb"
+import { getDb, AppData, DataKey } from "@/lib/idb"
 import * as api from "@/services/api";
 import type {
 	CardSet,
@@ -23,6 +23,7 @@ import type {
 } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
+import { useAuthContext } from "./AuthContext"
 
 const FLASHCARDS_PER_CHAPTER = 5
 const QUIZ_QUESTIONS_PER_CHAPTER = 4
@@ -102,6 +103,7 @@ export function useLearningContext() {
 }
 
 export function LearningProvider({ children }: { children: ReactNode }) {
+	const { user } = useAuthContext();
 	const { setHasCompletedOnboarding } = useSettingsContext()
 
 	// Global State
@@ -137,50 +139,52 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	const { toast } = useToast()
 	const isGeneratingRef = useRef(false)
 	const isMountedRef = useRef(true)
+	
+	const getUIDBKey = useCallback((key: string) => {
+		return `${user?.uid || 'guest'}-${key}`;
+	}, [user]);
 
 	// --- Effects ---
 
 	useEffect(() => {
-		isMountedRef.current = true
-		loadInitialData()
-		return () => {
-			isMountedRef.current = false
+		isMountedRef.current = true;
+		if (user !== undefined) { // Check if user state is resolved
+			loadInitialData();
 		}
-	}, [])
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, [user]); // Rerun when user logs in/out
 
 	// --- Data Handling Callbacks ---
 	const updateGenerationProgress = useCallback(
 		async (progress: GenerationProgress | null) => {
-			if (!isMountedRef.current) return
+			if (!isMountedRef.current || !user) return
 			setGenerationProgress(progress)
 			const db = await getDb()
+			const dbKey = getUIDBKey("generationProgress");
 			if (progress) {
-				await db.put("data", { id: "generationProgress", data: progress })
+				await db.put("data", { id: dbKey, data: progress })
 			} else {
-				await db.delete("data", "generationProgress")
+				await db.delete("data", dbKey)
 			}
 		},
-		[]
+		[user, getUIDBKey]
 	)
 
 	const handleClearLearningData = useCallback(async () => {
-		const db = await getDb()
+		if (!user) return;
+		const db = await getDb();
 		const keysToDelete: DataKey[] = [
-			"flashcards",
-			"flashcardState",
-			"flashcardIndex",
-			"quiz",
-			"quizState",
-			"theory",
-			"theoryState",
-			"theoryChapterIndex",
-			"generationProgress",
-		]
+			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
+			"theory", "theoryState", "theoryChapterIndex", "generationProgress"
+		];
+		const userKeysToDelete = keysToDelete.map(key => getUIDBKey(key));
 
-		const tx = db.transaction("data", "readwrite")
-		const store = tx.objectStore("data")
-		await Promise.all(keysToDelete.map((key) => store.delete(key)))
-		await tx.done
+		const tx = db.transaction("data", "readwrite");
+		const store = tx.objectStore("data");
+		await Promise.all(userKeysToDelete.map(key => store.delete(key)));
+		await tx.done;
 
 		// Reset state in memory
 		setFlashcardSet(null)
@@ -202,9 +206,25 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			description:
 				"Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
 		})
-	}, [toast])
+	}, [toast, user, getUIDBKey]);
 
 	const loadInitialData = useCallback(async () => {
+		if (!user) {
+			// If no user, reset all learning state
+			setFlashcardSet(null);
+			setQuizSet(null);
+			setTheorySet(null);
+			setFlashcardState({ understoodIndices: [] });
+			setQuizState({ currentQuestionIndex: 0, answers: {} });
+			setTheoryState({ understoodIndices: [] });
+			setFlashcardIndex(0);
+			setCurrentQuestionIndex(0);
+			setTheoryChapterIndex(0);
+			setTopic("Lịch sử La Mã");
+			setLanguage("Vietnamese");
+			setModel("gemini-2.5-flash-lite");
+			return;
+		};
 		const db = await getDb()
 		const [
 			savedViewRes,
@@ -219,17 +239,17 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			theoryStateRes,
 			generationProgressRes,
 		] = await Promise.all([
-			db.get("data", "view"),
-			db.get("data", "topic"),
-			db.get("data", "language"),
-			db.get("data", "model"),
-			db.get("data", "flashcards"),
-			db.get("data", "flashcardState"),
-			db.get("data", "quiz"),
-			db.get("data", "quizState"),
-			db.get("data", "theory"),
-			db.get("data", "theoryState"),
-			db.get("data", "generationProgress"),
+			db.get("data", getUIDBKey("view")),
+			db.get("data", getUIDBKey("topic")),
+			db.get("data", getUIDBKey("language")),
+			db.get("data", getUIDBKey("model")),
+			db.get("data", getUIDBKey("flashcards")),
+			db.get("data", getUIDBKey("flashcardState")),
+			db.get("data", getUIDBKey("quiz")),
+			db.get("data", getUIDBKey("quizState")),
+			db.get("data", getUIDBKey("theory")),
+			db.get("data", getUIDBKey("theoryState")),
+			db.get("data", getUIDBKey("generationProgress")),
 		])
 
 		const savedView =
@@ -248,87 +268,54 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setLanguage(savedLanguage)
 		setModel(savedModel)
 
-		const flashcardData = flashcardDataRes as LabeledData<CardSet>
-		const quizData = quizDataRes as LabeledData<QuizSet>
-		const theoryData = theoryDataRes as LabeledData<TheorySet>
-		const flashcardStateData = flashcardStateRes as AppData
-		const quizStateData = quizStateRes as AppData
-		const theoryStateData = theoryStateRes as AppData
+		const flashcardData = flashcardDataRes?.data as CardSet;
+		const quizData = quizDataRes?.data as QuizSet;
+		const theoryData = theoryDataRes?.data as TheorySet;
+		const flashcardStateData = flashcardStateRes?.data as FlashcardState;
+		const quizStateData = quizStateRes?.data as QuizState;
+		const theoryStateData = theoryStateRes?.data as TheoryState;
+		
+		setFlashcardSet(flashcardData || null);
+		setQuizSet(quizData || null);
+		setTheorySet(theoryData || null);
 
-		let currentFlashcards =
-			flashcardData && flashcardData.topic === savedTopic
-				? flashcardData.data
-				: null
-
-		let currentQuiz =
-			quizData && quizData.topic === savedTopic ? quizData.data : null
-
-		let currentTheory =
-			theoryData && theoryData.topic === savedTopic
-				? theoryData.data
-				: null
-
-		setFlashcardSet(currentFlashcards)
-		setQuizSet(currentQuiz)
-		setTheorySet(currentTheory)
-
-		const currentFlashcardState =
-			flashcardData &&
-			flashcardData.topic === savedTopic &&
-			flashcardStateData
-				? (flashcardStateData.data as FlashcardState)
-				: { understoodIndices: [] }
-		setFlashcardState(currentFlashcardState)
-
-		let initialFlashcardIndex = 0
-		if (currentFlashcards && currentFlashcards.cards.length > 0) {
-			const firstUnseenIndex = currentFlashcards.cards.findIndex(
-				(_, index) =>
-					!currentFlashcardState.understoodIndices.includes(index)
-			)
-			if (firstUnseenIndex !== -1) {
-				initialFlashcardIndex = firstUnseenIndex
+		setFlashcardState(flashcardStateData || { understoodIndices: [] });
+		if (flashcardData) {
+			const firstUnseenIndex = flashcardData.cards.findIndex(
+				(_, index) => !(flashcardStateData?.understoodIndices.includes(index))
+			);
+			setFlashcardIndex(firstUnseenIndex !== -1 ? firstUnseenIndex : 0);
+		} else {
+			setFlashcardIndex(0);
+		}
+		
+		setQuizState(quizStateData || { currentQuestionIndex: 0, answers: {} });
+		if (quizData) {
+			const firstUnansweredIndex = quizData.questions.findIndex(
+				(_, index) => !quizStateData?.answers[index]
+			);
+			const newCurrentQuestionIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0;
+			setCurrentQuestionIndex(newCurrentQuestionIndex);
+			if(quizStateData) {
+				setQuizState({...quizStateData, currentQuestionIndex: newCurrentQuestionIndex});
+			} else {
+				setQuizState({ currentQuestionIndex: newCurrentQuestionIndex, answers: {} });
 			}
-		}
-		setFlashcardIndex(initialFlashcardIndex)
-
-		let currentQuizState: QuizState = {
-			currentQuestionIndex: 0,
-			answers: {},
-		}
-		if (quizData && quizData.topic === savedTopic && quizStateData) {
-			currentQuizState = quizStateData.data as QuizState
+		} else {
+			setCurrentQuestionIndex(0);
 		}
 
-		if (currentQuiz && currentQuiz.questions.length > 0) {
-			const firstUnansweredIndex = currentQuiz.questions.findIndex(
-				(_, index) => !currentQuizState.answers[index]
-			)
-			if (firstUnansweredIndex !== -1) {
-				currentQuizState.currentQuestionIndex = firstUnansweredIndex
-			}
+		setTheoryState(theoryStateData || { understoodIndices: [] });
+		if (theoryData) {
+			const firstUnseenIndex = theoryData.chapters.findIndex(
+				(_, index) => !theoryStateData?.understoodIndices.includes(index)
+			);
+			setTheoryChapterIndex(firstUnseenIndex !== -1 ? firstUnseenIndex : 0);
+		} else {
+			setTheoryChapterIndex(0);
 		}
-		setQuizState(currentQuizState)
-		setCurrentQuestionIndex(currentQuizState.currentQuestionIndex)
 
-		const currentTheoryState =
-			theoryData && theoryData.topic === savedTopic && theoryStateData
-				? (theoryStateData.data as TheoryState)
-				: { understoodIndices: [] }
-		setTheoryState(currentTheoryState)
-
-		let initialTheoryIndex = 0
-		if (currentTheory && currentTheory.chapters.length > 0) {
-			const firstUnseenIndex = currentTheory.chapters.findIndex(
-				(_, index) =>
-					!currentTheoryState.understoodIndices.includes(index)
-			)
-			if (firstUnseenIndex !== -1) {
-				initialTheoryIndex = firstUnseenIndex
-			}
-		}
-		setTheoryChapterIndex(initialTheoryIndex)
-	}, [])
+	}, [user, getUIDBKey]);
 
 	// --- AI Generation Callbacks ---
 	const handleGenerate = useCallback(
@@ -337,6 +324,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				toast({
 					title: "Chủ đề trống",
 					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
+					variant: "destructive",
+				})
+				return
+			}
+			if (!user) {
+				toast({
+					title: "Yêu cầu đăng nhập",
+					description: "Bạn cần đăng nhập để tạo nội dung.",
 					variant: "destructive",
 				})
 				return
@@ -412,21 +407,9 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 							currentStage: "theory",
 						}
 
-						await db.put("data", {
-							id: "theory",
-							topic,
-							data: tempTheorySet,
-						})
-						await db.put("data", {
-							id: "flashcards",
-							topic,
-							data: tempFlashcardSet,
-						})
-						await db.put("data", {
-							id: "quiz",
-							topic,
-							data: tempQuizSet,
-						})
+						await db.put("data", { id: getUIDBKey("theory"), data: tempTheorySet, })
+						await db.put("data", { id: getUIDBKey("flashcards"), data: tempFlashcardSet })
+						await db.put("data", { id: getUIDBKey("quiz"), data: tempQuizSet })
 
 						if (isMountedRef.current) {
 							setTheorySet(tempTheorySet)
@@ -516,11 +499,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 							if (chapterResult?.content) {
 								tempTheorySet.chapters[i].content =
 									chapterResult.content
-								await db.put("data", {
-									id: "theory",
-									topic,
-									data: { ...tempTheorySet },
-								})
+								await db.put("data", { id: getUIDBKey("theory"), data: { ...tempTheorySet } })
 								if (isMountedRef.current)
 									setTheorySet({ ...tempTheorySet })
 							} else {
@@ -564,11 +543,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 								})
 							)
 							tempFlashcardSet.cards.push(...cardsWithSource)
-							await db.put("data", {
-								id: "flashcards",
-								topic,
-								data: { ...tempFlashcardSet },
-							})
+							await db.put("data", { id: getUIDBKey("flashcards"), data: { ...tempFlashcardSet } })
 							if (isMountedRef.current)
 								setFlashcardSet({ ...tempFlashcardSet })
 						}
@@ -605,11 +580,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 									source: chapter.title,
 								}))
 							tempQuizSet.questions.push(...questionsWithSource)
-							await db.put("data", {
-								id: "quiz",
-								topic,
-								data: { ...tempQuizSet },
-							})
+							await db.put("data", { id: getUIDBKey("quiz"), data: { ...tempQuizSet } })
 							if (isMountedRef.current)
 								setQuizSet({ ...tempQuizSet })
 						}
@@ -666,6 +637,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			quizSet,
 			generationProgress,
 			updateGenerationProgress,
+			user,
+			getUIDBKey,
 		]
 	)
 
@@ -717,8 +690,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						scriptResult.script
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
 					await db.put("data", {
-						id: "theory",
-						topic,
+						id: getUIDBKey("theory"),
 						data: tempTheorySet,
 					})
 				}
@@ -743,8 +715,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						audioResult.audioDataUri
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
 					await db.put("data", {
-						id: "theory",
-						topic: topic,
+						id: getUIDBKey("theory"),
 						data: tempTheorySet,
 					})
 				}
@@ -775,6 +746,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			model,
 			toast,
 			isGeneratingPodcast,
+			user,
+			getUIDBKey,
 		]
 	)
 
@@ -790,11 +763,11 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setLanguage(settings.language)
 			setModel(settings.model)
 			const db = await getDb()
-			await db.put("data", { id: "topic", data: settings.topic })
-			await db.put("data", { id: "language", data: settings.language })
-			await db.put("data", { id: "model", data: settings.model })
+			await db.put("data", { id: getUIDBKey("topic"), data: settings.topic })
+			await db.put("data", { id: getUIDBKey("language"), data: settings.language })
+			await db.put("data", { id: getUIDBKey("model"), data: settings.model })
 		},
-		[]
+		[getUIDBKey]
 	)
 
 	// --- Learning UI Callbacks ---
@@ -806,16 +779,16 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setShowFlashcardSummary(false)
 			setShowTheorySummary(false)
 			const db = await getDb()
-			await db.put("data", { id: "view", data: newView })
+			await db.put("data", { id: getUIDBKey("view"), data: newView })
 		},
-		[view]
+		[view, getUIDBKey]
 	)
 
 	const onFlashcardIndexChange = useCallback(async (index: number) => {
 		setFlashcardIndex(index)
 		const db = await getDb()
-		await db.put("data", { id: "flashcardIndex", data: index })
-	}, [])
+		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: index })
+	}, [getUIDBKey])
 
 	const onCurrentQuestionIndexChange = useCallback(
 		(index: number) => {
@@ -826,24 +799,24 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				// Debounce or directly write to DB
 				const db = getDb()
 				db.then((d) =>
-					d.put("data", { id: "quizState", data: newState })
+					d.put("data", { id: getUIDBKey("quizState"), data: newState })
 				)
 			}
 		},
-		[quizState]
+		[quizState, getUIDBKey]
 	)
 
 	const onTheoryChapterIndexChange = useCallback(async (index: number) => {
 		setTheoryChapterIndex(index)
 		const db = await getDb()
-		await db.put("data", { id: "theoryChapterIndex", data: index })
-	}, [])
+		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: index })
+	}, [getUIDBKey])
 
 	const onQuizStateChange = useCallback(async (newState: QuizState) => {
 		setQuizState(newState)
 		const db = await getDb()
-		await db.put("data", { id: "quizState", data: newState })
-	}, [])
+		await db.put("data", { id: getUIDBKey("quizState"), data: newState })
+	}, [getUIDBKey])
 
 	const onQuizReset = useCallback(async () => {
 		const newQuizState: QuizState = {
@@ -855,21 +828,21 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setShowQuizSummary(false)
 
 		const db = await getDb()
-		await db.put("data", { id: "quizState", data: newQuizState })
+		await db.put("data", { id: getUIDBKey("quizState"), data: newQuizState })
 
 		toast({
 			title: "Bắt đầu lại",
 			description: "Bạn có thể bắt đầu lại bài trắc nghiệm.",
 		})
-	}, [toast])
+	}, [toast, getUIDBKey])
 
 	const onFlashcardStateChange = useCallback(
 		async (newState: FlashcardState) => {
 			setFlashcardState(newState)
 			const db = await getDb()
-			await db.put("data", { id: "flashcardState", data: newState })
+			await db.put("data", { id: getUIDBKey("flashcardState"), data: newState })
 		},
-		[]
+		[getUIDBKey]
 	)
 
 	const onFlashcardReset = useCallback(async () => {
@@ -881,20 +854,20 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setFlashcardIndex(0) // Go back to the first card
 
 		const db = await getDb()
-		await db.put("data", { id: "flashcardState", data: newFlashcardState })
-		await db.put("data", { id: "flashcardIndex", data: 0 })
+		await db.put("data", { id: getUIDBKey("flashcardState"), data: newFlashcardState })
+		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: 0 })
 
 		toast({
 			title: "Bắt đầu lại",
 			description: "Bạn có thể bắt đầu lại bộ thẻ này.",
 		})
-	}, [toast])
+	}, [toast, getUIDBKey])
 
 	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
 		setTheoryState(newState)
 		const db = await getDb()
-		await db.put("data", { id: "theoryState", data: newState })
-	}, [])
+		await db.put("data", { id: getUIDBKey("theoryState"), data: newState })
+	}, [getUIDBKey])
 
 	const onTheoryReset = useCallback(async () => {
 		const newTheoryState: TheoryState = {
@@ -905,14 +878,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setTheoryChapterIndex(0)
 
 		const db = await getDb()
-		await db.put("data", { id: "theoryState", data: newTheoryState })
-		await db.put("data", { id: "theoryChapterIndex", data: 0 })
+		await db.put("data", { id: getUIDBKey("theoryState"), data: newTheoryState })
+		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: 0 })
 
 		toast({
 			title: "Bắt đầu lại",
 			description: "Bạn có thể bắt đầu lại phần lý thuyết.",
 		})
-	}, [toast])
+	}, [toast, getUIDBKey])
 
 	const onGenerate = useCallback(
 		(forceNew: boolean) => {
@@ -947,7 +920,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		onTheoryChapterIndexChange,
 		setShowQuizSummary,
 		setShowFlashcardSummary,
-		setShowTheorySummary,
+setShowTheorySummary,
 		handleGenerate,
 		handleGeneratePodcastForChapter,
 		onQuizStateChange,
