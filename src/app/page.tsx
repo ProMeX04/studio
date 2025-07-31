@@ -51,7 +51,6 @@ function HomePageContent() {
 		onFlashcardStateChange,
 		setShowFlashcardSummary,
 		setShowQuizSummary,
-		hasCompletedOnboarding,
 	} = useAppContext();
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
@@ -293,7 +292,7 @@ function HomePageContent() {
 				</div>
 
 				<div className="flex-shrink-0 pointer-events-auto">
-					{hasCompletedOnboarding && hasLearningData && (
+					{hasLearningData && (
 						<Toolbar config={toolbarConfig} />
 					)}
 				</div>
