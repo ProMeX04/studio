@@ -257,6 +257,59 @@ function HomePageContent() {
 	if (!isMounted) {
 		return null
 	}
+	
+	const toolbarComponents = [
+		<Select
+			key="view-select"
+			value={view}
+			onValueChange={(value) => onViewChange(value as any)}
+		>
+			<SelectTrigger className="w-[150px]">
+				<SelectValue placeholder="Chọn chế độ" />
+			</SelectTrigger>
+			<SelectContent>
+				<SelectItem value="theory">Lý thuyết</SelectItem>
+				<SelectItem value="flashcards">Flashcard</SelectItem>
+				<SelectItem value="quiz">Trắc nghiệm</SelectItem>
+			</SelectContent>
+		</Select>,
+	
+		<div key="nav-controls" className="flex items-center gap-2">
+			<Button
+				onClick={handlePrev}
+				disabled={isNavDisabled || currentIndex === 0}
+				variant="outline"
+				size="icon"
+				className="h-9 w-9"
+			>
+				<ChevronLeft className="h-4 w-4" />
+			</Button>
+	
+			<span className="text-sm text-muted-foreground w-24 text-center">
+				{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"}{" "}
+				{totalItems > 0 ? currentIndex + 1 : 0} / {totalItems}
+			</span>
+	
+			<Button
+				onClick={handleNext}
+				disabled={isNavDisabled || currentIndex >= totalItems - 1}
+				variant="outline"
+				size="icon"
+				className="h-9 w-9"
+			>
+				<ChevronRight className="h-4 w-4" />
+			</Button>
+	
+			{renderToolbarActions}
+	
+			<Settings {...settingsProps} />
+	
+			{visibility.advancedVoiceChat && (
+				<AdvancedVoiceChat {...voiceChatProps} />
+			)}
+		</div>
+	];
+
 
 	return (
 		<main className="relative min-h-screen w-full flex flex-col">
@@ -325,56 +378,7 @@ function HomePageContent() {
 				</div>
 
 				<div className="flex-shrink-0">
-					<Toolbar>
-						<Select
-							value={view}
-							onValueChange={(value) => onViewChange(value as any)}
-						>
-							<SelectTrigger className="w-[150px]">
-								<SelectValue placeholder="Chọn chế độ" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="theory">Lý thuyết</SelectItem>
-								<SelectItem value="flashcards">Flashcard</SelectItem>
-								<SelectItem value="quiz">Trắc nghiệm</SelectItem>
-							</SelectContent>
-						</Select>
-
-						<div className="flex items-center gap-2">
-							<Button
-								onClick={handlePrev}
-								disabled={isNavDisabled || currentIndex === 0}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								<ChevronLeft className="h-4 w-4" />
-							</Button>
-
-							<span className="text-sm text-muted-foreground w-24 text-center">
-								{view === "flashcards" ? "Thẻ" : view === "quiz" ? "Câu hỏi" : "Chương"}{" "}
-								{totalItems > 0 ? currentIndex + 1 : 0} / {totalItems}
-							</span>
-
-							<Button
-								onClick={handleNext}
-								disabled={isNavDisabled || currentIndex >= totalItems - 1}
-								variant="outline"
-								size="icon"
-								className="h-9 w-9"
-							>
-								<ChevronRight className="h-4 w-4" />
-							</Button>
-
-							{renderToolbarActions}
-
-							<Settings {...settingsProps} />
-
-							{visibility.advancedVoiceChat && (
-								<AdvancedVoiceChat {...voiceChatProps} />
-							)}
-						</div>
-					</Toolbar>
+					<Toolbar components={toolbarComponents} />
 				</div>
 
 				<div className="flex-1 flex justify-end">
@@ -403,4 +407,3 @@ export default function Home() {
 		</AppProvider>
 	)
 }
-
