@@ -32,7 +32,6 @@ export function Learn() {
 		quizSet,
 		theorySet,
 		quizState,
-		flashcardIndex,
 		showQuizSummary,
 		setShowQuizSummary,
 		showFlashcardSummary,
@@ -43,8 +42,6 @@ export function Learn() {
 		onFlashcardReset,
 		theoryState,
 		onTheoryReset,
-		theoryChapterIndex,
-		isGeneratingPodcast,
 	} = useLearningContext()
 
 	const quizSummaryData = React.useMemo(() => {
@@ -90,12 +87,6 @@ export function Learn() {
 		}
 	}, [theorySet, theoryState])
     
-	const isCurrentItemUnderstood = useMemo(() => {
-		if (view === "flashcards" && flashcardState) return flashcardState.understoodIndices.includes(flashcardIndex)
-		if (view === "theory" && theoryState) return theoryState.understoodIndices.includes(theoryChapterIndex)
-		return false
-	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view])
-
 	const allQuestionsAnswered = quizSet && quizSummaryData.unansweredQuestions === 0
 	const shouldShowQuizSummary = (showQuizSummary || allQuestionsAnswered) && view === "quiz"
 
@@ -106,24 +97,6 @@ export function Learn() {
 	const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && view === "theory"
     
     // --- Prop Collections ---
-    const viewProps = {
-        flashcards: {
-            flashcardSet,
-            flashcardIndex,
-            isCurrentUnderstood: isCurrentItemUnderstood,
-        },
-        quiz: {
-            quizSet,
-            quizState,
-        },
-        theory: {
-            theorySet,
-            chapterIndex: theoryChapterIndex,
-            isCurrentUnderstood: isCurrentItemUnderstood,
-            isGeneratingPodcast,
-        },
-    }
-
     const summaryProps = {
         flashcards: {
             ...flashcardSummaryData,
@@ -161,7 +134,7 @@ export function Learn() {
         const ViewComponent = viewRegistry[view];
         if (!ViewComponent) return null;
         // @ts-ignore
-        return <ViewComponent {...viewProps[view]} />;
+        return <ViewComponent />;
     }
 
 	return (

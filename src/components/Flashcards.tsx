@@ -5,6 +5,7 @@
 import React, {
 	useState,
 	useEffect,
+	useMemo,
 } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -21,7 +22,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import type { CardData, CardSet } from "@/ai/schemas"
+import type { CardData } from "@/ai/schemas"
 import { useLearningContext } from "@/contexts/LearningContext"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
@@ -29,11 +30,7 @@ import { useLearningContext } from "@/contexts/LearningContext"
 const Syntax: any = SyntaxHighlighter
 
 
-interface FlashcardsProps {
-	flashcardSet: CardSet | null
-	flashcardIndex: number
-	isCurrentUnderstood: boolean;
-}
+interface FlashcardsProps {}
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
 	const codeStyle = {
@@ -132,17 +129,25 @@ function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: b
 	)
 }
 
-export function Flashcards({
-	flashcardSet,
-	flashcardIndex,
-	isCurrentUnderstood,
-}: FlashcardsProps) {
-	const { handleGenerate, isLoading, topic, generationStatus } = useLearningContext();
+export function Flashcards({}: FlashcardsProps) {
+	const { 
+		flashcardSet,
+		flashcardIndex,
+		flashcardState,
+		handleGenerate,
+		isLoading,
+		topic,
+		generationStatus
+	} = useLearningContext();
 	
 	const totalCards = flashcardSet?.cards.length ?? 0
 	const currentCard = flashcardSet?.cards[flashcardIndex];
 	const hasContent = totalCards > 0 && !!currentCard;
 	const isGenerating = !!generationStatus;
+	const isCurrentUnderstood = useMemo(() => {
+		if (flashcardState) return flashcardState.understoodIndices.includes(flashcardIndex)
+		return false
+	}, [flashcardState, flashcardIndex])
 	
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">

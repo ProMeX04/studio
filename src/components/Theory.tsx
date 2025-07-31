@@ -2,7 +2,7 @@
 
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -11,7 +11,6 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import type { TheorySet } from "@/ai/schemas"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
 import { CheckCircle, BookOpen, Loader, Podcast as PodcastIcon, Plus } from "lucide-react"
@@ -22,12 +21,7 @@ import { Button } from "./ui/button"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
 
-interface TheoryProps {
-	theorySet: TheorySet | null
-	chapterIndex: number;
-	isCurrentUnderstood: boolean;
-	isGeneratingPodcast: boolean;
-}
+interface TheoryProps {}
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
 	const codeStyle = {
@@ -82,10 +76,25 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, isGeneratingPodcast }: TheoryProps) {
-	const { handleGenerate, isLoading, topic, handleGeneratePodcastForChapter } = useLearningContext();
-	const currentChapter = theorySet?.chapters?.[chapterIndex];
+export function Theory({}: TheoryProps) {
+	const { 
+		theorySet,
+		theoryChapterIndex,
+		theoryState,
+		isGeneratingPodcast,
+		handleGenerate, 
+		isLoading, 
+		topic, 
+		handleGeneratePodcastForChapter 
+	} = useLearningContext();
+	
+	const currentChapter = theorySet?.chapters?.[theoryChapterIndex];
 	const hasContent = !!currentChapter;
+	const isCurrentUnderstood = useMemo(() => {
+		if (theoryState) return theoryState.understoodIndices.includes(theoryChapterIndex)
+		return false
+	}, [theoryState, theoryChapterIndex])
+
 
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
@@ -98,7 +107,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, isGenerat
 							{/* Podcast Section */}
 							<div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg mb-6 flex flex-col items-center gap-4">
 								{!currentChapter.audioDataUri && currentChapter.content && (
-									<Button onClick={() => handleGeneratePodcastForChapter(chapterIndex)} disabled={isGeneratingPodcast}>
+									<Button onClick={() => handleGeneratePodcastForChapter(theoryChapterIndex)} disabled={isGeneratingPodcast}>
 										{isGeneratingPodcast ? (
 											<Loader className="animate-spin mr-2 h-4 w-4" />
 										) : (

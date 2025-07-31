@@ -22,9 +22,6 @@ import {
 import * as api from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
-import type {
-	QuizSet,
-} from "@/ai/schemas"
 import type { QuizState } from "@/app/types"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -34,15 +31,11 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ScrollArea } from "./ui/scroll-area"
 import { useLearningContext } from "@/contexts/LearningContext"
-import { useSettingsContext } from "@/contexts/SettingsContext"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Syntax: any = SyntaxHighlighter
 
-interface QuizProps {
-	quizSet: QuizSet | null
-	quizState: QuizState | null
-}
+interface QuizProps {}
 
 const MarkdownRenderer = ({ children }: { children: string }) => {
 	const codeStyle = {
@@ -99,15 +92,13 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Quiz({
-	quizSet,
-	quizState,
-}: QuizProps) {
+export function Quiz({}: QuizProps) {
 	const {
+		quizSet,
+		quizState,
 		onQuizStateChange,
 		language,
 		topic,
-		model,
 		currentQuestionIndex,
 		handleGenerate,
 		isLoading,
