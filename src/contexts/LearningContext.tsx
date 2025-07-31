@@ -14,10 +14,13 @@ import React, {
 import { useToast } from "@/hooks/use-toast"
 import { getDb, AppData, DataKey } from "@/lib/idb"
 import * as api from "@/services/api";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type {
 	CardSet,
 	QuizSet,
 	TheorySet,
+	GenerationJob,
 } from "@/ai/schemas"
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
@@ -27,6 +30,8 @@ interface LearningContextType {
 	// State
 	isLoading: boolean
 	isGeneratingPodcast: boolean
+	generationJobId: string | null
+	generationStatus: string | null
 
 	// Learning State
 	view: "flashcards" | "quiz" | "theory"
@@ -96,6 +101,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	// Global State
 	const [isLoading, setIsLoading] = useState(false)
 	const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false)
+	const [generationJobId, setGenerationJobId] = useState<string | null>(null);
+	const [generationStatus, setGenerationStatus] = useState<string | null>(null);
 
 	// Learning State
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
@@ -141,13 +148,74 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		};
 	}, [user]); // Rerun when user logs in/out
 
+	// Firestore listener for real-time generation updates
+	useEffect(() => {
+		if (!generationJobId || !db) {
+			if (generationStatus) setGenerationStatus(null);
+			return;
+		}
+	
+		const unsubscribe = onSnapshot(
+			doc(db, "generationJobs", generationJobId),
+			async (doc) => {
+				if (!doc.exists()) {
+					console.warn(`Job ${generationJobId} not found in Firestore.`);
+					return;
+				}
+	
+				const jobData = doc.data() as GenerationJob;
+				if (!isMountedRef.current) return;
+	
+				setGenerationStatus(jobData.statusMessage);
+	
+				const dbInstance = await getDb();
+	
+				if (jobData.theorySet && JSON.stringify(jobData.theorySet) !== JSON.stringify(theorySet)) {
+					setTheorySet(jobData.theorySet);
+					await dbInstance.put("data", { id: getUIDBKey("theory"), data: jobData.theorySet });
+				}
+				if (jobData.flashcardSet && JSON.stringify(jobData.flashcardSet) !== JSON.stringify(flashcardSet)) {
+					setFlashcardSet(jobData.flashcardSet);
+					await dbInstance.put("data", { id: getUIDBKey("flashcards"), data: jobData.flashcardSet });
+				}
+				if (jobData.quizSet && JSON.stringify(jobData.quizSet) !== JSON.stringify(quizSet)) {
+					setQuizSet(jobData.quizSet);
+					await dbInstance.put("data", { id: getUIDBKey("quiz"), data: jobData.quizSet });
+				}
+	
+				if (jobData.status === "completed") {
+					toast({
+						title: "Hoàn tất!",
+						description: "Tất cả nội dung cho chủ đề đã được tạo.",
+					});
+					setGenerationJobId(null);
+					setGenerationStatus(null);
+					await dbInstance.delete("data", getUIDBKey("generationJobId"));
+				} else if (jobData.status === "failed") {
+					toast({
+						title: "Lỗi tạo nội dung",
+						description: jobData.error || "Đã xảy ra lỗi không xác định.",
+						variant: "destructive",
+					});
+					setGenerationJobId(null);
+					setGenerationStatus(null);
+					await dbInstance.delete("data", getUIDBKey("generationJobId"));
+				}
+			}
+		);
+	
+		// Cleanup listener on unmount or when jobId changes
+		return () => unsubscribe();
+	}, [generationJobId, user, getUIDBKey]);
+
+
 	// --- Data Handling Callbacks ---
 	const handleClearLearningData = useCallback(async () => {
 		if (!user) return;
 		const db = await getDb();
 		const keysToDelete: DataKey[] = [
 			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
-			"theory", "theoryState", "theoryChapterIndex"
+			"theory", "theoryState", "theoryChapterIndex", "generationJobId"
 		];
 		const userKeysToDelete = keysToDelete.map(key => getUIDBKey(key));
 
@@ -166,6 +234,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setTheorySet(null)
 		setTheoryState({ understoodIndices: [] })
 		setTheoryChapterIndex(0)
+		setGenerationJobId(null);
+    	setGenerationStatus(null);
 		setShowFlashcardSummary(false)
 		setShowQuizSummary(false)
 		setShowTheorySummary(false)
@@ -192,6 +262,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setTopic("Lịch sử La Mã");
 			setLanguage("Vietnamese");
 			setModel("gemini-2.5-flash-lite");
+			setGenerationJobId(null);
+			setGenerationStatus(null);
 			return;
 		};
 		const db = await getDb()
@@ -206,6 +278,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			quizStateRes,
 			theoryDataRes,
 			theoryStateRes,
+			jobIdRes,
 		] = await Promise.all([
 			db.get("data", getUIDBKey("view")),
 			db.get("data", getUIDBKey("topic")),
@@ -217,6 +290,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			db.get("data", getUIDBKey("quizState")),
 			db.get("data", getUIDBKey("theory")),
 			db.get("data", getUIDBKey("theoryState")),
+			db.get("data", getUIDBKey("generationJobId")),
 		])
 
 		const savedView =
@@ -230,6 +304,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		setTopic(savedTopic)
 		setLanguage(savedLanguage)
 		setModel(savedModel)
+		setGenerationJobId((jobIdRes?.data as string) || null);
+
 
 		const flashcardData = flashcardDataRes?.data as CardSet;
 		const quizData = quizDataRes?.data as QuizSet;
@@ -299,84 +375,47 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				})
 				return
 			}
-
-			if (isGeneratingRef.current) {
+			if (generationJobId) {
 				toast({
 					title: "Đang tạo...",
 					description: `Một quá trình tạo nội dung khác đang chạy.`,
-				})
-				return
+				});
+				return;
 			}
 
-			isGeneratingRef.current = true
-			setIsLoading(true)
-
-			const db = await getDb()
+			setIsLoading(true); // Indicate that we are starting the process
 
 			try {
-				toast({
-					title: "Bắt đầu tạo...",
-					description: "Đang yêu cầu nội dung từ máy chủ. Quá trình này có thể mất một lúc.",
-				})
-
-				// Clear old data before fetching new data
 				await handleClearLearningData();
 
-				// Single API call to the backend
-				const response = await api.generateAllContent({
+				const { jobId } = await api.startGenerationJob({
 					topic,
 					language,
 				});
 
-				if (!response || !response.theorySet || !response.flashcardSet || !response.quizSet) {
-					throw new Error("Phản hồi từ máy chủ không hợp lệ.");
+				if (!jobId) {
+					throw new Error("Backend did not return a job ID.");
 				}
-
-				// Destructure the complete data sets
-				const { theorySet: newTheorySet, flashcardSet: newFlashcardSet, quizSet: newQuizSet } = response;
-
-				// Save all data to IndexedDB
-				await Promise.all([
-					db.put("data", { id: getUIDBKey("theory"), data: newTheorySet }),
-					db.put("data", { id: getUIDBKey("flashcards"), data: newFlashcardSet }),
-					db.put("data", { id: getUIDBKey("quiz"), data: newQuizSet }),
-				]);
-
-				// Update state in one go
+				
 				if (isMountedRef.current) {
-					setTheorySet(newTheorySet);
-					setFlashcardSet(newFlashcardSet);
-					setQuizSet(newQuizSet);
-					
-					// Reset progress states
-					setTheoryState({ understoodIndices: [] });
-					setFlashcardState({ understoodIndices: [] });
-					setQuizState({ currentQuestionIndex: 0, answers: {} });
-					
-					// Reset indices
-					setTheoryChapterIndex(0);
-					setFlashcardIndex(0);
-					setCurrentQuestionIndex(0);
+					setGenerationJobId(jobId);
+					const db = await getDb();
+					await db.put("data", { id: getUIDBKey("generationJobId"), data: jobId });
 				}
-
-				toast({
-					title: "Hoàn tất!",
-					description: "Tất cả nội dung cho chủ đề đã được tạo và tải về.",
-				})
 
 			} catch (error: any) {
-				console.error(
-					`🚫 Lỗi nghiêm trọng trong quá trình tạo:`,
-					error
-				)
+				console.error("🚫 Lỗi bắt đầu quá trình tạo:", error);
 				toast({
-					title: "Lỗi tạo nội dung",
-					description: `Đã xảy ra lỗi: ${error.message}.`,
+					title: "Lỗi khởi tạo",
+					description: `Không thể bắt đầu quá trình tạo: ${error.message}.`,
 					variant: "destructive",
-				})
+				});
+				if (isMountedRef.current) {
+					setGenerationJobId(null);
+					setGenerationStatus(null);
+				}
 			} finally {
-				isGeneratingRef.current = false
-				if (isMountedRef.current) setIsLoading(false)
+				if (isMountedRef.current) setIsLoading(false);
 			}
 		},
 		[
@@ -386,6 +425,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			handleClearLearningData,
 			user,
 			getUIDBKey,
+			generationJobId,
 		]
 	)
 
@@ -643,6 +683,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	const value: LearningContextType = {
 		isLoading,
 		isGeneratingPodcast,
+		generationJobId,
+		generationStatus,
 		view,
 		topic,
 		language,

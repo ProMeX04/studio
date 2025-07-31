@@ -1,11 +1,12 @@
+
 /**
  * @fileOverview Service layer for fetching AI-generated content from the backend.
  * Each function corresponds to a specific content generation task.
  */
 
 import {
-  GenerateAllContentInput,
-  GenerateAllContentOutputSchema,
+  StartGenerationJobInputSchema,
+  StartGenerationJobOutputSchema,
   ExplainQuizOptionInput,
   ExplainQuizOptionOutputSchema,
   GeneratePodcastScriptInput,
@@ -52,8 +53,8 @@ async function post<T>(endpoint: string, body: unknown, schema: Zod.Schema<T>): 
 
 // --- API Functions ---
 
-export const generateAllContent = (body: GenerateAllContentInput) =>
-  post("/generate-all-content", body, GenerateAllContentOutputSchema);
+export const startGenerationJob = (body: StartGenerationJobInputSchema) =>
+  post("/start-generation-job", body, StartGenerationJobOutputSchema);
 
 export const explainQuizOption = (body: ExplainQuizOptionInput) =>
   post("/explain-quiz-option", body, ExplainQuizOptionOutputSchema);

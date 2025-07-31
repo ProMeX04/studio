@@ -23,7 +23,8 @@ export type DataKey =
   | 'uploadedBackgrounds'
   | 'flashcardIndex'
   | 'theoryChapterIndex'
-  | 'hasCompletedOnboarding';
+  | 'hasCompletedOnboarding'
+  | 'generationJobId';
 
 export type AppData = {
   id: string; // Will be in the format `uid-key` e.g., `_HqV...-topic`

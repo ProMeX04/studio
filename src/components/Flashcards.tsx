@@ -137,11 +137,12 @@ export function Flashcards({
 	flashcardIndex,
 	isCurrentUnderstood,
 }: FlashcardsProps) {
-	const { handleGenerate, isLoading, topic } = useLearningContext();
+	const { handleGenerate, isLoading, topic, generationStatus } = useLearningContext();
 	
 	const totalCards = flashcardSet?.cards.length ?? 0
 	const currentCard = flashcardSet?.cards[flashcardIndex];
 	const hasContent = totalCards > 0 && !!currentCard;
+	const isGenerating = !!generationStatus;
 	
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
@@ -156,22 +157,26 @@ export function Flashcards({
 					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
 						<CardHeader>
 							<div className="mx-auto bg-primary/10 p-4 rounded-full">
-								<BookOpen className="w-12 h-12 text-primary" />
+								{isGenerating ? <Loader className="w-12 h-12 text-primary animate-spin" /> : <BookOpen className="w-12 h-12 text-primary" />}
 							</div>
-							<CardTitle className="mt-4 text-2xl">Bắt đầu học chủ đề "{topic}"</CardTitle>
+							<CardTitle className="mt-4 text-2xl">
+								{isGenerating ? "AI đang chuẩn bị tài liệu..." : `Bắt đầu học chủ đề "${topic}"`}
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<p className="text-muted-foreground mb-4">
-								AI sẽ tạo một bộ flashcards đầy đủ dựa trên chủ đề bạn đã chọn.
+								{isGenerating ? generationStatus : "AI sẽ tạo một bộ flashcards đầy đủ dựa trên chủ đề bạn đã chọn."}
 							</p>
-							<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
-                                {isLoading ? (
-                                    <Loader className="animate-spin mr-2 h-4 w-4" />
-                                ) : (
-                                    <Plus className="mr-2 h-4 w-4" />
-                                )}
-                                {isLoading ? "Đang tạo..." : "Bắt đầu học"}
-                            </Button>
+							{!isGenerating && (
+								<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+									{isLoading ? (
+										<Loader className="animate-spin mr-2 h-4 w-4" />
+									) : (
+										<Plus className="mr-2 h-4 w-4" />
+									)}
+									{isLoading ? "Đang tạo..." : "Bắt đầu học"}
+								</Button>
+							)}
 						</CardContent>
 					</Card>
 				)}

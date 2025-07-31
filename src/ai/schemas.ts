@@ -135,28 +135,49 @@ export const GenerateAudioOutputSchema = z.object({
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
 
-// Full Content Generation
-export const GenerateAllContentInputSchema = z.object({
+// --- Asynchronous Generation Job Schemas ---
+
+export const StartGenerationJobInputSchema = z.object({
     topic: z.string().describe('The topic for which to generate all content.'),
     language: z.string().describe('The language for the content.'),
 });
-export type GenerateAllContentInput = z.infer<typeof GenerateAllContentInputSchema>;
+export type StartGenerationJobInput = z.infer<typeof StartGenerationJobInputSchema>;
 
-export const GenerateAllContentOutputSchema = z.object({
-    theorySet: TheorySetSchema,
+export const StartGenerationJobOutputSchema = z.object({
+    jobId: z.string().describe('The unique ID for the generation job.'),
+});
+export type StartGenerationJobOutput = z.infer<typeof StartGenerationJobOutputSchema>;
+
+export const GenerationJobStatusSchema = z.enum([
+    "pending",
+    "generating_outline",
+    "generating_theory",
+    "generating_flashcards",
+    "generating_quiz",
+    "completed",
+    "failed",
+]);
+export type GenerationJobStatus = z.infer<typeof GenerationJobStatusSchema>;
+
+export const GenerationJobSchema = z.object({
+    status: GenerationJobStatusSchema,
+    statusMessage: z.string().describe("A user-friendly status message."),
+    error: z.string().optional().describe("Error message if the job failed."),
+    progress: z.number().optional().describe("Generation progress from 0 to 100."),
+    // Partial data that gets updated as the job runs
+    theorySet: TheorySetSchema.optional(),
     flashcardSet: z.object({
         id: z.string(),
         topic: z.string(),
         cards: GenerateCardsOutputSchema,
-    }),
+    }).optional(),
     quizSet: z.object({
         id: z.string(),
         topic: z.string(),
         questions: GenerateQuizOutputSchema,
-    }),
+    }).optional(),
 });
-export type GenerateAllContentOutput = z.infer<typeof GenerateAllContentOutputSchema>;
-
+export type GenerationJob = z.infer<typeof GenerationJobSchema>;
 
 // Live Dialog
 export const LiveDialogResponsePartSchema = z.object({

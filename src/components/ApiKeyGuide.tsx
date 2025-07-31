@@ -40,12 +40,15 @@ export function ApiKeyGuide() {
 		language,
 		model,
 		onSettingsSave,
+		generationStatus,
 	} = useLearningContext()
 
 	const [onboardingStep, setOnboardingStep] = useState(1)
 	const [localTopic, setLocalTopic] = useState(topic)
 	const [localLanguage, setLocalLanguage] = useState(language || "Vietnamese")
 	const [localModel, setLocalModel] = useState(model)
+
+	const isGenerating = !!generationStatus;
 
 	const handleFinishOnboarding = () => {
 		// 1. Save all settings
@@ -77,6 +80,31 @@ export function ApiKeyGuide() {
 		if (onboardingStep > 1) {
 			setOnboardingStep(onboardingStep - 1)
 		}
+	}
+
+	if (isGenerating) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center p-4">
+				<Card className="w-full max-w-2xl text-center p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
+					<CardHeader className="p-0 mb-6">
+						<div className="flex items-center justify-center gap-4 mb-4">
+							<Loader className="w-12 h-12 text-primary animate-spin" />
+						</div>
+						<CardTitle className="text-3xl font-bold">
+							AI đang chuẩn bị tài liệu...
+						</CardTitle>
+						<CardDescription className="text-lg mt-2">
+							{generationStatus}
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0">
+						<p className="text-sm text-muted-foreground">
+							Quá trình này diễn ra trong nền. Bạn có thể đóng tab này và quay lại sau.
+						</p>
+					</CardContent>
+				</Card>
+			</div>
+		)
 	}
 
 	if (onboardingStep === 1) {
