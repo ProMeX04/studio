@@ -22,6 +22,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 	SheetTrigger,
+	SheetFooter,
 } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
