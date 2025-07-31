@@ -56,6 +56,10 @@ function HomePageContent() {
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
 
+	const hasLearningData = useMemo(() => {
+		return !!(theorySet || flashcardSet || quizSet);
+	}, [theorySet, flashcardSet, quizSet]);
+
 	const handleOpenLeft = () => {
 		const panelGroup = panelGroupRef.current
 		if (panelGroup) {
@@ -289,7 +293,7 @@ function HomePageContent() {
 				</div>
 
 				<div className="flex-shrink-0 pointer-events-auto">
-					{hasCompletedOnboarding && (
+					{hasCompletedOnboarding && hasLearningData && (
 						<Toolbar config={toolbarConfig} />
 					)}
 				</div>
