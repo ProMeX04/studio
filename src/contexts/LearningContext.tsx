@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, {
@@ -77,6 +78,7 @@ interface LearningContextType {
 	}) => void
 	handleClearLearningData: () => Promise<void>
 	onGenerate: (forceNew: boolean) => void
+	handleCloneTopic: (publicTopicId: string) => Promise<void>;
 }
 
 const LearningContext = createContext<LearningContextType | undefined>(
@@ -99,7 +101,7 @@ const getLearningDocRef = (uid: string) => doc(db, "learningData", uid);
 
 export function LearningProvider({ children }: { children: ReactNode }) {
 	const { user } = useAuthContext();
-	const { setHasCompletedOnboarding } = useSettingsContext()
+	const { setHasCompletedOnboarding, onOnboardingComplete } = useSettingsContext()
 
 	// Global State
 	const [isLoading, setIsLoading] = useState(false)
@@ -360,6 +362,28 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	}, [user, getUIDBKey]);
 
 	// --- AI Generation Callbacks ---
+	const handleCloneTopic = useCallback(async (publicTopicId: string) => {
+		if (!user) {
+			throw new Error("Bạn phải đăng nhập để tải về chủ đề.");
+		}
+		
+		await api.clonePublicTopic({ publicTopicId });
+		
+		// The onSnapshot listener will automatically pick up the new data
+		// once the backend function updates the user's learningData document.
+		// We just need to mark onboarding as complete.
+		const clonedTopicDoc = await getDoc(getLearningDocRef(user.uid));
+		const clonedData = clonedTopicDoc.data();
+
+		if (clonedData) {
+			onOnboardingComplete(clonedData.topic, clonedData.language, clonedData.model);
+			toast({
+				title: "Tải về thành công!",
+				description: `Bạn có thể bắt đầu học chủ đề "${clonedData.topic}".`
+			});
+		}
+	}, [user, onOnboardingComplete, toast]);
+	
 	const handleGenerate = useCallback(
 		async (forceNew: boolean = false) => {
 			if (!topic.trim()) {
@@ -643,6 +667,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		onSettingsSave,
 		handleClearLearningData,
 		onGenerate,
+		handleCloneTopic,
 	}
 
 	return (

@@ -198,3 +198,37 @@ export type DialogTurn = {
   audioDataUri?: string;
   isProcessing?: boolean;
 };
+
+// --- Public Topic Search and Clone Schemas ---
+
+export const SearchPublicTopicsInputSchema = z.object({
+  query: z.string().describe("The user's search query for a topic."),
+});
+export type SearchPublicTopicsInput = z.infer<typeof SearchPublicTopicsInputSchema>;
+
+export const PublicTopicResultSchema = z.object({
+  id: z.string(),
+  topic: z.string(),
+  language: z.string(),
+  chapterCount: z.number(),
+  flashcardCount: z.number(),
+  questionCount: z.number(),
+});
+export type PublicTopicResult = z.infer<typeof PublicTopicResultSchema>;
+
+export const SearchPublicTopicsOutputSchema = z.object({
+  results: z.array(PublicTopicResultSchema),
+});
+export type SearchPublicTopicsOutput = z.infer<typeof SearchPublicTopicsOutputSchema>;
+
+
+export const ClonePublicTopicInputSchema = z.object({
+  publicTopicId: z.string().describe("The ID of the public topic to clone."),
+});
+export type ClonePublicTopicInput = z.infer<typeof ClonePublicTopicInputSchema>;
+
+export const ClonePublicTopicOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+export type ClonePublicTopicOutput = z.infer<typeof ClonePublicTopicOutputSchema>;

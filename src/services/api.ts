@@ -13,6 +13,10 @@ import {
   GeneratePodcastScriptOutputSchema,
   GenerateAudioInput,
   GenerateAudioOutputSchema,
+  SearchPublicTopicsInput,
+  SearchPublicTopicsOutputSchema,
+  ClonePublicTopicInput,
+  ClonePublicTopicOutputSchema,
 } from "@/ai/schemas"
 import { z } from "zod";
 
@@ -58,3 +62,9 @@ export const generatePodcastScript = (body: GeneratePodcastScriptInput) =>
 
 export const generateAudio = (body: GenerateAudioInput) =>
   post("/generate-audio", body, GenerateAudioOutputSchema);
+  
+export const searchPublicTopics = (body: SearchPublicTopicsInput) =>
+  post("/search-public-topics", body, SearchPublicTopicsOutputSchema);
+
+export const clonePublicTopic = (body: ClonePublicTopicInput) =>
+  post("/clone-public-topic", body, ClonePublicTopicOutputSchema);
