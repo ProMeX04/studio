@@ -121,6 +121,7 @@ export function Theory({ theorySet, chapterIndex, isCurrentUnderstood, isGenerat
 									<MarkdownRenderer>{currentChapter.content}</MarkdownRenderer>
 								) : (
 									<div className="space-y-4 pt-4">
+										<h2 className="text-2xl font-bold">Đang tải nội dung...</h2>
 										<Skeleton className="h-8 w-3/4" />
 										<Skeleton className="h-6 w-full" />
 										<Skeleton className="h-6 w-full" />

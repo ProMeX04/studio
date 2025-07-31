@@ -12,7 +12,6 @@ import React, {
 } from "react"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
 import { getDb, DataKey, closeDb } from "@/lib/idb"
-import { useLearningContext } from "./LearningContext"
 
 export interface ComponentVisibility {
 	home: boolean
@@ -29,15 +28,11 @@ interface SettingsContextType {
 	backgroundImage: string
 	visibility: ComponentVisibility
 	hasCompletedOnboarding: boolean
-	apiKeys: string[]
-	apiKeyIndex: number
 	uploadedBackgrounds: string[]
 	onClearAllData: () => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
 	onUploadedBackgroundsChange: (backgrounds: string[]) => void
-	onApiKeysChange: (apiKeys: string[]) => void
-	handleApiKeyIndexChange: (index: number) => void
 	onOnboardingComplete: (
 		topic: string,
 		language: string,
@@ -73,8 +68,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		advancedVoiceChat: true,
 	})
 	const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
-	const [apiKeys, setApiKeys] = useState<string[]>([])
-	const [apiKeyIndex, setApiKeyIndex] = useState(0)
 	const { toast } = useToast()
 
 	useEffect(() => {
@@ -90,31 +83,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	const loadInitialData = useCallback(async () => {
 		const db = await getDb()
 
-		// Migration from single 'apiKey' to 'apiKeys'
-		const oldApiKeyRes = await db.get("data", "apiKey" as any)
-		if (oldApiKeyRes?.data && typeof oldApiKeyRes.data === "string") {
-			await db.put("data", { id: "apiKeys", data: [oldApiKeyRes.data] })
-			await db.delete("data", "apiKey" as any)
-		}
-
 		const [
-			savedApiKeysRes,
-			savedApiKeyIndexRes,
 			savedVisibilityRes,
 			savedBgRes,
 			savedUploadedBgsRes,
 			onboardingStatusRes,
 		] = await Promise.all([
-			db.get("data", "apiKeys"),
-			db.get("data", "apiKeyIndex"),
 			db.get("data", "visibility"),
 			db.get("data", "background"),
 			db.get("data", "uploadedBackgrounds"),
 			db.get("data", "hasCompletedOnboarding"),
 		])
 
-		const savedApiKeys = (savedApiKeysRes?.data as string[]) || []
-		const savedApiKeyIndex = (savedApiKeyIndexRes?.data as number) || 0
 		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
 		const savedBg = savedBgRes?.data as string
 		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
@@ -122,37 +102,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			(onboardingStatusRes?.data as boolean) || false
 
 		setHasCompletedOnboarding(onboardingCompleted)
-		if (savedApiKeys) setApiKeys(savedApiKeys)
-		setApiKeyIndex(
-			savedApiKeyIndex < savedApiKeys.length ? savedApiKeyIndex : 0
-		)
 		if (savedBg) setBackgroundImage(savedBg)
 		setUploadedBackgrounds(savedUploadedBgs)
 		if (savedVisibility) setVisibility(savedVisibility)
 	}, [])
-
-	const handleApiKeyIndexChange = useCallback(
-		async (index: number) => {
-			if (apiKeyIndex === index) return
-			setApiKeyIndex(index)
-			const db = await getDb()
-			await db.put("data", { id: "apiKeyIndex", data: index })
-		},
-		[apiKeyIndex]
-	)
-
-	const onApiKeysChange = useCallback(
-		async (newApiKeys: string[]) => {
-			setApiKeys(newApiKeys)
-			const currentKeyIndex =
-				apiKeyIndex >= newApiKeys.length ? 0 : apiKeyIndex
-			setApiKeyIndex(currentKeyIndex)
-			const db = await getDb()
-			await db.put("data", { id: "apiKeys", data: newApiKeys })
-			await db.put("data", { id: "apiKeyIndex", data: currentKeyIndex })
-		},
-		[apiKeyIndex]
-	)
 
 	const onBackgroundChange = useCallback(
 		async (newBg: string | null) => {
@@ -284,15 +237,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		backgroundImage,
 		visibility,
 		hasCompletedOnboarding,
-		apiKeys,
-		apiKeyIndex,
 		uploadedBackgrounds,
 		onClearAllData,
 		onVisibilityChange,
 		onBackgroundChange,
 		onUploadedBackgroundsChange,
-		onApiKeysChange,
-		handleApiKeyIndexChange,
 		onOnboardingComplete,
 		handleResetOnboarding,
 		setHasCompletedOnboarding,

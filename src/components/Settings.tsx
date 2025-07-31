@@ -10,11 +10,7 @@ import {
 	Trash2,
 	RefreshCw,
 	AlertTriangle,
-	KeyRound,
-	Plus,
-	X,
 	Loader,
-	ExternalLink,
 	Menu,
 	Mic,
 } from "lucide-react"
@@ -27,7 +23,6 @@ import {
 	SheetTrigger,
 	SheetFooter,
 } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "./ui/separator"
 import type { ComponentVisibility } from "@/contexts/SettingsContext"
@@ -51,22 +46,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSettingsContext } from "@/contexts/SettingsContext"
 import { useLearningContext } from "@/contexts/LearningContext"
 
-type SettingsScope = "all" | "learn-onboarding"
+type SettingsScope = "all" 
 
 interface CommonSettingsProps {
 	scope: SettingsScope
 }
 
-// This represents the props passed during the onboarding flow
-interface LearnOnboardingSettingsProps {
-	scope: "learn-onboarding"
-	onApiKeysChange: (apiKeys: string[]) => void
-	onSettingsChanged: () => void
-	apiKeys: string[]
-	isLoading: boolean
-}
-
-type SettingsProps = CommonSettingsProps | LearnOnboardingSettingsProps
+type SettingsProps = CommonSettingsProps
 
 export const languages = [
 	{ value: "Vietnamese", label: "Tiếng Việt" },
@@ -93,66 +79,29 @@ const MAX_UPLOADED_IMAGES = 6
 
 export function Settings(props: SettingsProps) {
 	const { scope } = props
-	const isOnboardingScope = scope.startsWith("learn-onboarding")
 	const { toast } = useToast()
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
-
-	// Local state for API keys
-	const [localApiKeys, setLocalApiKeys] = useState<string[]>(
-		(props as any).apiKeys || []
-	)
-	const [newApiKey, setNewApiKey] = useState("")
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	// --- CONTEXT HOOKS ---
-	// We use them conditionally to avoid breaking rules of hooks
-	const settingsContext = scope === 'all' ? useSettingsContext() : null;
-    const learningContext = scope === 'all' ? useLearningContext() : null;
-
-	useEffect(() => {
-		if (scope === "all" && settingsContext) {
-			if (isSheetOpen) {
-				setLocalApiKeys(settingsContext.apiKeys)
-			}
-		} else if (isOnboardingScope) {
-			setLocalApiKeys((props as LearnOnboardingSettingsProps).apiKeys)
-		}
-	}, [props, scope, isSheetOpen, settingsContext])
-
-	const handleAddNewApiKey = () => {
-		if (newApiKey.trim()) {
-			const currentProps = props as (LearnOnboardingSettingsProps);
-			if (!localApiKeys.includes(newApiKey.trim())) {
-				const newKeys = [...localApiKeys, newApiKey.trim()]
-				setLocalApiKeys(newKeys)
-				currentProps.onApiKeysChange(newKeys);
-			}
-			setNewApiKey("")
-		}
-	}
-
-	const handleRemoveApiKey = (keyToRemove: string) => {
-		const currentProps = props as (LearnOnboardingSettingsProps);
-		const newKeys = localApiKeys.filter((key) => key !== keyToRemove)
-		setLocalApiKeys(newKeys)
-		currentProps.onApiKeysChange(newKeys);
-	}
+	const settingsContext = useSettingsContext()
+    const learningContext = useLearningContext()
 
 	const handleGenerate = (forceNew: boolean) => {
-		if (scope === "all" && learningContext) {
+		if (learningContext) {
 			learningContext.onGenerate(forceNew)
 		}
 	}
 
 	const handleResetOnboarding = () => {
-		if (scope === "all" && settingsContext) {
+		if (settingsContext) {
 			settingsContext.handleResetOnboarding()
 		}
 	}
 
 	const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (scope === "all" && settingsContext) {
+		if (settingsContext) {
 			const file = e.target.files?.[0]
 			if (file) {
 				const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -180,93 +129,8 @@ export function Settings(props: SettingsProps) {
 		}
 	}
 
-	const renderApiKeyManagement = () => {
-		const currentProps = props as (LearnOnboardingSettingsProps)
-
-		return (
-			<div className="space-y-2">
-				<div className="flex gap-2 pt-2">
-					<Input
-						id="newApiKey"
-						value={newApiKey}
-						onChange={(e) => setNewApiKey(e.target.value)}
-						placeholder="Dán API key mới vào đây"
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault()
-								handleAddNewApiKey()
-							}
-						}}
-					/>
-					<Button
-						onClick={handleAddNewApiKey}
-						variant="outline"
-						size="icon"
-					>
-						<Plus className="w-4 h-4" />
-					</Button>
-				</div>
-
-				<div className="space-y-2 mt-2 rounded-md border max-h-48 overflow-y-auto p-2">
-					{localApiKeys.length > 0 ? (
-						localApiKeys.map((key, index) => (
-							<div
-								key={index}
-								className="flex items-center justify-between gap-2 bg-secondary p-2 rounded-md"
-							>
-								<span className="truncate text-sm text-secondary-foreground font-mono">
-									...{key.slice(-8)}
-								</span>
-								<Button
-									size="icon"
-									variant="ghost"
-									className="h-6 w-6"
-									onClick={() => handleRemoveApiKey(key)}
-								>
-									<X className="w-4 h-4" />
-								</Button>
-							</div>
-						))
-					) : (
-						<p className="text-xs text-muted-foreground text-center p-2">
-							Chưa có API key nào.
-						</p>
-					)}
-				</div>
-
-				{scope === "learn-onboarding" && (
-					<Button
-						onClick={() => {
-							if (localApiKeys.length > 0) {
-								currentProps.onSettingsChanged()
-							} else {
-								toast({
-									title: "Yêu cầu API Key",
-									description:
-										"Vui lòng thêm ít nhất một API key để tiếp tục.",
-									variant: "destructive",
-								})
-							}
-						}}
-						disabled={localApiKeys.length === 0 || currentProps.isLoading}
-						className="w-full mt-4 h-12"
-					>
-						{currentProps.isLoading ? (
-							<>
-								<Loader className="animate-spin mr-2 h-4 w-4" />
-								Đang tạo...
-							</>
-						) : (
-							"Bắt đầu học"
-						)}
-					</Button>
-				)}
-			</div>
-		)
-	}
-
 	const renderContentGenerationControls = () => {
-		if (scope !== "all" || !learningContext) return null
+		if (!learningContext) return null
 
 		const { isLoading, theorySet, flashcardSet, quizSet, generationProgress } =
 			learningContext
@@ -331,48 +195,38 @@ export function Settings(props: SettingsProps) {
 							{quizCount} câu
 						</span>
 					</div>
-
-					<Button
-						className="w-full"
-						onClick={() => handleGenerate(false)}
-						disabled={isLoading || isCompleted}
-					>
-						{isLoading ? (
-							<Loader className="animate-spin h-4 w-4 mr-2" />
-						) : (
-							<Plus className="h-4 w-4 mr-2" />
-						)}
-						{isCompleted
-							? "Đã hoàn tất"
-							: isLoading
-							? "Đang tạo..."
-							: "Tiếp tục tạo nội dung"}
-					</Button>
 				</div>
+
+				<Button
+					className="w-full"
+					onClick={() => handleGenerate(false)}
+					disabled={isLoading || isCompleted}
+				>
+					{isLoading ? (
+						<Loader className="animate-spin h-4 w-4 mr-2" />
+					) : null}
+					{isCompleted
+						? "Đã hoàn tất"
+						: isLoading
+						? "Đang tạo..."
+						: "Tiếp tục tạo nội dung"}
+				</Button>
 			</div>
 		)
 	}
 
 	const renderLearnSettings = () => {
-		if (scope !== "all" || !settingsContext) return null;
+		if (!learningContext) return null;
 
 		return (
 			<div className="space-y-4">
-				<div className="space-y-2">
-					<Label className="font-medium text-foreground flex items-center gap-2">
-						<KeyRound className="w-4 h-4" />
-						<span>Quản lý Gemini API Keys</span>
-					</Label>
-					<renderApiKeyManagement />
-				</div>
-				<Separator />
 				{renderContentGenerationControls()}
 			</div>
 		)
 	}
 	
 	const renderGlobalSettings = () => {
-		if (scope !== "all" || !settingsContext) return null;
+		if (!settingsContext) return null;
 
 		return (
 			<div className="space-y-4">
@@ -509,10 +363,6 @@ export function Settings(props: SettingsProps) {
 				</div>
 			</div>
 		)
-	}
-
-	if (isOnboardingScope) {
-		return renderApiKeyManagement()
 	}
 
 	if (!settingsContext || !learningContext) {

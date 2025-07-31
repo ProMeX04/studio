@@ -19,7 +19,7 @@ import {
 	Plus,
 	BookOpen,
 } from "lucide-react"
-import { explainQuizOption } from "@/ai/flows/explain-quiz-option"
+import * as api from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import type {
@@ -32,7 +32,6 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { AIError } from "@/lib/ai-service"
 import { ScrollArea } from "./ui/scroll-area"
 import { useLearningContext } from "@/contexts/LearningContext"
 import { useSettingsContext } from "@/contexts/SettingsContext"
@@ -113,7 +112,6 @@ export function Quiz({
 		handleGenerate,
 		isLoading,
 	} = useLearningContext();
-	const { apiKeys, apiKeyIndex, handleApiKeyIndexChange } = useSettingsContext();
 	
 	const [isExplaining, setIsExplaining] = useState<string | null>(null) // Option being explained
 	const [visibleExplanations, setVisibleExplanations] = useState<
@@ -187,22 +185,13 @@ export function Quiz({
 			setIsExplaining(option);
 	
 			try {
-				if (!apiKeys || apiKeys.length === 0) {
-					throw new AIError('API key is required.', 'API_KEY_REQUIRED');
-				}
-				
-				const { result, newApiKeyIndex } = await explainQuizOption({
-					apiKeys,
-					apiKeyIndex,
+				const result = await api.explainQuizOption({
 					topic: quizSet.topic,
 					question: currentQuestion.question,
 					selectedOption: option,
 					correctAnswer: currentQuestion.answer,
 					language: language,
-					model: model,
 				});
-
-				handleApiKeyIndexChange(newApiKeyIndex);
 	
 				if (result?.explanation) {
 					const newState: QuizState = {
@@ -225,19 +214,11 @@ export function Quiz({
 				}
 			} catch (error: any) {
 				console.error("Failed to get explanation", error);
-				if (error instanceof AIError) {
-					toast({
-						title: "Lỗi lấy giải thích",
-						description: error.message,
-						variant: "destructive",
-					});
-				} else {
-					toast({
-						title: "Lỗi không xác định",
-						description: `Không thể lấy giải thích chi tiết: ${error.message}`,
-						variant: "destructive",
-					});
-				}
+				toast({
+					title: "Lỗi không xác định",
+					description: `Không thể lấy giải thích chi tiết: ${error.message}`,
+					variant: "destructive",
+				});
 			} finally {
 				setIsExplaining(null);
 			}
@@ -250,12 +231,8 @@ export function Quiz({
 			currentQuestionIndex,
 			visibleExplanations,
 			language,
-			model,
 			toast,
 			onQuizStateChange,
-			apiKeys,
-			apiKeyIndex,
-			handleApiKeyIndexChange
 		]
 	);
 

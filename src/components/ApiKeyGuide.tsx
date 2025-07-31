@@ -8,8 +8,6 @@ import { useLearningContext } from "@/contexts/LearningContext"
 import {
 	Loader,
 	ChevronLeft,
-	KeyRound,
-	ExternalLink,
 	Sparkles,
 	Settings as SettingsIcon,
 } from "lucide-react"
@@ -21,7 +19,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card"
-import { Settings } from "@/components/Settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -35,12 +32,7 @@ import { languages, models } from "./Settings"
 import { Label } from "./ui/label"
 
 export function ApiKeyGuide() {
-	const {
-		onOnboardingComplete,
-		apiKeys,
-		onApiKeysChange,
-		setHasCompletedOnboarding,
-	} = useSettingsContext()
+	const { onOnboardingComplete } = useSettingsContext()
 	const {
 		onGenerate,
 		isLoading,
@@ -73,20 +65,18 @@ export function ApiKeyGuide() {
 		if (onboardingStep === 1) {
 			if (!localTopic.trim()) return
 		}
-		setOnboardingStep(onboardingStep + 1)
+		
+		if (onboardingStep === 2) {
+			handleFinishOnboarding();
+		} else {
+			setOnboardingStep(onboardingStep + 1)
+		}
 	}
 
 	const handleBack = () => {
 		if (onboardingStep > 1) {
 			setOnboardingStep(onboardingStep - 1)
 		}
-	}
-
-	const onboardingApiKeysProps = {
-		apiKeys: apiKeys,
-		onApiKeysChange: onApiKeysChange,
-		onSettingsChanged: handleFinishOnboarding,
-		isLoading: isLoading,
 	}
 
 	if (onboardingStep === 1) {
@@ -208,59 +198,18 @@ export function ApiKeyGuide() {
 							<Button
 								type="submit"
 								className="w-full h-12 !mt-6"
+								disabled={isLoading}
 							>
-								Tiếp tục
+								{isLoading ? (
+									<>
+										<Loader className="animate-spin mr-2 h-4 w-4" />
+										Đang tạo...
+									</>
+								) : (
+									"Bắt đầu học"
+								)}
 							</Button>
 						</form>
-					</CardContent>
-				</Card>
-			</div>
-		)
-	}
-
-	if (onboardingStep === 3) {
-		return (
-			<div className="w-full h-full flex flex-col items-center justify-center p-4">
-				<Card className="w-full max-w-2xl text-left p-8 bg-background/80 backdrop-blur-sm animate-in fade-in duration-500">
-					<CardHeader className="p-0 mb-6 text-center">
-						<Button
-							variant="ghost"
-							className="absolute top-4 left-4"
-							onClick={handleBack}
-						>
-							<ChevronLeft className="mr-2 h-4 w-4" /> Quay lại
-						</Button>
-						<div className="flex items-center justify-center gap-4 mb-4 pt-8">
-							<KeyRound className="w-12 h-12 text-primary" />
-						</div>
-						<CardTitle className="text-3xl font-bold">
-							Chỉ còn một bước cuối!
-						</CardTitle>
-						<CardDescription className="text-lg mt-2">
-							Thêm API Key (miễn phí) từ Google để tạo nội dung.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="p-0 animate-in fade-in duration-500 delay-300">
-						<p className="text-muted-foreground mb-4">
-							Nó giống như một chiếc chìa khóa cho phép ứng dụng này
-							truy cập vào khả năng của Google Gemini AI. Việc sử dụng
-							key của riêng bạn là hoàn toàn miễn phí trong giới hạn cho
-							phép của Google.
-						</p>
-						<Button asChild className="w-full h-12 mb-4">
-							<a
-								href="https://aistudio.google.com/app/apikey"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								Lấy API Key tại đây{" "}
-								<ExternalLink className="ml-2 h-4 w-4" />
-							</a>
-						</Button>
-						<Settings
-							{...onboardingApiKeysProps}
-							scope="learn-onboarding"
-						/>
 					</CardContent>
 				</Card>
 			</div>

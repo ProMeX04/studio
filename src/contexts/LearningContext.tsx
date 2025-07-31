@@ -13,13 +13,7 @@ import React, {
 } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { getDb, LabeledData, AppData, DataKey } from "@/lib/idb"
-import { AIError } from "@/lib/ai-service"
-import { generateFlashcards } from "@/ai/flows/generate-flashcards"
-import { generateQuiz } from "@/ai/flows/generate-quiz"
-import { generateTheoryOutline } from "@/ai/flows/generate-theory-outline"
-import { generateTheoryChapter } from "@/ai/flows/generate-theory-chapter"
-import { generatePodcastScript } from "@/ai/flows/generate-podcast-script"
-import { generateAudio } from "@/ai/flows/generate-audio"
+import * as api from "@/services/api";
 import type {
 	CardSet,
 	QuizSet,
@@ -108,12 +102,7 @@ export function useLearningContext() {
 }
 
 export function LearningProvider({ children }: { children: ReactNode }) {
-	const {
-		apiKeys,
-		apiKeyIndex,
-		handleApiKeyIndexChange,
-		setHasCompletedOnboarding,
-	} = useSettingsContext()
+	const { setHasCompletedOnboarding } = useSettingsContext()
 
 	// Global State
 	const [isLoading, setIsLoading] = useState(false)
@@ -344,16 +333,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	// --- AI Generation Callbacks ---
 	const handleGenerate = useCallback(
 		async (forceNew: boolean = false) => {
-			if (!apiKeys || apiKeys.length === 0) {
-				toast({
-					title: "Thiếu API Key",
-					description:
-						"Vui lòng nhập API Key Gemini của bạn trong phần Cài đặt.",
-					variant: "destructive",
-				})
-				return
-			}
-
 			if (!topic.trim()) {
 				toast({
 					title: "Chủ đề trống",
@@ -394,19 +373,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						description: "Đang tạo dàn bài cho chủ đề của bạn.",
 					})
 					try {
-						const outlineResponse = await generateTheoryOutline({
-							apiKeys,
-							apiKeyIndex,
+						const outlineResponse = await api.generateTheoryOutline({
 							topic,
 							language,
-							model,
 						})
 
-						handleApiKeyIndexChange(outlineResponse.newApiKeyIndex)
-
 						if (
-							!outlineResponse.result?.outline ||
-							outlineResponse.result.outline.length === 0
+							!outlineResponse?.outline ||
+							outlineResponse.outline.length === 0
 						) {
 							throw new Error("Không thể tạo dàn bài hợp lệ.")
 						}
@@ -417,8 +391,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						tempTheorySet = {
 							id: "idb-theory",
 							topic,
-							outline: outlineResponse.result.outline,
-							chapters: outlineResponse.result.outline.map(
+							outline: outlineResponse.outline,
+							chapters: outlineResponse.outline.map(
 								(title) => ({
 									title,
 									content: null,
@@ -498,13 +472,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					let chapter = tempTheorySet.chapters[i]
 					let currentStage = localProgress.currentStage
 
-					const runWithRetry = async <T>(
-						task: () => Promise<{ result: T; newApiKeyIndex: number }>,
+					const runWithRetry = async <T, U>(
+						task: (params: T) => Promise<U>,
+						params: T,
 						taskName: string
-					): Promise<{ result: T; newApiKeyIndex: number } | null> => {
+					): Promise<U | null> => {
 						for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 							try {
-								return await task()
+								return await task(params);
 							} catch (error) {
 								console.error(
 									`🚫 Lỗi ${taskName} cho chương "${chapter.title}" (lần ${attempt}):`,
@@ -530,23 +505,17 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					if (currentStage === "theory") {
 						if (!chapter.content) {
 							const chapterResult = await runWithRetry(
-								() =>
-									generateTheoryChapter({
-										apiKeys,
-										apiKeyIndex,
-										topic,
-										chapterTitle: chapter.title,
-										language,
-										model,
-									}),
+								api.generateTheoryChapter,
+								{
+									topic,
+									chapterTitle: chapter.title,
+									language,
+								},
 								"Lý thuyết"
 							)
-							if (chapterResult?.result?.content) {
+							if (chapterResult?.content) {
 								tempTheorySet.chapters[i].content =
-									chapterResult.result.content
-								handleApiKeyIndexChange(
-									chapterResult.newApiKeyIndex
-								)
+									chapterResult.content
 								await db.put("data", {
 									id: "theory",
 									topic,
@@ -572,35 +541,29 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					// STAGE: FLASHCARDS
 					if (currentStage === "flashcards") {
 						const flashcardResult = await runWithRetry(
-							() =>
-								generateFlashcards({
-									apiKeys,
-									apiKeyIndex,
-									topic,
-									count: FLASHCARDS_PER_CHAPTER,
-									language,
-									model,
-									existingCards: tempFlashcardSet!.cards,
-									theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
-									source: chapter.title,
-								}),
+							api.generateFlashcards,
+							{
+								topic,
+								count: FLASHCARDS_PER_CHAPTER,
+								language,
+								existingCards: tempFlashcardSet!.cards,
+								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
+								source: chapter.title,
+							},
 							"Flashcards"
 						)
 						if (
-							flashcardResult?.result &&
-							Array.isArray(flashcardResult.result) &&
-							flashcardResult.result.length > 0
+							flashcardResult &&
+							Array.isArray(flashcardResult) &&
+							flashcardResult.length > 0
 						) {
-							const cardsWithSource = flashcardResult.result.map(
+							const cardsWithSource = flashcardResult.map(
 								(card: CardData) => ({
 									...card,
 									source: chapter.title,
 								})
 							)
 							tempFlashcardSet.cards.push(...cardsWithSource)
-							handleApiKeyIndexChange(
-								flashcardResult.newApiKeyIndex
-							)
 							await db.put("data", {
 								id: "flashcards",
 								topic,
@@ -620,32 +583,28 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					// STAGE: QUIZ
 					if (currentStage === "quiz") {
 						const quizResult = await runWithRetry(
-							() =>
-								generateQuiz({
-									apiKeys,
-									apiKeyIndex,
-									topic,
-									count: QUIZ_QUESTIONS_PER_CHAPTER,
-									language,
-									model,
-									existingQuestions: tempQuizSet!.questions,
-									theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
-									source: chapter.title,
-								}),
+							api.generateQuiz,
+							{
+								topic,
+								count: QUIZ_QUESTIONS_PER_CHAPTER,
+								language,
+								existingQuestions: tempQuizSet!.questions,
+								theoryContent: `Chapter: ${chapter.title}\n\n${tempTheorySet.chapters[i].content}`,
+								source: chapter.title,
+							},
 							"Trắc nghiệm"
 						)
 						if (
-							quizResult?.result &&
-							Array.isArray(quizResult.result) &&
-							quizResult.result.length > 0
+							quizResult &&
+							Array.isArray(quizResult) &&
+							quizResult.length > 0
 						) {
 							const questionsWithSource =
-								quizResult.result.map((q: QuizQuestion) => ({
+								quizResult.map((q: QuizQuestion) => ({
 									...q,
 									source: chapter.title,
 								}))
 							tempQuizSet.questions.push(...questionsWithSource)
-							handleApiKeyIndexChange(quizResult.newApiKeyIndex)
 							await db.put("data", {
 								id: "quiz",
 								topic,
@@ -698,9 +657,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		},
 		[
 			toast,
-			apiKeys,
-			apiKeyIndex,
-			handleApiKeyIndexChange,
 			topic,
 			language,
 			model,
@@ -735,7 +691,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setIsGeneratingPodcast(true)
 			isGeneratingRef.current = true // Block other generations
 
-			const ttsModel = "gemini-2.5-flash-preview-tts"
 			const db = await getDb()
 			const chapter = theorySet.chapters[chapterIndex]
 
@@ -748,22 +703,18 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						title: "Đang tạo kịch bản...",
 						description: `Bắt đầu tạo kịch bản cho chương "${chapter.title}".`,
 					})
-					const { result, newApiKeyIndex } =
-						await generatePodcastScript({
-							apiKeys,
-							apiKeyIndex,
+					const scriptResult =
+						await api.generatePodcastScript({
 							topic,
 							chapterTitle: chapter.title,
 							theoryContent: chapter.content!,
 							language,
-							model,
 						})
-					handleApiKeyIndexChange(newApiKeyIndex)
-					if (!result?.script)
+					if (!scriptResult?.script)
 						throw new Error("Không thể tạo kịch bản podcast.")
 
 					tempTheorySet.chapters[chapterIndex].podcastScript =
-						result.script
+						scriptResult.script
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
 					await db.put("data", {
 						id: "theory",
@@ -781,19 +732,15 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 						title: "Đang tạo âm thanh...",
 						description: `Bắt đầu tạo file âm thanh cho chương "${chapter.title}".`,
 					})
-					const { result, newApiKeyIndex } = await generateAudio({
-						apiKeys,
-						apiKeyIndex,
+					const audioResult = await api.generateAudio({
 						script: tempTheorySet.chapters[chapterIndex]
 							.podcastScript!,
-						model: ttsModel,
 					})
-					handleApiKeyIndexChange(newApiKeyIndex)
-					if (!result?.audioDataUri)
+					if (!audioResult?.audioDataUri)
 						throw new Error("Không thể tạo file âm thanh podcast.")
 
 					tempTheorySet.chapters[chapterIndex].audioDataUri =
-						result.audioDataUri
+						audioResult.audioDataUri
 					if (isMountedRef.current) setTheorySet({ ...tempTheorySet })
 					await db.put("data", {
 						id: "theory",
@@ -811,19 +758,11 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 					`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`,
 					error
 				)
-				if (error instanceof AIError) {
-					toast({
-						title: "Lỗi tạo podcast",
-						description: error.message,
-						variant: "destructive",
-					})
-				} else {
-					toast({
-						title: "Lỗi không xác định",
-						description: `Đã xảy ra lỗi: ${error.message}.`,
-						variant: "destructive",
-					})
-				}
+				toast({
+					title: "Lỗi không xác định",
+					description: `Đã xảy ra lỗi: ${error.message}.`,
+					variant: "destructive",
+				})
 			} finally {
 				setIsGeneratingPodcast(false)
 				isGeneratingRef.current = false
@@ -834,9 +773,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			topic,
 			language,
 			model,
-			apiKeys,
-			apiKeyIndex,
-			handleApiKeyIndexChange,
 			toast,
 			isGeneratingPodcast,
 		]

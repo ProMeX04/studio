@@ -1,89 +1,11 @@
 
 
 /**
- * @fileOverview Shared Zod schemas and TypeScript types for AI flows.
+ * @fileOverview Shared Zod schemas and TypeScript types for AI-generated content.
+ * These schemas are used to validate data received from the backend.
  */
 
 import {z} from 'zod';
-import { Schema, Part, FunctionDeclaration, GenerationConfig } from '@google/generative-ai';
-
-// --- Manually Defined JSON Schemas for Google AI ---
-
-export const GenerateCardsJsonSchema: Schema = {
-  type: "OBJECT",
-  properties: {
-    cards: {
-      type: "ARRAY",
-      description: "An array of generated cards or items.",
-      items: {
-        type: "OBJECT",
-        properties: {
-          front: {
-            type: "STRING",
-            description: "The front side of the card (a question, term, or title)."
-          },
-          back: {
-            type: "STRING",
-            description: "The back side of the card (the answer, definition, or content)."
-          }
-        },
-        required: ["front", "back"]
-      }
-    }
-  },
-  required: ["cards"]
-};
-
-export const GenerateQuizJsonSchema: Schema = {
-    type: "OBJECT",
-    properties: {
-        questions: {
-            type: "ARRAY",
-            description: "An array of generated quiz questions.",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    question: {
-                        type: "STRING",
-                        description: "The question text."
-                    },
-                    options: {
-                        type: "ARRAY",
-                        description: "A list of 2 to 4 possible answers.",
-                        minItems: 2,
-                        maxItems: 4,
-                        items: {
-                            type: "STRING"
-                        }
-                    },
-                    answer: {
-                        type: "STRING",
-                        description: "The correct answer. Must be one of the strings from the 'options' array."
-                    },
-                    explanation: {
-                        type: "STRING",
-                        description: "A brief explanation for the correct answer."
-                    }
-                },
-                required: ["question", "options", "answer", "explanation"]
-            }
-        }
-    },
-    required: ["questions"]
-};
-
-export const ExplainQuizOptionJsonSchema: Schema = {
-    type: "OBJECT",
-    properties: {
-        explanation: {
-            type: "STRING",
-            description: "The detailed explanation for the selected option."
-        }
-    },
-    required: ["explanation"]
-};
-
-
 
 // --- Zod Schemas for Client-Side Validation and Type Inference ---
 
@@ -99,9 +21,9 @@ export const GenerateCardsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate content.'),
   count: z.number().describe('The number of items to generate.'),
   language: z.string().describe('The language for the content.'),
-  model: z.string().describe('The Generative AI model to use.'),
   existingCards: z.array(CardSchema).optional().describe('An array of existing items to avoid duplication.'),
   theoryContent: z.string().optional().describe('The theory content to base the generation on.'),
+  source: z.string().optional().describe('The source for the content.'),
 });
 export type GenerateCardsInput = z.infer<typeof GenerateCardsInputSchema>;
 
@@ -134,9 +56,9 @@ export const GenerateQuizInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a quiz.'),
   count: z.number().describe('The number of questions to generate.'),
   language: z.string().describe('The language for the quiz.'),
-  model: z.string().describe('The Generative AI model to use.'),
   existingQuestions: z.array(QuizQuestionSchema).optional().describe('An array of existing questions to avoid duplication.'),
   theoryContent: z.string().optional().describe('The theory content to base the generation on.'),
+  source: z.string().optional().describe('The source for the content.'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
@@ -161,7 +83,6 @@ export const ExplainQuizOptionInputSchema = z.object({
   selectedOption: z.string().describe('The answer option the user wants an explanation for.'),
   correctAnswer: z.string().describe('The correct answer to the question.'),
   language: z.string().describe('The language for the explanation.'),
-  model: z.string().describe('The Generative AI model to use.'),
 });
 export type ExplainQuizOptionInput = z.infer<typeof ExplainQuizOptionInputSchema>;
 
@@ -175,7 +96,6 @@ export type ExplainQuizOptionOutput = z.infer<typeof ExplainQuizOptionOutputSche
 export const GenerateTheoryOutlineInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate a theory document outline.'),
   language: z.string().describe('The language for the theory document.'),
-  model: z.string().describe('The Generative AI model to use.'),
 });
 export type GenerateTheoryOutlineInput = z.infer<typeof GenerateTheoryOutlineInputSchema>;
 
@@ -188,7 +108,6 @@ export const GenerateTheoryChapterInputSchema = z.object({
   topic: z.string().describe('The overall topic of the document.'),
   chapterTitle: z.string().describe('The title of the specific chapter to generate content for.'),
   language: z.string().describe('The language for the chapter content.'),
-  model: z.string().describe('The Generative AI model to use.'),
 });
 export type GenerateTheoryChapterInput = z.infer<typeof GenerateTheoryChapterInputSchema>;
 
@@ -204,7 +123,6 @@ export const GeneratePodcastScriptInputSchema = z.object({
     chapterTitle: z.string().describe('The title of the chapter for the script.'),
     theoryContent: z.string().describe('The theory content to convert to a script.'),
     language: z.string().describe('The language for the script.'),
-    model: z.string().describe('The Generative AI model to use for scripting.'),
 });
 export type GeneratePodcastScriptInput = z.infer<typeof GeneratePodcastScriptInputSchema>;
 
@@ -215,7 +133,6 @@ export type GeneratePodcastScriptOutput = z.infer<typeof GeneratePodcastScriptOu
 
 export const GenerateAudioInputSchema = z.object({
     script: z.string().describe('The script to convert to audio.'),
-    model: z.string().describe('The TTS model to use.'),
 });
 export type GenerateAudioInput = z.infer<typeof GenerateAudioInputSchema>;
 

@@ -50,9 +50,6 @@ function HomePageContent() {
 		onFlashcardStateChange,
 		setShowFlashcardSummary,
 		setShowQuizSummary,
-		apiKeys,
-		apiKeyIndex,
-		handleApiKeyIndexChange,
 	} = useAppContext();
 
 	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null)
@@ -210,11 +207,7 @@ function HomePageContent() {
 			baseConfig.push({
 				id: 'voice-chat',
 				component: 'AdvancedVoiceChat',
-				props: {
-					apiKeys,
-					apiKeyIndex,
-					onApiKeyIndexChange: handleApiKeyIndexChange,
-				}
+				props: {}
 			});
 		}
 
@@ -224,8 +217,7 @@ function HomePageContent() {
 		view, onViewChange, flashcardSet, quizSet, theorySet, flashcardIndex, onFlashcardIndexChange, currentQuestionIndex, 
 		onCurrentQuestionIndexChange, theoryChapterIndex, onTheoryChapterIndexChange, showQuizSummary, setShowQuizSummary, 
 		showFlashcardSummary, setShowFlashcardSummary, showTheorySummary, setShowTheorySummary, theoryState, 
-		onTheoryStateChange, flashcardState, onFlashcardStateChange, visibility.advancedVoiceChat, apiKeys, apiKeyIndex, 
-		handleApiKeyIndexChange
+		onTheoryStateChange, flashcardState, onFlashcardStateChange, visibility.advancedVoiceChat
 	]);
 
 
