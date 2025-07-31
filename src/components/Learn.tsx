@@ -176,13 +176,15 @@ export function Learn() {
         
         if (isSummaryView) {
             const SummaryComponent = summaryRegistry[view]
+            if (!SummaryComponent) return null;
             // @ts-ignore
-            return SummaryComponent ? <SummaryComponent {...summaryProps[view]} /> : null
+            return <SummaryComponent {...summaryProps[view]} />;
         }
         
-        const ViewComponent = viewRegistry[view]
+        const ViewComponent = viewRegistry[view];
+        if (!ViewComponent) return null;
         // @ts-ignore
-        return ViewComponent ? <ViewComponent {...viewProps[view]} /> : null
+        return <ViewComponent {...viewProps[view]} />;
     }
 
 	return (

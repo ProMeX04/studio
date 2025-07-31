@@ -100,32 +100,30 @@ function HomePageContent() {
 		const hasQuizContent = quizSet && quizSet.questions.length > 0;
 		const isSummaryActive = showQuizSummary || showFlashcardSummary || showTheorySummary;
 	
-		let totalItems = 0;
-		let currentIndex = 0;
-		let contentType = "";
+		const contentMap = {
+			flashcards: {
+				total: flashcardSet?.cards.length ?? 0,
+				current: flashcardIndex,
+				label: "Thẻ",
+			},
+			quiz: {
+				total: quizSet?.questions.length ?? 0,
+				current: currentQuestionIndex,
+				label: "Câu hỏi",
+			},
+			theory: {
+				total: theorySet?.outline.length ?? 0,
+				current: theoryChapterIndex,
+				label: "Chương",
+			},
+		};
 	
-		switch (view) {
-			case 'flashcards':
-				totalItems = flashcardSet?.cards.length ?? 0;
-				currentIndex = flashcardIndex;
-				contentType = "Thẻ";
-				break;
-			case 'quiz':
-				totalItems = quizSet?.questions.length ?? 0;
-				currentIndex = currentQuestionIndex;
-				contentType = "Câu hỏi";
-				break;
-			case 'theory':
-				totalItems = theorySet?.outline?.length ?? 0;
-				currentIndex = theoryChapterIndex;
-				contentType = "Chương";
-				break;
-		}
-
+		const { total, current, label } = contentMap[view];
+	
 		const isCurrentTheoryUnderstood = theoryState?.understoodIndices.includes(theoryChapterIndex) ?? false;
 		const isCurrentFlashcardUnderstood = flashcardState?.understoodIndices.includes(flashcardIndex) ?? false;
 	
-		const navDisabled = isSummaryActive || totalItems === 0;
+		const navDisabled = isSummaryActive || total === 0;
 		
 		const baseConfig: ToolbarItemConfig[] = [
 			{
@@ -138,27 +136,27 @@ function HomePageContent() {
 				component: 'NavControls',
 				props: {
 					onPrev: () => {
-						if (currentIndex > 0) {
+						if (current > 0) {
 							switch (view) {
-								case 'flashcards': onFlashcardIndexChange(currentIndex - 1); break;
-								case 'quiz': onCurrentQuestionIndexChange(currentIndex - 1); break;
-								case 'theory': onTheoryChapterIndexChange(currentIndex - 1); break;
+								case 'flashcards': onFlashcardIndexChange(current - 1); break;
+								case 'quiz': onCurrentQuestionIndexChange(current - 1); break;
+								case 'theory': onTheoryChapterIndexChange(current - 1); break;
 							}
 						}
 					},
 					onNext: () => {
-						if (currentIndex < totalItems - 1) {
+						if (current < total - 1) {
 							switch (view) {
-								case 'flashcards': onFlashcardIndexChange(currentIndex + 1); break;
-								case 'quiz': onCurrentQuestionIndexChange(currentIndex + 1); break;
-								case 'theory': onTheoryChapterIndexChange(currentIndex + 1); break;
+								case 'flashcards': onFlashcardIndexChange(current + 1); break;
+								case 'quiz': onCurrentQuestionIndexChange(current + 1); break;
+								case 'theory': onTheoryChapterIndexChange(current + 1); break;
 							}
 						}
 					},
 					isDisabled: navDisabled,
-					isPrevDisabled: currentIndex === 0,
-					isNextDisabled: currentIndex >= totalItems - 1,
-					label: `${contentType} ${totalItems > 0 ? currentIndex + 1 : 0} / ${totalItems}`
+					isPrevDisabled: current === 0,
+					isNextDisabled: current >= total - 1,
+					label: `${label} ${total > 0 ? current + 1 : 0} / ${total}`
 				}
 			},
 			{
