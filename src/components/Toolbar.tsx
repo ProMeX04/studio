@@ -14,10 +14,14 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Settings } from "@/components/Settings";
 import { AdvancedVoiceChat } from "@/components/AdvancedVoiceChat";
-import { ToolbarActions } from './ToolbarActions';
 
-export function Toolbar() {
+interface ToolbarProps {
+    actions: React.ReactNode;
+}
+
+export function Toolbar({ actions }: ToolbarProps) {
     const {
+        // View and Index State
         view,
         onViewChange,
         flashcardSet,
@@ -32,9 +36,9 @@ export function Toolbar() {
         showQuizSummary,
         showFlashcardSummary,
         showTheorySummary,
+
+        // Settings and Global State
         visibility,
-        // Settings Props
-        onClearAllData,
         onVisibilityChange,
         onBackgroundChange,
         onUploadedBackgroundsChange,
@@ -47,11 +51,9 @@ export function Toolbar() {
         topic,
         language,
         model,
-        onModelChange,
         onApiKeysChange,
         handleResetOnboarding,
         apiKeys,
-        // Voice Chat Props
         apiKeyIndex,
         handleApiKeyIndexChange,
     } = useAppContext();
@@ -100,7 +102,6 @@ export function Toolbar() {
     
     const settingsProps = {
         scope: "all" as const,
-        onClearAllData,
         onVisibilityChange,
         onBackgroundChange,
         onUploadedBackgroundsChange,
@@ -114,7 +115,6 @@ export function Toolbar() {
         topic,
         language,
         model,
-        onModelChange,
         onApiKeysChange,
         onResetOnboarding: handleResetOnboarding,
         apiKeys,
@@ -171,7 +171,7 @@ export function Toolbar() {
                     <ChevronRight className="h-4 w-4" />
                 </Button>
 
-                <ToolbarActions />
+                {actions}
 
                 <Settings {...settingsProps} />
 
