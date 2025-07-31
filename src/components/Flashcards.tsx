@@ -129,7 +129,7 @@ function FlashcardItem({ card, isUnderstood }: { card: CardData; isUnderstood: b
 	)
 }
 
-export function Flashcards({}: FlashcardsProps) {
+export function Flashcards() {
 	const { 
 		flashcardSet,
 		flashcardIndex,
@@ -173,7 +173,7 @@ export function Flashcards({}: FlashcardsProps) {
 								{isGenerating ? generationStatus : "AI sẽ tạo một bộ flashcards đầy đủ dựa trên chủ đề bạn đã chọn."}
 							</p>
 							{!isGenerating && (
-								<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+								<Button onClick={() => handleGenerate({ forceNew: true })} disabled={isLoading}>
 									{isLoading ? (
 										<Loader className="animate-spin mr-2 h-4 w-4" />
 									) : (

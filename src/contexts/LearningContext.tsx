@@ -26,6 +26,18 @@ import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
 import { useAuthContext } from "./AuthContext"
 
+interface PersonalizationOptions {
+    knowledgeLevel: string;
+    learningGoal: string;
+    learningStyle: string;
+    tone: string;
+}
+
+interface GenerateOptions {
+    forceNew: boolean;
+    personalization?: PersonalizationOptions;
+}
+
 interface LearningContextType {
 	// State
 	isLoading: boolean
@@ -63,7 +75,7 @@ interface LearningContextType {
 	setShowQuizSummary: (show: boolean) => void
 	setShowFlashcardSummary: (show: boolean) => void
 	setShowTheorySummary: (show: boolean) => void
-	handleGenerate: (forceNew: boolean) => void
+	handleGenerate: (options: GenerateOptions) => void
 	handleGeneratePodcastForChapter: (chapterIndex: number) => void
 	onQuizStateChange: (newState: QuizState) => void
 	onQuizReset: () => void
@@ -77,7 +89,7 @@ interface LearningContextType {
 		model: string
 	}) => void
 	handleClearLearningData: () => Promise<void>
-	onGenerate: (forceNew: boolean) => void
+	onGenerate: (options: GenerateOptions) => void
 	handleCloneTopic: (publicTopicId: string) => Promise<void>;
 }
 
@@ -385,22 +397,24 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	}, [user, onOnboardingComplete, toast]);
 	
 	const handleGenerate = useCallback(
-		async (forceNew: boolean = false) => {
+		async (options: GenerateOptions) => {
+			const { forceNew, personalization } = options;
+	
 			if (!topic.trim()) {
 				toast({
 					title: "Chủ đề trống",
 					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
 					variant: "destructive",
-				})
-				return
+				});
+				return;
 			}
 			if (!user) {
 				toast({
 					title: "Yêu cầu đăng nhập",
 					description: "Bạn cần đăng nhập để tạo nội dung.",
 					variant: "destructive",
-				})
-				return
+				});
+				return;
 			}
 			if (generationJobId) {
 				toast({
@@ -409,29 +423,36 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				});
 				return;
 			}
-
-			setIsLoading(true);
-
-			try {
+	
+			if (forceNew) {
 				await handleClearLearningData();
-
-				const { jobId } = await api.startGenerationJob({
+			}
+	
+			setIsLoading(true);
+	
+			try {
+				const apiInput = {
 					topic,
 					language,
-				});
-
+					knowledgeLevel: personalization?.knowledgeLevel ?? 'beginner',
+					learningGoal: personalization?.learningGoal ?? 'overview',
+					learningStyle: personalization?.learningStyle ?? 'reading',
+					tone: personalization?.tone ?? 'casual',
+				};
+	
+				const { jobId } = await api.startGenerationJob(apiInput);
+	
 				if (!jobId) {
 					throw new Error("Backend did not return a job ID.");
 				}
 				
 				if (isMountedRef.current) {
 					setGenerationJobId(jobId);
-					// Store Job ID in both Firestore and local cache
 					await updateDoc(getLearningDocRef(user.uid), { generationJobId: jobId });
 					const db = await getDb();
 					await db.put("data", { id: getUIDBKey("generationJobId"), data: jobId });
 				}
-
+	
 			} catch (error: any) {
 				console.error("🚫 Lỗi bắt đầu quá trình tạo:", error);
 				toast({
@@ -447,16 +468,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				if (isMountedRef.current) setIsLoading(false);
 			}
 		},
-		[
-			toast,
-			topic,
-			language,
-			handleClearLearningData,
-			user,
-			getUIDBKey,
-			generationJobId,
-		]
-	)
+		[toast, topic, language, handleClearLearningData, user, getUIDBKey, generationJobId]
+	);
 
 	const handleGeneratePodcastForChapter = useCallback(
 		async (chapterIndex: number) => {
@@ -509,7 +522,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			}
 		},
 		[ theorySet, topic, language, isGeneratingPodcast, toast, user ]
-	)
+	);
 
 	// --- Settings Callbacks ---
 
@@ -622,8 +635,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	}, [toast, onTheoryStateChange]);
 
 	const onGenerate = useCallback(
-		(forceNew: boolean) => {
-			handleGenerate(forceNew)
+		(options: GenerateOptions) => {
+			handleGenerate(options)
 		},
 		[handleGenerate]
 	);

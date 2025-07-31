@@ -76,7 +76,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Theory({}: TheoryProps) {
+export function Theory() {
 	const { 
 		theorySet,
 		theoryChapterIndex,
@@ -155,7 +155,7 @@ export function Theory({}: TheoryProps) {
 							<p className="text-muted-foreground mb-4">
 								AI sẽ tạo một dàn bài chi tiết, nội dung lý thuyết, flashcard và bài trắc nghiệm cho bạn.
 							</p>
-							<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+							<Button onClick={() => handleGenerate({ forceNew: true })} disabled={isLoading}>
                                 {isLoading ? (
                                     <Loader className="animate-spin mr-2 h-4 w-4" />
                                 ) : (

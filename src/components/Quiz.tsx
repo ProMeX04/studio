@@ -92,7 +92,7 @@ const MarkdownRenderer = ({ children }: { children: string }) => {
 	)
 }
 
-export function Quiz({}: QuizProps) {
+export function Quiz() {
 	const {
 		quizSet,
 		quizState,
@@ -367,7 +367,7 @@ export function Quiz({}: QuizProps) {
 						<p className="text-muted-foreground mb-4">
 							AI sẽ tạo một bài trắc nghiệm đầy đủ dựa trên chủ đề bạn đã chọn.
 						</p>
-						<Button onClick={() => handleGenerate(true)} disabled={isLoading}>
+						<Button onClick={() => handleGenerate({ forceNew: true })} disabled={isLoading}>
 							{isLoading ? (
 								<Loader className="animate-spin mr-2 h-4 w-4" />
 							) : (

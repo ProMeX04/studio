@@ -140,6 +140,10 @@ export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 export const StartGenerationJobInputSchema = z.object({
     topic: z.string().describe('The topic for which to generate all content.'),
     language: z.string().describe('The language for the content.'),
+    knowledgeLevel: z.string().describe("The user's current knowledge level (e.g., beginner, intermediate, advanced)."),
+    learningGoal: z.string().describe("The user's primary goal for learning this topic (e.g., overview, deep_dive, practical)."),
+    learningStyle: z.string().describe("The user's preferred learning style (e.g., reading, visual, auditory, kinesthetic)."),
+    tone: z.string().describe("The desired tone for the generated content (e.g., formal, casual)."),
 });
 export type StartGenerationJobInput = z.infer<typeof StartGenerationJobInputSchema>;
 
