@@ -107,21 +107,57 @@ export function Settings(props: SettingsProps) {
 				if (file.size > MAX_FILE_SIZE) {
 					toast({
 						title: "Lỗi tải lên",
-						description:
-							"File quá lớn! Vui lòng chọn ảnh nhỏ hơn 10MB.",
+						description: "File quá lớn! Vui lòng chọn ảnh nhỏ hơn 10MB.",
 						variant: "destructive",
 					})
 					return
 				}
+	
 				const reader = new FileReader()
 				reader.onload = (event) => {
-					const result = event.target?.result as string
-					const newUploadedBgs = [
-						result,
-						...settingsContext.uploadedBackgrounds,
-					].slice(0, MAX_UPLOADED_IMAGES)
-					settingsContext.onUploadedBackgroundsChange(newUploadedBgs)
-					settingsContext.onBackgroundChange(result)
+					const img = document.createElement("img")
+					img.onload = () => {
+						const canvas = document.createElement("canvas")
+						const ctx = canvas.getContext("2d")
+	
+						if (!ctx) {
+							toast({ title: "Lỗi", description: "Không thể xử lý ảnh.", variant: "destructive" })
+							return
+						}
+	
+						// Resize logic
+						const MAX_WIDTH = 1920
+						let width = img.width
+						let height = img.height
+	
+						if (width > MAX_WIDTH) {
+							height = (height * MAX_WIDTH) / width
+							width = MAX_WIDTH
+						}
+	
+						canvas.width = width
+						canvas.height = height
+						ctx.drawImage(img, 0, 0, width, height)
+	
+						// Compress and get data URL
+						const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7) // 70% quality
+	
+						const newUploadedBgs = [
+							compressedDataUrl,
+							...settingsContext.uploadedBackgrounds,
+						].slice(0, MAX_UPLOADED_IMAGES)
+						
+						settingsContext.onUploadedBackgroundsChange(newUploadedBgs)
+						settingsContext.onBackgroundChange(compressedDataUrl)
+						toast({ title: "Thành công!", description: "Hình nền đã được nén và tải lên."})
+					}
+					img.onerror = () => {
+						toast({ title: "Lỗi", description: "Không thể đọc file ảnh.", variant: "destructive" })
+					}
+					img.src = event.target?.result as string
+				}
+				reader.onerror = () => {
+					toast({ title: "Lỗi", description: "Không thể đọc file.", variant: "destructive" })
 				}
 				reader.readAsDataURL(file)
 			}
@@ -131,9 +167,10 @@ export function Settings(props: SettingsProps) {
 	const renderContentGenerationControls = () => {
 		if (!learningContext) return null
 
-		const { isLoading, theorySet, flashcardSet, quizSet } = learningContext;
+		const { isLoading, theorySet, flashcardSet, quizSet, generationStatus } = learningContext;
 
 		const hasContent = theorySet || flashcardSet || quizSet;
+		const isGenerating = !!generationStatus;
 
 		return (
 			<div className="space-y-4">
@@ -142,41 +179,41 @@ export function Settings(props: SettingsProps) {
 				</Label>
 
 				<div className="p-4 bg-secondary/30 rounded-lg space-y-3">
-					<p className="text-sm text-muted-foreground">
-						{hasContent 
-							? `Bạn đang học về chủ đề "${learningContext.topic}". Nhấp vào nút bên dưới để bắt đầu lại với một chủ đề mới.`
-							: "Chưa có nội dung học tập nào được tạo."
-						}
-					</p>
-					
-					<div className="flex justify-between items-center text-sm pt-2">
-						<Label>Lý thuyết</Label>
-						<span className="text-muted-foreground">
-							{theorySet?.chapters?.length ?? 0} chương
-						</span>
-					</div>
-					<div className="flex justify-between items-center text-sm">
-						<Label>Flashcard</Label>
-						<span className="text-muted-foreground">
-							{flashcardSet?.cards?.length ?? 0} thẻ
-						</span>
-					</div>
-					<div className="flex justify-between items-center text-sm">
-						<Label>Trắc nghiệm</Label>
-						<span className="text-muted-foreground">
-							{quizSet?.questions?.length ?? 0} câu
-						</span>
-					</div>
+					{isGenerating ? (
+						<div className="flex flex-col items-center text-center">
+							<Loader className="w-8 h-8 text-primary animate-spin mb-2" />
+							<p className="text-sm text-muted-foreground">{generationStatus}</p>
+						</div>
+					) : (
+						<>
+							<p className="text-sm text-muted-foreground">
+								{hasContent 
+									? `Bạn đang học về chủ đề "${learningContext.topic}". Nhấp vào nút bên dưới để bắt đầu lại với một chủ đề mới.`
+									: "Chưa có nội dung học tập nào được tạo."
+								}
+							</p>
+							
+							<div className="flex justify-between items-center text-sm pt-2">
+								<Label>Lý thuyết</Label>
+								<span className="text-muted-foreground">
+									{theorySet?.chapters?.length ?? 0} chương
+								</span>
+							</div>
+							<div className="flex justify-between items-center text-sm">
+								<Label>Flashcard</Label>
+								<span className="text-muted-foreground">
+									{flashcardSet?.cards?.length ?? 0} thẻ
+								</span>
+							</div>
+							<div className="flex justify-between items-center text-sm">
+								<Label>Trắc nghiệm</Label>
+								<span className="text-muted-foreground">
+									{quizSet?.questions?.length ?? 0} câu
+								</span>
+							</div>
+						</>
+					)}
 				</div>
-
-				<Button
-					className="w-full"
-					onClick={() => handleGenerate(false)}
-					disabled={isLoading}
-				>
-					{isLoading && <Loader className="animate-spin h-4 w-4 mr-2" />}
-					{isLoading ? "Đang tạo..." : "Tạo lại nội dung"}
-				</Button>
 			</div>
 		)
 	}
