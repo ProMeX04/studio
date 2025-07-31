@@ -1,7 +1,7 @@
 
 // src/lib/firebase.ts
 import { initializeApp, getApp, getApps, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getFirestore, type Firestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
 const firebaseConfig: FirebaseOptions = {
@@ -25,6 +25,17 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     db = getFirestore(app);
     auth = getAuth(app);
+    
+    // Enable offline persistence
+    enableIndexedDbPersistence(db)
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+          console.warn('Firestore offline persistence failed: Multiple tabs open. Persistence will only be enabled in one tab at a time.');
+        } else if (err.code == 'unimplemented') {
+          console.warn('Firestore offline persistence failed: The current browser does not support all of the features required to enable persistence.');
+        }
+      });
+
     firebaseInitialized = true;
   } catch (error) {
     console.error("Lỗi khởi tạo Firebase:", error);
