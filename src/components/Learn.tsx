@@ -99,6 +99,12 @@ export function Learn() {
 			notUnderstoodCount: (theorySet.chapters.length ?? 0) - understood,
 		}
 	}, [theorySet, theoryState])
+    
+	const isCurrentItemUnderstood = useMemo(() => {
+		if (view === "flashcards" && flashcardState) return flashcardState.understoodIndices.includes(flashcardIndex)
+		if (view === "theory" && theoryState) return theoryState.understoodIndices.includes(theoryChapterIndex)
+		return false
+	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view])
 
 	const allQuestionsAnswered = quizSet && quizSummaryData.unansweredQuestions === 0
 	const shouldShowQuizSummary = (showQuizSummary || allQuestionsAnswered) && view === "quiz"
@@ -108,12 +114,6 @@ export function Learn() {
 
 	const allTheoryChaptersMarked = theorySet && theorySummaryData.understoodCount === theorySet.chapters.length
 	const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && view === "theory"
-
-	const isCurrentItemUnderstood = useMemo(() => {
-		if (view === "flashcards" && flashcardState) return flashcardState.understoodIndices.includes(flashcardIndex)
-		if (view === "theory" && theoryState) return theoryState.understoodIndices.includes(theoryChapterIndex)
-		return false
-	}, [flashcardState, flashcardIndex, theoryState, theoryChapterIndex, view])
     
     // --- Prop Collections ---
     const viewProps = {
@@ -121,7 +121,7 @@ export function Learn() {
             flashcardSet,
             flashcardIndex,
             topic,
-            isCurrentUnderstood,
+            isCurrentUnderstood: isCurrentItemUnderstood,
         },
         quiz: {
             quizSet,
@@ -140,7 +140,7 @@ export function Learn() {
             theorySet,
             topic,
             chapterIndex: theoryChapterIndex,
-            isCurrentUnderstood,
+            isCurrentUnderstood: isCurrentItemUnderstood,
             onGeneratePodcast: handleGeneratePodcastForChapter,
             isGeneratingPodcast,
         },
