@@ -1,3 +1,4 @@
+
 import { NextRequest } from 'next/server';
 import { withAuth, createSuccessResponse, createErrorResponse, type AuthenticatedRequest } from '@/lib/api-middleware';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
@@ -8,7 +9,7 @@ async function handler(req: AuthenticatedRequest) {
   }
 
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const jobId = searchParams.get('jobId');
     const includeContent = searchParams.get('includeContent') === 'true';
 
@@ -19,7 +20,7 @@ async function handler(req: AuthenticatedRequest) {
     }
 
     const userId = req.user!.uid;
-    const { adminDb } = getFirebaseAdmin();
+    const { adminDb } = await getFirebaseAdmin();
 
     // Get job status from database
     const jobDoc = await adminDb.collection('generationJobs').doc(jobId).get();
