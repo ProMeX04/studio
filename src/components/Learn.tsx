@@ -45,7 +45,7 @@ export function Learn() {
 	} = useLearningContext()
 
 	const quizSummaryData = React.useMemo(() => {
-		if (!quizSet || !quizState) {
+		if (!quizSet?.questions || !quizState) {
 			return { correctAnswers: 0, incorrectAnswers: 0, unansweredQuestions: (quizSet?.questions?.length ?? 0) }
 		}
 		let correct = 0
