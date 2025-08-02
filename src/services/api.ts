@@ -48,7 +48,7 @@ async function post<T>(endpoint: string, body: unknown, schema: z.Schema<T>): Pr
     return wrappedResponse.data.data as T;
   } catch (error: any) {
     // Axios wraps errors in an `error.response` object
-    const errorMessage = error.response?.data?.message || error.message || "An unknown network error occurred.";
+    const errorMessage = error.response?.data?.error || error.message || "An unknown network error occurred.";
     console.error(`API request to ${endpoint} failed:`, errorMessage);
     throw new Error(errorMessage);
   }
@@ -57,19 +57,13 @@ async function post<T>(endpoint: string, body: unknown, schema: z.Schema<T>): Pr
 /**
  * A generic GET request handler using the configured axios instance.
  */
-async function get<T>(endpoint: string, schema: z.Schema<T>): Promise<T> {
+async function get<T>(endpoint: string, params: Record<string, any> = {}): Promise<T> {
   try {
-    const response = await axios.get(endpoint);
-    const parsed = schema.safeParse(response.data);
-
-    if (!parsed.success) {
-      console.error("Invalid API response format:", parsed.error.issues);
-      throw new Error("Invalid API response format from server.");
-    }
-    
-    return parsed.data;
+    const response = await axios.get(endpoint, { params });
+    // Assuming the structure is { success, data }
+    return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "An unknown network error occurred.";
+    const errorMessage = error.response?.data?.error || error.message || "An unknown network error occurred.";
     console.error(`API request to ${endpoint} failed:`, errorMessage);
     throw new Error(errorMessage);
   }
@@ -97,96 +91,56 @@ export const clonePublicTopic = (body: ClonePublicTopicInput) =>
 
 // --- New Backend APIs ---
 
-// Job status checking
-const JobStatusSchema = z.object({
-  success: z.boolean(),
-  data: z.object({
-    jobId: z.string(),
-    status: z.enum(['pending', 'processing', 'completed', 'failed']),
-    progress: z.object({
-      percentage: z.number(),
-      message: z.string(),
-    }),
-    result: z.union([
-      // Original format (counts only)
-      z.object({
-        flashcardsCount: z.number(),
-        quizCount: z.number(),
-        theoryChapters: z.number(),
-      }),
-      // New format (full content)
-      z.object({
-        flashcards: z.any(),
-        quiz: z.any(),
-        theory: z.any(),
-        // Keep counts for backward compatibility
-        flashcardsCount: z.number().optional(),
-        quizCount: z.number().optional(),
-        theoryChapters: z.number().optional(),
-      })
-    ]).optional(),
-    error: z.string().optional(),
-  })
-});
-
 export const getJobStatus = (jobId: string, options?: { includeContent?: boolean }) => {
-  console.log('🔧 getJobStatus called with:', { jobId, options });
-  
-  const params = new URLSearchParams();
+  const params: Record<string, any> = { jobId };
   if (options?.includeContent) {
-    console.log('✅ Adding includeContent=true to params');
-    params.append('includeContent', 'true');
-  } else {
-    console.log('❌ No includeContent or includeContent=false, params:', options);
+    params.includeContent = 'true';
   }
-  
-  const url = `job-status?jobId=${jobId}${params.toString() ? '&' + params.toString() : ''}`;
-  console.log('🌐 Final URL:', url);
-  
-  return axios.get(url);
+  return get(`/job-status`, params);
 };
 
 // Data sync APIs
 const SyncResponseSchema = z.object({
   success: z.boolean(),
-  data: z.object({
-    data: z.any().optional(),
-    lastModified: z.number().optional(),
-    conflict: z.boolean().optional(),
-    serverData: z.any().optional(),
-    serverLastModified: z.number().optional(),
-    message: z.string(),
-  })
+  data: z.any().optional(),
+  conflict: z.boolean().optional(),
+  serverData: z.any().optional(),
+  serverLastModified: z.number().optional(),
+  message: z.string().optional(),
 });
 
+
 export const syncUserData = (data: any, lastModified: number) =>
-  post("/sync", { data, lastModified }, SyncResponseSchema);
+  post("/sync", { data, lastModified });
 
 export const getUserData = () =>
-  get("/sync", SyncResponseSchema);
+  get("/sync");
 
 export const batchSyncData = (batchData: Record<string, any>) =>
-  post("/sync", { batchData }, SyncResponseSchema);
+  axios.put("/sync", { batchData });
 
 // User profile APIs
 const UserProfileSchema = z.object({
-  success: z.boolean(),
-  data: z.object({
-    uid: z.string(),
-    email: z.string().optional(),
-    displayName: z.string().optional(),
-    photoURL: z.string().optional(),
-    preferences: z.any().optional(),
-    stats: z.object({
-      topicsCompleted: z.number(),
-      totalStudyTime: z.number(),
-      streak: z.number(),
-    }).optional(),
-  })
+  uid: z.string(),
+  email: z.string().optional(),
+  displayName: z.string().optional(),
+  photoURL: z.string().optional(),
+  preferences: z.any().optional(),
+  stats: z.object({
+    topicsCompleted: z.number(),
+    totalStudyTime: z.number(),
+    streak: z.number(),
+  }).optional(),
 });
 
 export const getUserProfile = () =>
-  get("/user/profile", UserProfileSchema);
+  get("/user/profile");
 
 export const updateUserProfile = (profile: any) =>
-  post("/user/profile", profile, UserProfileSchema);
+  post("/user/profile", profile);
+
+// Clear User Data
+export const clearUserData = () => axios.delete('/clear-data');
+
+// Get Debug Data
+export const getDebugData = () => get('/debug-data');
