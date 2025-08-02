@@ -4,7 +4,7 @@
 
 import React, { ReactNode } from "react"
 import { SettingsProvider } from "./SettingsContext"
-import { LearningProvider } from "./LearningContext.firebase"
+import { LearningProvider } from "./LearningContext"
 import { AuthProvider } from "./AuthContext"
 
 /**
@@ -30,7 +30,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 // useSettingsContext or useLearningContext where possible.
 // This is provided for convenience in components like the main page layout.
 import { useSettingsContext } from "./SettingsContext"
-import { useLearningContext } from "./LearningContext.firebase"
+import { useLearningContext } from "./LearningContext"
 import { useAuthContext } from "./AuthContext"
 
 export const useAppContext = () => {

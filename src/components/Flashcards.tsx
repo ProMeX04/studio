@@ -23,7 +23,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { CardData } from "@/ai/schemas"
-import { useLearningContext } from "@/contexts/LearningContext.firebase"
+import { useLearningContext } from "@/contexts/LearningContext"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -9,7 +9,7 @@ import { Theory } from "@/components/Theory"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
-import { useLearningContext } from "@/contexts/LearningContext.firebase"
+import { useLearningContext } from "@/contexts/LearningContext"
 
 // --- Component Registries ---
 const viewRegistry = {

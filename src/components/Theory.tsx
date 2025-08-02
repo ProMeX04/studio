@@ -14,7 +14,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
 import { CheckCircle, BookOpen, Loader, Podcast as PodcastIcon, Plus } from "lucide-react"
-import { useLearningContext } from "@/contexts/LearningContext.firebase"
+import { useLearningContext } from "@/contexts/LearningContext"
 import { Button } from "./ui/button"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi

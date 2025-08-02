@@ -4,7 +4,7 @@
 
 import React, { useState } from "react"
 import { useSettingsContext } from "@/contexts/SettingsContext"
-import { useLearningContext } from "@/contexts/LearningContext.firebase"
+import { useLearningContext } from "@/contexts/LearningContext"
 import {
 	Loader,
 	ChevronLeft,
