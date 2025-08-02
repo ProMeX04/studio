@@ -217,11 +217,23 @@ export const PublicTopicResultSchema = z.object({
   chapterCount: z.number(),
   flashcardCount: z.number(),
   questionCount: z.number(),
+  description: z.string(),
+  tags: z.array(z.string()),
+  difficulty: z.string(),
+  estimatedTime: z.string(),
+  isPublic: z.boolean(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  downloads: z.number(),
 });
 export type PublicTopicResult = z.infer<typeof PublicTopicResultSchema>;
 
 export const SearchPublicTopicsOutputSchema = z.object({
   results: z.array(PublicTopicResultSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+  hasMore: z.boolean(),
 });
 export type SearchPublicTopicsOutput = z.infer<typeof SearchPublicTopicsOutputSchema>;
 

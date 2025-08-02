@@ -19,15 +19,11 @@ export const userDataSchema = Joi.object({
 // Generation request schemas
 export const startGenerationSchema = Joi.object({
   topic: Joi.string().required().min(1).max(200),
-  language: Joi.string().required().valid('Vietnamese', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Korean', 'Chinese'),
-  model: Joi.string().required().valid('gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'),
-  forceNew: Joi.boolean().default(false),
-  personalization: Joi.object({
-    knowledgeLevel: Joi.string().valid('beginner', 'intermediate', 'advanced').default('beginner'),
-    learningGoal: Joi.string().valid('overview', 'deep_dive', 'practical').default('overview'),
-    learningStyle: Joi.string().valid('reading', 'visual', 'auditory', 'kinesthetic').default('reading'),
-    tone: Joi.string().valid('formal', 'casual').default('casual'),
-  }).optional(),
+  language: Joi.string().required(),
+  knowledgeLevel: Joi.string().valid('beginner', 'intermediate', 'advanced').default('beginner'),
+  learningGoal: Joi.string().valid('overview', 'deep_dive', 'practical', 'general').default('overview'),
+  learningStyle: Joi.string().valid('reading', 'visual', 'auditory', 'kinesthetic').default('reading'),
+  tone: Joi.string().valid('formal', 'casual', 'friendly').default('casual'),
 });
 
 export const explainQuizSchema = Joi.object({

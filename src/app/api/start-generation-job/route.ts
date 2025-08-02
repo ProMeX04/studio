@@ -18,24 +18,22 @@ async function handler(req: AuthenticatedRequest) {
       return createErrorResponse(`Validation error: ${error}`, 400);
     }
 
-    const { topic, language, model, forceNew, personalization } = value!;
+    const { topic, language, knowledgeLevel, learningGoal, learningStyle, tone } = value!;
     const userId = req.user!.uid;
 
     // Get Firestore instance
     const { adminDb } = getFirebaseAdmin();
 
-    // Check if user already has content for this topic (unless forceNew)
-    if (!forceNew) {
-      const userDoc = await adminDb.collection('users').doc(userId).get();
-      const userData = userDoc.data();
-      
-      if (userData?.topic === topic && userData?.flashcards) {
-        return createSuccessResponse({
-          message: 'Existing content found',
-          jobId: userData.generationJobId || 'existing',
-          status: 'completed'
-        });
-      }
+    // Check if user already has content for this topic
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    
+    if (userData?.topic === topic && userData?.flashcards) {
+      return createSuccessResponse({
+        message: 'Existing content found',
+        jobId: userData.generationJobId || 'existing',
+        status: 'completed'
+      });
     }
 
     // Generate unique job ID
@@ -46,8 +44,10 @@ async function handler(req: AuthenticatedRequest) {
       userId,
       topic,
       language,
-      model,
-      personalization: personalization || {},
+      knowledgeLevel,
+      learningGoal,
+      learningStyle,
+      tone,
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -58,7 +58,6 @@ async function handler(req: AuthenticatedRequest) {
       generationJobId: jobId,
       topic,
       language,
-      model,
       updatedAt: new Date(),
     }, { merge: true });
 
@@ -69,8 +68,10 @@ async function handler(req: AuthenticatedRequest) {
       userId,
       topic,
       language,
-      model,
-      personalization: personalization || {}
+      knowledgeLevel,
+      learningGoal,
+      learningStyle,
+      tone
     });
 
     return createSuccessResponse({
@@ -104,12 +105,22 @@ async function processGenerationJob(jobId: string, params: any) {
     const generatedContent = await generateSampleContent(params);
 
     // Save generated content to user's document
-    await adminDb.collection('users').doc(params.userId).set({
-      flashcards: generatedContent.flashcards,
-      quiz: generatedContent.quiz,
-      theory: generatedContent.theory,
-      generatedAt: new Date(),
-    }, { merge: true });
+    const contentToSave: any = {};
+    
+    // Only add fields that are not undefined
+    if (generatedContent.flashcards !== undefined) {
+      contentToSave.flashcards = generatedContent.flashcards;
+    }
+    if (generatedContent.quiz !== undefined) {
+      contentToSave.quiz = generatedContent.quiz;
+    }
+    if (generatedContent.theory !== undefined) {
+      contentToSave.theory = generatedContent.theory;
+    }
+    
+    contentToSave.generatedAt = new Date();
+    
+    await adminDb.collection('users').doc(params.userId).set(contentToSave, { merge: true });
 
     // Update job status to completed
     await adminDb.collection('generationJobs').doc(jobId).update({
@@ -140,38 +151,66 @@ async function processGenerationJob(jobId: string, params: any) {
 
 // Sample content generator (replace with actual AI integration)
 async function generateSampleContent(params: any) {
-  const { topic, language, personalization } = params;
+  const { topic, language, knowledgeLevel, learningGoal, learningStyle, tone } = params;
   
   return {
     flashcards: [
       {
         id: '1',
         question: `What is ${topic}?`,
-        answer: `${topic} is an important concept in its field.`,
-        difficulty: personalization.knowledgeLevel || 'beginner',
+        answer: `${topic} is an important concept in programming and software development.`,
+        difficulty: knowledgeLevel || 'beginner',
       },
-      // Add more flashcards...
+      {
+        id: '2',
+        question: `Why should I learn ${topic}?`,
+        answer: `Learning ${topic} helps you build robust applications and understand programming fundamentals better.`,
+        difficulty: knowledgeLevel || 'beginner',
+      },
+      {
+        id: '3',
+        question: `What are the main features of ${topic}?`,
+        answer: `${topic} offers object-oriented programming, platform independence, and strong memory management.`,
+        difficulty: 'intermediate',
+      },
     ],
     quiz: [
       {
         id: '1',
         question: `Which of the following best describes ${topic}?`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: 'Option A',
-        explanation: 'This is the correct answer because...',
+        options: ['A programming language', 'A database', 'An operating system', 'A web browser'],
+        correctAnswer: 'A programming language',
+        explanation: `${topic} is indeed a programming language used for building applications.`,
       },
-      // Add more quiz questions...
+      {
+        id: '2',
+        question: `${topic} is known for which key principle?`,
+        options: ['Write once, run anywhere', 'Write everywhere, run once', 'Write fast, run slow', 'Write slow, run fast'],
+        correctAnswer: 'Write once, run anywhere',
+        explanation: `This principle means ${topic} code can run on any platform with a compatible virtual machine.`,
+      },
     ],
     theory: [
       {
         id: '1',
         title: `Introduction to ${topic}`,
-        content: `This chapter introduces the basic concepts of ${topic}...`,
+        content: `# Introduction to ${topic}\n\n${topic} is a powerful programming language that has been widely used for decades. In this chapter, we'll explore the fundamentals and core concepts.\n\n## What is ${topic}?\n\n${topic} is an object-oriented programming language that was designed to be platform-independent. This means you can write code once and run it on different operating systems.\n\n## Key Features\n\n- **Object-Oriented**: Everything in ${topic} is an object\n- **Platform Independent**: Write once, run anywhere (WORA)\n- **Secure**: Built-in security features\n- **Robust**: Strong memory management and error handling`,
         order: 1,
       },
-      // Add more theory chapters...
+      {
+        id: '2',
+        title: `Getting Started with ${topic}`,
+        content: `# Getting Started with ${topic}\n\nNow that you understand what ${topic} is, let's dive into the basics of getting started.\n\n## Setting up your development environment\n\n1. Download and install the ${topic} Development Kit (JDK)\n2. Set up your IDE (Integrated Development Environment)\n3. Write your first program\n\n## Your First Program\n\n\`\`\`java\npublic class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}\n\`\`\`\n\nThis simple program demonstrates the basic structure of a ${topic} application.`,
+        order: 2,
+      },
+      {
+        id: '3',
+        title: `${topic} Syntax and Fundamentals`,
+        content: `# ${topic} Syntax and Fundamentals\n\nUnderstanding the syntax is crucial for mastering ${topic}. Let's explore the key elements.\n\n## Variables and Data Types\n\n${topic} is a strongly-typed language, which means every variable must have a declared type.\n\n### Primitive Data Types:\n- \`int\`: Integer numbers\n- \`double\`: Floating-point numbers\n- \`boolean\`: True or false values\n- \`char\`: Single characters\n- \`String\`: Text (technically an object, not primitive)\n\n## Control Structures\n\n### Conditional Statements\n\`\`\`java\nif (condition) {\n    // code block\n} else {\n    // alternative code block\n}\n\`\`\`\n\n### Loops\n\`\`\`java\nfor (int i = 0; i < 10; i++) {\n    // repeat this block\n}\n\`\`\``,
+        order: 3,
+      },
     ],
   };
 }
 
-export { handler as POST };
+export const POST = withAuth(handler);

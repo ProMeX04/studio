@@ -4,7 +4,7 @@
 
 import React, { useState } from "react"
 import { useSettingsContext } from "@/contexts/SettingsContext"
-import { useLearningContext } from "@/contexts/LearningContext"
+import { useLearningContext } from "@/contexts/LearningContext.firebase"
 import {
 	Loader,
 	ChevronLeft,
@@ -45,7 +45,7 @@ import { ScrollArea } from "./ui/scroll-area"
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
 
 
-export function ApiKeyGuide() {
+export function Guide() {
 	const { onOnboardingComplete } = useSettingsContext()
 	const {
 		onGenerate,
@@ -108,19 +108,22 @@ export function ApiKeyGuide() {
 		}
 	}
 
-	const handleFinishOnboarding = () => {
-		// 1. Save general settings
-		onSettingsSave({
+	const handleFinishOnboarding = async () => {
+		// 1. Save general settings and wait
+		await onSettingsSave({
 			topic: localTopic,
 			language: localLanguage,
-			model: 'gemini-2.5-pro', // Using pro for better personalization
+			model: 'gemini-2.5-flash-lite', // Using pro for better personalization
 		})
 		// 2. Mark onboarding as complete in context
-		onOnboardingComplete(localTopic, localLanguage, 'gemini-2.5-pro');
+		onOnboardingComplete(localTopic, localLanguage, 'gemini-2.5-flash-lite');
 		
-		// 3. Trigger the first generation with personalization data
+		// 3. Trigger the first generation with personalization data and explicit parameters
 		onGenerate({
 			forceNew: true,
+			topic: localTopic,
+			language: localLanguage,
+			model: 'gemini-2.5-flash-lite',
 			personalization: {
 				knowledgeLevel,
 				learningGoal,

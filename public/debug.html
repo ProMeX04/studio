@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Debug</title>
+</head>
+
+<body>
+    <h1>Firebase API Debug</h1>
+
+    <h2>Authentication</h2>
+    <p>Current user: <span id="user-status">Not logged in</span></p>
+
+    <h2>Actions</h2>
+    <button onclick="debugData()">Debug Data</button>
+    <button onclick="clearData()">Clear Data</button>
+    <button onclick="startGeneration()">Start Generation</button>
+
+    <h2>Results</h2>
+    <pre id="results"></pre>
+
+    <script type="module">
+        // Import Firebase v9 modular SDK
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase config (use same as main app)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAf8x7fKG4FZYVrQr__7fAO7o6cJ5JzaDM",
+            authDomain: "newtab-ai-firebase.firebaseapp.com",
+            projectId: "newtab-ai-firebase",
+            storageBucket: "newtab-ai-firebase.firebasestorage.app",
+            messagingSenderId: "372624654434",
+            appId: "1:372624654434:web:d5b4a0ba93e8fa0b3c5ce6"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            document.getElementById('user-status').textContent = user ? user.email : 'Not logged in';
+        });
+
+        window.getIdToken = async function () {
+            if (!currentUser) {
+                throw new Error('Not logged in');
+            }
+            return await currentUser.getIdToken();
+        }
+
+        window.apiCall = async function (url, options = {}) {
+            try {
+                const token = await window.getIdToken();
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                const data = await response.json();
+                document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                return data;
+            } catch (error) {
+                document.getElementById('results').textContent = 'Error: ' + error.message;
+                console.error(error);
+            }
+        }
+
+        window.debugData = async function () {
+            await window.apiCall('/api/debug-data');
+        }
+
+        window.clearData = async function () {
+            await window.apiCall('/api/clear-data', { method: 'DELETE' });
+        }
+
+        window.startGeneration = async function () {
+            await window.apiCall('/api/start-generation-job', {
+                method: 'POST',
+                body: JSON.stringify({
+                    topic: 'python',
+                    language: 'Vietnamese',
+                    knowledgeLevel: 'beginner',
+                    learningGoal: 'general',
+                    learningStyle: 'visual',
+                    tone: 'friendly'
+                })
+            });
+        }
+    </script>
+</body>
+
+</html>

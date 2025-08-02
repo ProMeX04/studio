@@ -113,6 +113,12 @@ export class FirebaseDataService {
   // Save single data field with offline handling
   async saveData(key: DataKey, data: any): Promise<void> {
     try {
+      // Don't save undefined values to prevent Firestore errors
+      if (data === undefined) {
+        console.warn(`⚠️ Skipping save of ${key} - value is undefined`);
+        return;
+      }
+      
       const docRef = this.getUserDocRef();
       
       await updateDoc(docRef, {
@@ -201,18 +207,26 @@ export class FirebaseDataService {
     try {
       const docRef = this.getUserDocRef();
       
+      // Filter out undefined values to prevent Firestore errors
+      const cleanData: any = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleanData[key] = value;
+        }
+      });
+      
       const updateData: any = {
-        ...data,
+        ...cleanData,
         updatedAt: serverTimestamp(),
       };
 
-      // Add lastModified timestamp for each field
-      Object.keys(data).forEach(key => {
+      // Add lastModified timestamp for each non-undefined field
+      Object.keys(cleanData).forEach(key => {
         updateData[`lastModified_${key}`] = serverTimestamp();
       });
 
       await updateDoc(docRef, updateData);
-      console.log(`✅ Saved multiple fields to Firebase:`, Object.keys(data));
+      console.log(`✅ Saved multiple fields to Firebase:`, Object.keys(cleanData));
     } catch (error: any) {
       // If document doesn't exist, create it
       if (error?.code === 'not-found') {

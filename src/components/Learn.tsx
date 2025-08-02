@@ -9,7 +9,7 @@ import { Theory } from "@/components/Theory"
 import { QuizSummary } from "@/components/QuizSummary"
 import { FlashcardSummary } from "@/components/FlashcardSummary"
 import { TheorySummary } from "@/components/TheorySummary"
-import { useLearningContext } from "@/contexts/LearningContext"
+import { useLearningContext } from "@/contexts/LearningContext.firebase"
 
 // --- Component Registries ---
 const viewRegistry = {
@@ -46,7 +46,7 @@ export function Learn() {
 
 	const quizSummaryData = React.useMemo(() => {
 		if (!quizSet || !quizState) {
-			return { correctAnswers: 0, incorrectAnswers: 0, unansweredQuestions: quizSet?.questions.length ?? 0 }
+			return { correctAnswers: 0, incorrectAnswers: 0, unansweredQuestions: (quizSet?.questions?.length ?? 0) }
 		}
 		let correct = 0
 		const answeredIndices = Object.keys(quizState.answers).map(Number)
@@ -67,7 +67,7 @@ export function Learn() {
 
 	const flashcardSummaryData = React.useMemo(() => {
 		if (!flashcardSet || !flashcardState) {
-			return { understoodCount: 0, notUnderstoodCount: flashcardSet?.cards.length ?? 0 }
+			return { understoodCount: 0, notUnderstoodCount: (flashcardSet?.cards?.length ?? 0) }
 		}
 		const understood = flashcardState.understoodIndices.length
 		return {
@@ -78,7 +78,7 @@ export function Learn() {
 
 	const theorySummaryData = React.useMemo(() => {
 		if (!theorySet || !theoryState) {
-			return { understoodCount: 0, notUnderstoodCount: theorySet?.chapters.length ?? 0 }
+			return { understoodCount: 0, notUnderstoodCount: (theorySet?.chapters?.length ?? 0) }
 		}
 		const understood = theoryState.understoodIndices.length
 		return {
@@ -90,30 +90,30 @@ export function Learn() {
 	const allQuestionsAnswered = quizSet && quizSummaryData.unansweredQuestions === 0
 	const shouldShowQuizSummary = (showQuizSummary || allQuestionsAnswered) && view === "quiz"
 
-	const allFlashcardsMarked = flashcardSet && flashcardSummaryData.understoodCount === flashcardSet.cards.length
+	const allFlashcardsMarked = flashcardSet && flashcardSummaryData.understoodCount === (flashcardSet?.cards?.length ?? 0)
 	const shouldShowFlashcardSummary = (showFlashcardSummary || allFlashcardsMarked) && view === "flashcards"
 
-	const allTheoryChaptersMarked = theorySet && theorySummaryData.understoodCount === theorySet.chapters.length
+	const allTheoryChaptersMarked = theorySet && theorySummaryData.understoodCount === (theorySet?.chapters?.length ?? 0)
 	const shouldShowTheorySummary = (showTheorySummary || allTheoryChaptersMarked) && view === "theory"
     
     // --- Prop Collections ---
     const summaryProps = {
         flashcards: {
             ...flashcardSummaryData,
-            totalCards: flashcardSet?.cards.length ?? 0,
+            totalCards: (flashcardSet?.cards?.length ?? 0),
             onReset: onFlashcardReset,
             onBack: () => setShowFlashcardSummary(false),
             isCompleted: allFlashcardsMarked,
         },
         quiz: {
             ...quizSummaryData,
-            totalQuestions: quizSet?.questions.length ?? 0,
+            totalQuestions: (quizSet?.questions?.length ?? 0),
             onBack: () => setShowQuizSummary(false),
             isCompleted: allQuestionsAnswered,
         },
         theory: {
             ...theorySummaryData,
-            totalChapters: theorySet?.chapters.length ?? 0,
+            totalChapters: (theorySet?.chapters?.length ?? 0),
             onReset: onTheoryReset,
             onBack: () => setShowTheorySummary(false),
             isCompleted: allTheoryChaptersMarked,

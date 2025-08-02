@@ -23,7 +23,7 @@ import rehypeKatex from "rehype-katex"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import type { CardData } from "@/ai/schemas"
-import { useLearningContext } from "@/contexts/LearningContext"
+import { useLearningContext } from "@/contexts/LearningContext.firebase"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,6 +137,8 @@ export function Flashcards() {
 		handleGenerate,
 		isLoading,
 		topic,
+		language,
+		model,
 		generationStatus
 	} = useLearningContext();
 	
@@ -173,7 +175,12 @@ export function Flashcards() {
 								{isGenerating ? generationStatus : "AI sẽ tạo một bộ flashcards đầy đủ dựa trên chủ đề bạn đã chọn."}
 							</p>
 							{!isGenerating && (
-								<Button onClick={() => handleGenerate({ forceNew: true })} disabled={isLoading}>
+								<Button onClick={() => handleGenerate({ 
+									forceNew: true,
+									topic: topic || undefined,
+									language: language || undefined,
+									model: model || undefined
+								})} disabled={isLoading}>
 									{isLoading ? (
 										<Loader className="animate-spin mr-2 h-4 w-4" />
 									) : (

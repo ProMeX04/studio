@@ -3,9 +3,7 @@
 import { initializeApp, getApp, getApps, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import { 
   getFirestore, 
-  type Firestore, 
-  enableIndexedDbPersistence,
-  enableMultiTabIndexedDbPersistence
+  type Firestore
 } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
@@ -23,7 +21,6 @@ let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
 let firebaseInitialized = false;
-let persistenceEnabled = false;
 
 // Only initialize Firebase if all required environment variables are set
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
@@ -32,33 +29,9 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     db = getFirestore(app);
     auth = getAuth(app);
     
-    // Enable offline persistence with enhanced options
-    const enablePersistence = async () => {
-      try {
-        // Try multi-tab persistence first (experimental)
-        await enableMultiTabIndexedDbPersistence(db);
-        persistenceEnabled = true;
-        console.log('✅ Multi-tab Firestore offline persistence enabled');
-      } catch (err: any) {
-        if (err.code === 'unimplemented') {
-          // Fallback to single-tab persistence
-          try {
-            await enableIndexedDbPersistence(db);
-            persistenceEnabled = true;
-            console.log('✅ Single-tab Firestore offline persistence enabled');
-          } catch (fallbackErr: any) {
-            console.warn('⚠️ Firestore offline persistence failed:', fallbackErr.message);
-          }
-        } else {
-          console.warn('⚠️ Multi-tab persistence failed:', err.message);
-        }
-      }
-    };
-
-    // Enable persistence asynchronously
-    enablePersistence();
-
     firebaseInitialized = true;
+    console.log('✅ Firebase initialized successfully');
+    
   } catch (error) {
     console.error("❌ Lỗi khởi tạo Firebase:", error);
   }
@@ -68,7 +41,6 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
 
 // Export additional utilities
 export const isFirebaseInitialized = () => firebaseInitialized;
-export const isPersistenceEnabled = () => persistenceEnabled;
 
 // Export the initialized services, they might be undefined if not initialized
 export { app, db, auth };

@@ -87,28 +87,28 @@ function HomePageContent() {
 	}
 
 	const toolbarConfig: ToolbarItemConfig[] = useMemo(() => {
-		const hasTheoryContent = theorySet && theorySet.chapters.length > 0;
-		const hasFlashcardContent = flashcardSet && flashcardSet.cards.length > 0;
-		const hasQuizContent = quizSet && quizSet.questions.length > 0;
+		const hasTheoryContent = (theorySet?.chapters?.length ?? 0) > 0;
+		const hasFlashcardContent = (flashcardSet?.cards?.length ?? 0) > 0;
+		const hasQuizContent = (quizSet?.questions?.length ?? 0) > 0;
 		const isSummaryActive = showQuizSummary || showFlashcardSummary || showTheorySummary;
 
 		const navConfig = {
 			flashcards: {
-				total: flashcardSet?.cards.length ?? 0,
+				total: (flashcardSet?.cards?.length ?? 0),
 				current: flashcardIndex,
 				label: "Thẻ",
 				onPrev: () => onFlashcardIndexChange(flashcardIndex - 1),
 				onNext: () => onFlashcardIndexChange(flashcardIndex + 1),
 			},
 			quiz: {
-				total: quizSet?.questions.length ?? 0,
+				total: (quizSet?.questions?.length ?? 0),
 				current: currentQuestionIndex,
 				label: "Câu hỏi",
 				onPrev: () => onCurrentQuestionIndexChange(currentQuestionIndex - 1),
 				onNext: () => onCurrentQuestionIndexChange(currentQuestionIndex + 1),
 			},
 			theory: {
-				total: theorySet?.outline.length ?? 0,
+				total: (theorySet?.outline?.length ?? 0),
 				current: theoryChapterIndex,
 				label: "Chương",
 				onPrev: () => onTheoryChapterIndexChange(theoryChapterIndex - 1),

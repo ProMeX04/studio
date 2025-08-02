@@ -5,7 +5,7 @@
 import { Award, Target, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { useLearningContext } from '@/contexts/LearningContext';
+import { useLearningContext } from '@/contexts/LearningContext.firebase';
 
 interface QuizSummaryProps {
     correctAnswers: number;

@@ -34,7 +34,7 @@ async function handler(req: AuthenticatedRequest) {
         estimatedTime: '2 hours',
         isPublic: true,
         createdBy: 'system',
-        createdAt: new Date('2024-01-01'),
+        createdAt: new Date('2024-01-01').toISOString(),
         downloads: 1250,
       },
       {
@@ -50,7 +50,7 @@ async function handler(req: AuthenticatedRequest) {
         estimatedTime: '3 hours',
         isPublic: true,
         createdBy: 'system',
-        createdAt: new Date('2024-01-15'),
+        createdAt: new Date('2024-01-15').toISOString(),
         downloads: 890,
       },
       {
@@ -66,7 +66,7 @@ async function handler(req: AuthenticatedRequest) {
         estimatedTime: '5 hours',
         isPublic: true,
         createdBy: 'system',
-        createdAt: new Date('2024-02-01'),
+        createdAt: new Date('2024-02-01').toISOString(),
         downloads: 2100,
       },
     ];
@@ -98,4 +98,4 @@ async function handler(req: AuthenticatedRequest) {
   }
 }
 
-export { handler as POST };
+export const POST = withOptionalAuth(handler);

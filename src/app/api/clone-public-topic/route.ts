@@ -30,7 +30,7 @@ async function handler(req: AuthenticatedRequest) {
     await adminDb.collection('users').doc(userId).set({
       topic: sampleTopicData.topic,
       language: sampleTopicData.language,
-      model: 'gemini-2.5-pro',
+      model: 'gemini-2.5-flash-lite',
       flashcards: sampleTopicData.flashcards,
       quiz: sampleTopicData.quiz,
       theory: sampleTopicData.theory,
@@ -211,4 +211,4 @@ La Mã ban đầu được cai trị bởi các vua, với 7 vua truyền thuy�
   return topicData[topicId] || null;
 }
 
-export { handler as POST };
+export const POST = withAuth(handler);

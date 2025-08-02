@@ -32,14 +32,20 @@ import { z } from "zod";
 async function post<T>(endpoint: string, body: unknown, schema: z.Schema<T>): Promise<T> {
   try {
     const response = await axios.post(endpoint, body);
-    const parsed = schema.safeParse(response.data);
+    
+    // All API responses are wrapped with { success, data, timestamp }
+    const wrappedResponse = z.object({
+      success: z.boolean(),
+      data: schema,
+      timestamp: z.string(),
+    }).safeParse(response.data);
 
-    if (!parsed.success) {
-      console.error("Invalid API response format:", parsed.error.issues);
+    if (!wrappedResponse.success) {
+      console.error("Invalid API response format:", wrappedResponse.error.issues);
       throw new Error("Invalid API response format from server.");
     }
     
-    return parsed.data;
+    return wrappedResponse.data.data as T;
   } catch (error: any) {
     // Axios wraps errors in an `error.response` object
     const errorMessage = error.response?.data?.message || error.message || "An unknown network error occurred.";
@@ -101,13 +107,44 @@ const JobStatusSchema = z.object({
       percentage: z.number(),
       message: z.string(),
     }),
-    result: z.any().optional(),
+    result: z.union([
+      // Original format (counts only)
+      z.object({
+        flashcardsCount: z.number(),
+        quizCount: z.number(),
+        theoryChapters: z.number(),
+      }),
+      // New format (full content)
+      z.object({
+        flashcards: z.any(),
+        quiz: z.any(),
+        theory: z.any(),
+        // Keep counts for backward compatibility
+        flashcardsCount: z.number().optional(),
+        quizCount: z.number().optional(),
+        theoryChapters: z.number().optional(),
+      })
+    ]).optional(),
     error: z.string().optional(),
   })
 });
 
-export const getJobStatus = (jobId: string) =>
-  get(`/job-status?jobId=${jobId}`, JobStatusSchema);
+export const getJobStatus = (jobId: string, options?: { includeContent?: boolean }) => {
+  console.log('🔧 getJobStatus called with:', { jobId, options });
+  
+  const params = new URLSearchParams();
+  if (options?.includeContent) {
+    console.log('✅ Adding includeContent=true to params');
+    params.append('includeContent', 'true');
+  } else {
+    console.log('❌ No includeContent or includeContent=false, params:', options);
+  }
+  
+  const url = `job-status?jobId=${jobId}${params.toString() ? '&' + params.toString() : ''}`;
+  console.log('🌐 Final URL:', url);
+  
+  return axios.get(url);
+};
 
 // Data sync APIs
 const SyncResponseSchema = z.object({

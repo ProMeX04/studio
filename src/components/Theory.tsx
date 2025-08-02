@@ -14,7 +14,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
 import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "./ui/skeleton"
 import { CheckCircle, BookOpen, Loader, Podcast as PodcastIcon, Plus } from "lucide-react"
-import { useLearningContext } from "@/contexts/LearningContext"
+import { useLearningContext } from "@/contexts/LearningContext.firebase"
 import { Button } from "./ui/button"
 
 // Library type không tương thích hoàn toàn với React 18 – dùng any để tránh lỗi
@@ -84,12 +84,17 @@ export function Theory() {
 		isGeneratingPodcast,
 		handleGenerate, 
 		isLoading, 
-		topic, 
+		topic,
+		language,
+		model,
+		refreshData,
 		handleGeneratePodcastForChapter 
 	} = useLearningContext();
 	
 	const currentChapter = theorySet?.chapters?.[theoryChapterIndex];
-	const hasContent = !!currentChapter;
+	const hasContent = !!(theorySet?.chapters && theorySet.chapters.length > 0);
+	const hasCurrentChapter = !!currentChapter;
+	
 	const isCurrentUnderstood = useMemo(() => {
 		if (theoryState) return theoryState.understoodIndices.includes(theoryChapterIndex)
 		return false
@@ -99,7 +104,7 @@ export function Theory() {
 	return (
 		<div className="h-full flex flex-col bg-transparent shadow-none border-none">
 			<div className="flex-grow flex items-center justify-center overflow-y-auto pb-4">
-				{hasContent ? (
+				{hasContent && hasCurrentChapter ? (
 					<ScrollArea className="h-full w-full pr-4">
 						<div className="w-full max-w-5xl mx-auto relative pt-4">
 							<h1 className="text-4xl font-bold mb-4 text-center">{currentChapter.title}</h1>
@@ -143,6 +148,36 @@ export function Theory() {
 							</div>
 						</div>
 					</ScrollArea>
+				) : hasContent && !hasCurrentChapter ? (
+					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
+						<CardHeader>
+							<div className="mx-auto bg-primary/10 p-4 rounded-full">
+								<BookOpen className="w-12 h-12 text-primary" />
+							</div>
+							<CardTitle className="mt-4 text-2xl">Nội dung đã sẵn sàng!</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-muted-foreground mb-4">
+								Chúng tôi đã có {theorySet?.chapters?.length || 0} chương cho chủ đề "{topic}".
+							</p>
+							<div className="space-y-2">
+								<Button onClick={() => {
+									// Just go back to show content, reset chapter index to 0 if needed
+									window.location.reload();
+								}} disabled={isLoading}>
+									<BookOpen className="mr-2 h-4 w-4" />
+									Xem nội dung
+								</Button>
+								<Button variant="outline" onClick={() => {
+									console.log("🔄 Manual refresh triggered from Theory component");
+									// refreshData && refreshData();
+									window.location.reload();
+								}}>
+									🔄 Refresh Data (Debug)
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
 				) : (
 					<Card className="w-full max-w-lg text-center bg-background/80 backdrop-blur-sm">
 						<CardHeader>
@@ -155,14 +190,43 @@ export function Theory() {
 							<p className="text-muted-foreground mb-4">
 								AI sẽ tạo một dàn bài chi tiết, nội dung lý thuyết, flashcard và bài trắc nghiệm cho bạn.
 							</p>
-							<Button onClick={() => handleGenerate({ forceNew: true })} disabled={isLoading}>
-                                {isLoading ? (
-                                    <Loader className="animate-spin mr-2 h-4 w-4" />
-                                ) : (
-                                    <Plus className="mr-2 h-4 w-4" />
-                                )}
-                                {isLoading ? "Đang tạo..." : "Bắt đầu học"}
-                            </Button>
+							<div className="space-y-2">
+								<Button onClick={() => handleGenerate({ 
+									forceNew: true,
+									topic: topic || undefined,
+									language: language || undefined,
+									model: model || undefined
+								})} disabled={isLoading}>
+									{isLoading ? (
+										<Loader className="animate-spin mr-2 h-4 w-4" />
+									) : (
+										<Plus className="mr-2 h-4 w-4" />
+									)}
+									{isLoading ? "Đang tạo..." : "Bắt đầu học"}
+								</Button>
+								<Button variant="outline" onClick={async () => {
+									console.log("🔍 Debug - Current state:", {
+										topic, language, model, 
+										theorySet, 
+										hasContent: !!(theorySet?.chapters && theorySet.chapters.length > 0)
+									});
+									
+									// Try manual data refresh 
+									if (refreshData) {
+										console.log("🔄 Calling refreshData...");
+										try {
+											await refreshData();
+											console.log("✅ refreshData completed");
+										} catch (error) {
+											console.error("❌ refreshData failed:", error);
+										}
+									} else {
+										console.log("❌ refreshData not available");
+									}
+								}}>
+									🔍 Debug State + Refresh
+								</Button>
+							</div>
 						</CardContent>
 					</Card>
 				)}

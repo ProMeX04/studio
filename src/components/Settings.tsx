@@ -44,7 +44,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSettingsContext } from "@/contexts/SettingsContext"
-import { useLearningContext } from "@/contexts/LearningContext"
+import { useLearningContext } from "@/contexts/LearningContext.firebase"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 
@@ -102,7 +102,7 @@ export function Settings(props: SettingsProps) {
 
 	const handleGenerate = (forceNew: boolean) => {
 		if (learningContext) {
-			learningContext.onGenerate(forceNew)
+			learningContext.onGenerate({ forceNew })
 		}
 	}
 

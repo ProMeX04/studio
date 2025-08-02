@@ -13,7 +13,7 @@ function initializeFirebaseAdmin() {
 
   try {
     // Import service account key directly from JSON file
-    const serviceAccount = require('../../newtab-ai-firebase-adminsdk-fbsvc-269366d733.json');
+    const serviceAccount = require('../../newtab-ai-firebase-adminsdk-fbsvc-dc69e713b6.json');
 
     // Check if app is already initialized
     if (!getApps().length) {

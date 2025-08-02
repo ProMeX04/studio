@@ -4,7 +4,7 @@
 import React from "react"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useSettingsContext } from "@/contexts/SettingsContext"
-import { ApiKeyGuide } from "@/components/ApiKeyGuide"
+import { Guide } from "@/components/Guide"
 import { Learn } from "@/components/Learn"
 import { Login } from "@/components/Login"
 import { Loader, AlertTriangle } from "lucide-react"
@@ -40,7 +40,7 @@ function FirebaseConfigError() {
 
 export default function RightColumn() {
 	const { user, loading, isFirebaseConfigured } = useAuthContext();
-	const { visibility } = useSettingsContext()
+	const { visibility, hasCompletedOnboarding } = useSettingsContext()
 
 	if (!visibility.learn) {
 		return null
@@ -63,6 +63,8 @@ export default function RightColumn() {
 			<div className="flex flex-col w-full h-full">
 				{!user ? (
 					<Login />
+				) : !hasCompletedOnboarding ? (
+					<Guide />
 				) : (
 					<Learn />
 				)}
