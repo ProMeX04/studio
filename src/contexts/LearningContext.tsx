@@ -154,6 +154,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	const loadInitialData = useCallback(async () => {
 		if (!user?.uid) {
 			console.log("❌ loadInitialData: No user.uid");
+			setIsLoading(false);
 			return;
 		}
 
@@ -176,6 +177,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				savedFlashcardIndex,
 				savedCurrentQuestionIndex,
 				savedTheoryChapterIndex,
+				savedJobId,
 			] = await Promise.all([
 				getData("view") as Promise<"flashcards" | "quiz" | "theory" | null>,
 				getData("topic") as Promise<string | null>,
@@ -190,102 +192,36 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				getData("flashcardIndex") as Promise<number | null>,
 				getData("currentQuestionIndex") as Promise<number | null>,
 				getData("theoryChapterIndex") as Promise<number | null>,
+				getData("generationJobId") as Promise<string | null>,
 			])
 
-			// Set state from Firebase data
-			console.log("📦 Firebase data loaded:", {
-				savedView,
-				savedTopic,
-				savedLanguage,
-				savedModel,
-				savedFlashcards: savedFlashcards ? "exists" : "null",
-				savedQuiz: savedQuiz ? "exists" : "null", 
-				savedTheory: savedTheory ? "exists" : "null",
-				theoryChaptersCount: savedTheory?.chapters?.length || 0
-			});
-			
-			// Debug actual data structure
-			console.log("🔍 Detailed Firebase data analysis:");
-			console.log("savedFlashcards type:", typeof savedFlashcards);
-			console.log("savedFlashcards structure:", savedFlashcards);
-			if (savedFlashcards) {
-				console.log("savedFlashcards first item:", (savedFlashcards as any)[0]);
-				console.log("savedFlashcards is array:", Array.isArray(savedFlashcards));
-			}
-			console.log("savedQuiz type:", typeof savedQuiz);
-			console.log("savedQuiz structure:", savedQuiz);
-			if (savedQuiz) {
-				console.log("savedQuiz first item:", (savedQuiz as any)[0]);
-				console.log("savedQuiz is array:", Array.isArray(savedQuiz));
-			}
-			console.log("savedTheory type:", typeof savedTheory);
-			console.log("savedTheory structure:", savedTheory);
-			if (savedTheory) {
-				console.log("savedTheory first item:", (savedTheory as any)[0]);
-				console.log("savedTheory is array:", Array.isArray(savedTheory));
-			}
-			
-			// Transform data if needed
-			let transformedFlashcards = null;
-			let transformedQuiz = null;
-			let transformedTheory = null;
-			
-			if (savedFlashcards) {
-				if (Array.isArray(savedFlashcards)) {
-					// Transform array to CardSet structure
-					transformedFlashcards = {
-						id: `flashcards-${savedTopic || 'unknown'}`,
-						topic: savedTopic || 'Unknown Topic',
-						cards: savedFlashcards
-					};
-					console.log("🔄 Transformed flashcards from array to CardSet");
-				} else {
-					transformedFlashcards = savedFlashcards;
-				}
-			}
-			
-			if (savedQuiz) {
-				if (Array.isArray(savedQuiz)) {
-					// Transform array to QuizSet structure
-					transformedQuiz = {
-						id: `quiz-${savedTopic || 'unknown'}`,
-						topic: savedTopic || 'Unknown Topic',
-						questions: savedQuiz
-					};
-					console.log("🔄 Transformed quiz from array to QuizSet");
-				} else {
-					transformedQuiz = savedQuiz;
-				}
-			}
-			
-			if (savedTheory) {
-				if (Array.isArray(savedTheory)) {
-					// Transform array to TheorySet structure
-					transformedTheory = {
-						id: `theory-${savedTopic || 'unknown'}`,
-						topic: savedTopic || 'Unknown Topic',
-						outline: savedTheory.map((chapter: any) => chapter.title || `Chapter ${chapter.id || chapter.order}`),
-						chapters: savedTheory
-					};
-					console.log("🔄 Transformed theory from array to TheorySet");
-				} else {
-					transformedTheory = savedTheory;
-				}
-			}
-			
+			console.log("📦 Firebase data loaded:", { savedTopic, hasFlashcards: !!savedFlashcards, hasQuiz: !!savedQuiz, hasTheory: !!savedTheory, savedJobId });
+
 			if (savedView) setView(savedView)
 			if (savedTopic) setTopic(savedTopic)
 			if (savedLanguage) setLanguage(savedLanguage)
 			if (savedModel) setModel(savedModel)
-			if (transformedFlashcards) setFlashcardSet(transformedFlashcards)
-			if (transformedQuiz) setQuizSet(transformedQuiz)
-			if (transformedTheory) setTheorySet(transformedTheory)
+			if (savedFlashcards) setFlashcardSet(savedFlashcards)
+			if (savedQuiz) setQuizSet(savedQuiz)
+			if (savedTheory) setTheorySet(savedTheory)
 			if (savedFlashcardState) setFlashcardState(savedFlashcardState)
 			if (savedQuizState) setQuizState(savedQuizState)
 			if (savedTheoryState) setTheoryState(savedTheoryState)
 			if (savedFlashcardIndex !== null) setFlashcardIndex(savedFlashcardIndex)
 			if (savedCurrentQuestionIndex !== null) setCurrentQuestionIndex(savedCurrentQuestionIndex)
 			if (savedTheoryChapterIndex !== null) setTheoryChapterIndex(savedTheoryChapterIndex)
+			if (savedJobId) setGenerationJobId(savedJobId);
+			
+			// If there's an ongoing job, start polling
+			if (savedJobId) {
+				const jobStatus = await api.getJobStatus(savedJobId);
+				const status = jobStatus.data.data.status;
+				if (status === 'processing' || status === 'pending') {
+					startPolling(savedJobId);
+				} else {
+					setGenerationJobId(null); // Job is already finished
+				}
+			}
 
 		} catch (error) {
 			console.error("Error loading learning data:", error)
@@ -298,6 +234,51 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 			setIsLoading(false)
 		}
 	}, [user?.uid, getData, toast])
+
+	const startPolling = useCallback((jobId: string) => {
+		if (isPollingRef.current) return; // Already polling
+		isPollingRef.current = true;
+		
+		const poll = async () => {
+			if (!isPollingRef.current) return;
+
+			try {
+				const statusResponse = await api.getJobStatus(jobId, { includeContent: true });
+				const jobData = statusResponse.data.data;
+				setGenerationStatus(jobData?.status);
+
+				if (jobData?.status === "completed") {
+					clearInterval(pollingIntervalRef.current!);
+					isPollingRef.current = false;
+					setGenerationJobId(null);
+					await saveData("generationJobId", null);
+
+					if (jobData.result) {
+						await saveMultipleData({
+							flashcards: jobData.result.flashcards,
+							quiz: jobData.result.quiz,
+							theory: jobData.result.theory,
+						});
+						await loadInitialData(); // Reload all data from DB
+						toast({ title: "Tạo nội dung thành công!", description: "Tài liệu học tập của bạn đã sẵn sàng." });
+					}
+				} else if (jobData?.status === "failed") {
+					clearInterval(pollingIntervalRef.current!);
+					isPollingRef.current = false;
+					setGenerationJobId(null);
+					await saveData("generationJobId", null);
+					toast({ title: "Tạo nội dung thất bại", description: jobData.error || "Đã có lỗi xảy ra.", variant: "destructive" });
+				}
+			} catch (error) {
+				console.error("Polling error:", error);
+				clearInterval(pollingIntervalRef.current!);
+				isPollingRef.current = false;
+			}
+		};
+
+		pollingIntervalRef.current = setInterval(poll, 5000); // Poll every 5 seconds
+	}, [saveData, saveMultipleData, loadInitialData, toast]);
+
 
 	// Manual data refresh for debugging
 	const refreshData = useCallback(async () => {
@@ -315,7 +296,6 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	// Initialize quiz state when quiz set is available but state is null
 	useEffect(() => {
 		if (quizSet && !quizState && quizSet.questions && quizSet.questions.length > 0) {
-			console.log("🎯 Initializing empty quiz state for quizSet:", quizSet);
 			const initialQuizState: QuizState = {
 				currentQuestionIndex: 0,
 				answers: {},
@@ -326,29 +306,16 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	// Save functions
 	const saveView = useCallback(async (newView: "flashcards" | "quiz" | "theory") => {
-		try {
-			await saveData("view", newView)
-		} catch (error) {
-			console.error("Error saving view:", error)
-		}
+		await saveData("view", newView)
 	}, [saveData])
 
 	const saveSettings = useCallback(async (settings: { topic: string; language: string; model: string }) => {
-		try {
-			await saveMultipleData({
-				topic: settings.topic,
-				language: settings.language,
-				model: settings.model,
-			})
-		} catch (error) {
-			console.error("Error saving settings:", error)
-			toast({
-				title: "Lỗi lưu cài đặt",
-				description: "Không thể lưu cài đặt học tập.",
-				variant: "destructive",
-			})
-		}
-	}, [saveMultipleData, toast])
+		await saveMultipleData({
+			topic: settings.topic,
+			language: settings.language,
+			model: settings.model,
+		})
+	}, [saveMultipleData])
 
 	// Event handlers
 	const onViewChange = useCallback(async (newView: "flashcards" | "quiz" | "theory") => {
@@ -358,95 +325,59 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const onFlashcardIndexChange = useCallback(async (index: number) => {
 		setFlashcardIndex(index)
-		try {
-			await saveData("flashcardIndex", index)
-		} catch (error) {
-			console.error("Error saving flashcard index:", error)
-		}
+		await saveData("flashcardIndex", index)
 	}, [saveData])
 
 	const onCurrentQuestionIndexChange = useCallback(async (index: number) => {
 		setCurrentQuestionIndex(index)
-		try {
-			await saveData("currentQuestionIndex", index)
-		} catch (error) {
-			console.error("Error saving question index:", error)
-		}
+		await saveData("currentQuestionIndex", index)
 	}, [saveData])
 
 	const onTheoryChapterIndexChange = useCallback(async (index: number) => {
 		setTheoryChapterIndex(index)
-		try {
-			await saveData("theoryChapterIndex", index)
-		} catch (error) {
-			console.error("Error saving chapter index:", error)
-		}
+		await saveData("theoryChapterIndex", index)
 	}, [saveData])
 
 	const onQuizStateChange = useCallback(async (newState: QuizState) => {
 		setQuizState(newState)
-		try {
-			await saveData("quizState", newState)
-		} catch (error) {
-			console.error("Error saving quiz state:", error)
-		}
+		await saveData("quizState", newState)
 	}, [saveData])
 
 	const onFlashcardStateChange = useCallback(async (newState: FlashcardState) => {
 		setFlashcardState(newState)
-		try {
-			await saveData("flashcardState", newState)
-		} catch (error) {
-			console.error("Error saving flashcard state:", error)
-		}
+		await saveData("flashcardState", newState)
 	}, [saveData])
 
 	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
 		setTheoryState(newState)
-		try {
-			await saveData("theoryState", newState)
-		} catch (error) {
-			console.error("Error saving theory state:", error)
-		}
+		await saveData("theoryState", newState)
 	}, [saveData])
 
 	const onQuizReset = useCallback(async () => {
 		setQuizState(null)
 		setCurrentQuestionIndex(0)
-		try {
-			await saveMultipleData({
-				quizState: null,
-				currentQuestionIndex: 0,
-			})
-		} catch (error) {
-			console.error("Error resetting quiz:", error)
-		}
+		await saveMultipleData({
+			quizState: null,
+			currentQuestionIndex: 0,
+		})
 	}, [saveMultipleData])
 
 	const onFlashcardReset = useCallback(async () => {
 		setFlashcardState(null)
 		setFlashcardIndex(0)
-		try {
-			await saveMultipleData({
-				flashcardState: null,
-				flashcardIndex: 0,
-			})
-		} catch (error) {
-			console.error("Error resetting flashcards:", error)
-		}
+		await saveMultipleData({
+			flashcardState: null,
+			flashcardIndex: 0,
+		})
 	}, [saveMultipleData])
 
 	const onTheoryReset = useCallback(async () => {
 		setTheoryState(null)
 		setTheoryChapterIndex(0)
-		try {
-			await saveMultipleData({
-				theoryState: null,
-				theoryChapterIndex: 0,
-			})
-		} catch (error) {
-			console.error("Error resetting theory:", error)
-		}
+		await saveMultipleData({
+			theoryState: null,
+			theoryChapterIndex: 0,
+		})
 	}, [saveMultipleData])
 
 	const onSettingsSave = useCallback(async (settings: { topic: string; language: string; model: string }) => {
@@ -456,26 +387,16 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		await saveSettings(settings)
 	}, [saveSettings])
 
-	// Generation handlers
 	const handleGenerate = useCallback(async (options: GenerateOptions & { 
 		topic?: string; 
 		language?: string; 
 		model?: string;
 	}) => {
-		// Use passed parameters or current state
 		const currentTopic = options.topic || topic;
 		const currentLanguage = options.language || language;
-		const currentModel = options.model || model;
+		const currentModel = "gemini-2.5-pro"; // Hardcode to pro for best results
 		
-		console.log("🚀 Starting generation with:", {
-			currentTopic,
-			currentLanguage, 
-			currentModel,
-			options
-		});
-		
-		if (!currentTopic || !currentLanguage || !currentModel) {
-			console.log("❌ Missing required parameters");
+		if (!currentTopic || !currentLanguage) {
 			toast({
 				title: "Thiếu thông tin",
 				description: "Vui lòng hoàn thành thiết lập trước khi tạo nội dung.",
@@ -485,15 +406,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		}
 
 		try {
-			setIsLoading(true)
-			
-			// Update local state if parameters are passed
+			setGenerationStatus("pending");
+			setFlashcardSet(null);
+			setQuizSet(null);
+			setTheorySet(null);
+
 			if (options.topic && options.topic !== topic) setTopic(options.topic);
 			if (options.language && options.language !== language) setLanguage(options.language);
-			if (options.model && options.model !== model) setModel(options.model);
 			
-			console.log("📡 Calling startGenerationJob API...");
-			// Start generation job
 			const jobResponse = await api.startGenerationJob({
 				topic: currentTopic,
 				language: currentLanguage,
@@ -503,282 +423,51 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 				tone: options.personalization?.tone || "casual",
 			})
 
-			console.log("✅ Generation job started:", jobResponse);
-
-			setGenerationJobId(jobResponse.jobId)
-			setGenerationStatus("processing")
-
-			// Start polling for job completion
-			if (!isPollingRef.current) {
-				isPollingRef.current = true
-				const startTime = Date.now()
-				const maxPollingTime = 5 * 60 * 1000 // 5 minutes timeout
-				
-				pollingIntervalRef.current = setInterval(async () => {
-					try {
-						// Check for timeout
-						if (Date.now() - startTime > maxPollingTime) {
-							console.log("⏰ Polling timeout reached, stopping...")
-							clearInterval(pollingIntervalRef.current!)
-							isPollingRef.current = false
-							setIsLoading(false)
-							toast({
-								title: "Timeout",
-								description: "Quá trình tạo nội dung mất quá nhiều thời gian.",
-								variant: "destructive",
-							})
-							return
-						}
-						
-						console.log("🔍 Polling job status for jobId:", jobResponse.jobId)
-						const statusResponse = await api.getJobStatus(jobResponse.jobId, { includeContent: true })
-						console.log("📊 Job status response:", statusResponse.data)
-						console.log("🔍 Current status:", statusResponse.data.data?.status)
-						console.log("🔍 Response data keys:", Object.keys(statusResponse.data))
-						console.log("🔍 Inner data object:", statusResponse.data.data)
-						console.log("🔍 Inner data keys:", statusResponse.data.data ? Object.keys(statusResponse.data.data) : 'No inner data')
-						console.log("🔍 Full statusResponse structure:", Object.keys(statusResponse))
-						
-						const jobData = statusResponse.data.data;
-						setGenerationStatus(jobData?.status)
-
-						if (jobData?.status === "completed") {
-							console.log("✅ Job status is completed, checking result...")
-							
-							if (jobData.result) {
-								console.log("✅ Job completed with result, checking format...")
-								
-								// Check if result contains actual content or just counts
-								const result = jobData.result;
-								const hasActualContent = result.flashcards && result.quiz && result.theory;
-								const hasOnlyCounts = result.flashcardsCount !== undefined;
-								
-								console.log("📊 Result format analysis:", {
-									hasActualContent,
-									hasOnlyCounts,
-									flashcardsExists: !!result.flashcards,
-									flashcardsLength: result.flashcards?.length,
-									quizExists: !!result.quiz,
-									quizLength: result.quiz?.length,
-									theoryExists: !!result.theory,
-									theoryLength: result.theory?.length,
-									resultKeys: Object.keys(result)
-								});
-							
-							if (hasActualContent) {
-								// Option 1: Full content available
-								console.log("🎯 Full content received, saving to Firebase...")
-								clearInterval(pollingIntervalRef.current!)
-								isPollingRef.current = false
-								
-								// Save generated content to Firebase
-								await saveMultipleData({
-									flashcards: result.flashcards,
-									quiz: result.quiz,
-									theory: result.theory,
-								})
-								console.log("💾 Data saved to Firebase successfully")
-
-								// Update local state
-								setFlashcardSet(result.flashcards)
-								setQuizSet(result.quiz)
-								setTheorySet(result.theory)
-								console.log("🔄 Local state updated with new data")
-
-								toast({
-									title: "Tạo nội dung thành công",
-									description: "Nội dung học tập đã được tạo.",
-								})
-								setIsLoading(false)
-							} else if (hasOnlyCounts) {
-								// Fallback: Only counts received, try to load from Firebase
-								console.log("⚠️ Only counts received, loading from Firebase...")
-								clearInterval(pollingIntervalRef.current!)
-								isPollingRef.current = false
-								
-								// Try to load data from Firebase (might be saved by job worker)
-								await loadInitialData()
-								
-								toast({
-									title: "Tạo nội dung thành công", 
-									description: "Nội dung học tập đã được tạo.",
-								})
-								setIsLoading(false)
-							} else {
-								console.log("❌ Unexpected result format")
-							}
-						} else {
-							console.log("❌ Job completed but no result provided")
-							clearInterval(pollingIntervalRef.current!)
-							isPollingRef.current = false
-							setIsLoading(false)
-							toast({
-								title: "Lỗi tạo nội dung",
-								description: "Job hoàn thành nhưng không có kết quả.",
-								variant: "destructive",
-							})
-						}
-						} else if (jobData?.status === "failed") {
-							console.log("❌ Job failed:", jobData.error)
-							clearInterval(pollingIntervalRef.current!)
-							isPollingRef.current = false
-							setIsLoading(false)
-							toast({
-								title: "Lỗi tạo nội dung",
-								description: jobData.error || "Không thể tạo nội dung học tập.",
-								variant: "destructive",
-							})
-						}
-					} catch (error) {
-						console.error("❌ Error polling job status:", error)
-						// Stop polling on error to prevent infinite loop
-						clearInterval(pollingIntervalRef.current!)
-						isPollingRef.current = false
-						setIsLoading(false)
-						toast({
-							title: "Lỗi kiểm tra trạng thái",
-							description: "Không thể kiểm tra trạng thái tạo nội dung.",
-							variant: "destructive",
-						})
-					}
-				}, 2000)
-			}
+			setGenerationJobId(jobResponse.jobId);
+			await saveData("generationJobId", jobResponse.jobId);
+			startPolling(jobResponse.jobId);
 
 		} catch (error) {
 			console.error("❌ Error starting generation job:", error)
-			setIsLoading(false)
+			setGenerationStatus("failed");
 			toast({
 				title: "Lỗi tạo nội dung",
 				description: "Không thể khởi tạo tạo nội dung học tập.",
 				variant: "destructive",
 			})
 		}
-	}, [saveMultipleData, toast])
+	}, [saveData, startPolling, topic, language, toast])
 
 	const handleGeneratePodcastForChapter = useCallback(async (chapterIndex: number) => {
-		if (!theorySet?.chapters[chapterIndex]) {
-			toast({
-				title: "Lỗi",
-				description: "Chương không tồn tại.",
-				variant: "destructive",
-			})
-			return
-		}
-
-		const chapter = theorySet.chapters[chapterIndex]
-		if (!chapter.content) {
-			toast({
-				title: "Lỗi",
-				description: "Nội dung chương không có sẵn.",
-				variant: "destructive",
-			})
-			return
-		}
-
-		try {
-			setIsGeneratingPodcast(true)
-			
-			// Call API to generate podcast script
-			const response = await api.generatePodcastScript({
-				topic: topic,
-				chapterTitle: chapter.title,
-				theoryContent: chapter.content,
-				language,
-			})
-
-			// This returns script directly, not a job ID
-			toast({
-				title: "Podcast script đã sẵn sàng",
-				description: "Script podcast cho chương này đã được tạo xong.",
-			})
-
-		} catch (error) {
-			console.error("Error generating podcast:", error)
-			toast({
-				title: "Lỗi tạo podcast",
-				description: "Không thể tạo podcast.",
-				variant: "destructive",
-			})
-		} finally {
-			setIsGeneratingPodcast(false)
-		}
-	}, [theorySet, topic, language, toast])
+		// This will be implemented later with Genkit flows
+	}, []);
 
 	const handleCloneTopic = useCallback(async (publicTopicId: string) => {
 		try {
-			setIsLoading(true)
-			
-			const response = await api.clonePublicTopic({ publicTopicId })
-			
-			if (response.success) {
-				toast({
-					title: "Sao chép thành công",
-					description: response.message,
-				})
-				
-				// After successful clone, reload the learning data
-				await loadInitialData()
-			} else {
-				toast({
-					title: "Lỗi sao chép",
-					description: response.message,
-					variant: "destructive",
-				})
-			}
-
+			setIsLoading(true);
+			await api.clonePublicTopic({ publicTopicId });
+			await loadInitialData();
+			toast({ title: "Sao chép thành công", description: "Chủ đề đã được thêm vào tài khoản của bạn." });
 		} catch (error) {
-			console.error("Error cloning topic:", error)
-			toast({
-				title: "Lỗi sao chép",
-				description: "Không thể sao chép chủ đề.",
-				variant: "destructive",
-			})
+			console.error("Error cloning topic:", error);
+			toast({ title: "Lỗi sao chép", description: "Không thể sao chép chủ đề.", variant: "destructive" });
 		} finally {
-			setIsLoading(false)
+			setIsLoading(false);
 		}
-	}, [loadInitialData, toast])
+	}, [loadInitialData, toast]);
 
 	const handleClearLearningData = useCallback(async () => {
-		try {
-			const learningKeys = [
-				"flashcards", "flashcardState", "flashcardIndex", 
-				"quiz", "quizState", "currentQuestionIndex",
-				"theory", "theoryState", "theoryChapterIndex", 
-				"topic", "language", "model", "view"
-			]
-
-			// Clear data from Firebase
-			await saveMultipleData(Object.fromEntries(learningKeys.map(key => [key, null])))
-
-			// Reset local state
-			setFlashcardSet(null)
-			setQuizSet(null)
-			setTheorySet(null)
-			setFlashcardState(null)
-			setQuizState(null)
-			setTheoryState(null)
-			setFlashcardIndex(0)
-			setCurrentQuestionIndex(0)
-			setTheoryChapterIndex(0)
-			setTopic("")
-			setLanguage("")
-			setModel("")
-			setView("flashcards")
-
-			toast({
-				title: "Đã xóa dữ liệu",
-				description: "Tất cả dữ liệu học tập đã được xóa.",
-			})
-
-		} catch (error) {
-			console.error("Error clearing learning data:", error)
-			toast({
-				title: "Lỗi xóa dữ liệu",
-				description: "Không thể xóa dữ liệu học tập.",
-				variant: "destructive",
-			})
-		}
-	}, [saveMultipleData, toast])
+		const keysToClear = [
+			"flashcards", "flashcardState", "flashcardIndex",
+			"quiz", "quizState", "currentQuestionIndex",
+			"theory", "theoryState", "theoryChapterIndex",
+			"topic", "language", "model", "view", "generationJobId"
+		];
+		const nullData = Object.fromEntries(keysToClear.map(key => [key, null]));
+		await saveMultipleData(nullData);
+		await loadInitialData(); // Reload to clear state
+		toast({ title: "Đã xóa dữ liệu học tập" });
+	}, [saveMultipleData, loadInitialData, toast]);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -791,7 +480,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 
 	const value: LearningContextType = {
 		// State
-		isLoading: isLoading || dataLoading,
+		isLoading: isLoading || dataLoading || !!generationStatus,
 		isGeneratingPodcast,
 		generationJobId,
 		generationStatus,
@@ -814,6 +503,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		flashcardIndex,
 		currentQuestionIndex,
 		theoryChapterIndex,
+
 		showQuizSummary,
 		showFlashcardSummary,
 		showTheorySummary,
