@@ -1,5 +1,3 @@
-
-
 "use client"
 
 import React, {
@@ -12,10 +10,8 @@ import React, {
 	ReactNode,
 } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { getDb, AppData, DataKey } from "@/lib/idb"
+import { useFirebaseData } from "@/hooks/use-firebase-data"
 import * as api from "@/services/api";
-import { doc, onSnapshot, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import type {
 	CardSet,
 	QuizSet,
@@ -25,12 +21,6 @@ import type {
 import type { QuizState, FlashcardState, TheoryState } from "@/app/types"
 import { useSettingsContext } from "./SettingsContext"
 import { useAuthContext } from "./AuthContext"
-import { MOCK_CARD_SET, MOCK_QUIZ_SET, MOCK_THEORY_SET, MOCK_TOPIC } from "@/lib/mock-data";
-
-// --- DEV FLAG ---
-// Set to true to use mock data and skip the onboarding/generation flow.
-const USE_MOCK_DATA = true;
-// ----------------
 
 interface PersonalizationOptions {
     knowledgeLevel: string;
@@ -113,36 +103,32 @@ export function useLearningContext() {
 	return context
 }
 
-// Helper to get the Firestore document for the current user's learning data
-const getLearningDocRef = (uid: string) => doc(db, "learningData", uid);
-
-
 export function LearningProvider({ children }: { children: ReactNode }) {
-	const { user } = useAuthContext();
-	const { setHasCompletedOnboarding, onOnboardingComplete } = useSettingsContext()
+	const { user } = useAuthContext()
+	const { setHasCompletedOnboarding } = useSettingsContext()
+	const { toast } = useToast()
+	const { saveData, getData, saveMultipleData, isLoading: dataLoading } = useFirebaseData()
 
-	// Global State
-	const [isLoading, setIsLoading] = useState(false)
+	// State
+	const [isLoading, setIsLoading] = useState(true)
 	const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false)
-	const [generationJobId, setGenerationJobId] = useState<string | null>(null);
-	const [generationStatus, setGenerationStatus] = useState<string | null>(null);
+	const [generationJobId, setGenerationJobId] = useState<string | null>(null)
+	const [generationStatus, setGenerationStatus] = useState<string | null>(null)
 
 	// Learning State
 	const [view, setView] = useState<"flashcards" | "quiz" | "theory">("theory")
-	const [topic, setTopic] = useState("Lịch sử La Mã")
-	const [language, setLanguage] = useState("Vietnamese")
-	const [model, setModel] = useState("gemini-2.5-flash-lite")
+	const [topic, setTopic] = useState("")
+	const [language, setLanguage] = useState("")
+	const [model, setModel] = useState("")
 
-	// Data Sets
+	// Datasets
 	const [flashcardSet, setFlashcardSet] = useState<CardSet | null>(null)
 	const [quizSet, setQuizSet] = useState<QuizSet | null>(null)
 	const [theorySet, setTheorySet] = useState<TheorySet | null>(null)
 
-	// UI State for Learning
+	// UI State for Learning components
 	const [quizState, setQuizState] = useState<QuizState | null>(null)
-	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(
-		null
-	)
+	const [flashcardState, setFlashcardState] = useState<FlashcardState | null>(null)
 	const [theoryState, setTheoryState] = useState<TheoryState | null>(null)
 	const [flashcardIndex, setFlashcardIndex] = useState(0)
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -151,548 +137,435 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 	const [showFlashcardSummary, setShowFlashcardSummary] = useState(false)
 	const [showTheorySummary, setShowTheorySummary] = useState(false)
 
-	const { toast } = useToast()
-	const isGeneratingRef = useRef(false)
-	const isMountedRef = useRef(true)
-	
-	const getUIDBKey = useCallback((key: string) => {
-		return `${user?.uid || 'guest'}-${key}`;
-	}, [user]);
+	const isPollingRef = useRef(false)
+	const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-	// --- Effects ---
-
-	useEffect(() => {
-		isMountedRef.current = true;
-		if (user !== undefined) {
-			loadInitialData();
-		}
-		return () => {
-			isMountedRef.current = false;
-		};
-	}, [user]);
-
-	// Main Firestore listener for real-time data synchronization
-	useEffect(() => {
-		if (USE_MOCK_DATA) return;
-		if (!user || !db) return;
-
-		const learningDocRef = getLearningDocRef(user.uid);
-		const unsubscribe = onSnapshot(learningDocRef, async (doc) => {
-			if (!isMountedRef.current) return;
-			const data = doc.data();
-			if (!data) return;
-
-			// Update state and IndexedDB cache from Firestore
-			const db = await getDb();
-			if (data.theorySet) {
-				setTheorySet(data.theorySet);
-				await db.put("data", { id: getUIDBKey("theory"), data: data.theorySet });
-			}
-			if (data.flashcardSet) {
-				setFlashcardSet(data.flashcardSet);
-				await db.put("data", { id: getUIDBKey("flashcards"), data: data.flashcardSet });
-			}
-			if (data.quizSet) {
-				setQuizSet(data.quizSet);
-				await db.put("data", { id: getUIDBKey("quiz"), data: data.quizSet });
-			}
-			if (data.quizState) {
-				setQuizState(data.quizState);
-				await db.put("data", { id: getUIDBKey("quizState"), data: data.quizState });
-			}
-			if (data.flashcardState) {
-				setFlashcardState(data.flashcardState);
-				await db.put("data", { id: getUIDBKey("flashcardState"), data: data.flashcardState });
-			}
-			if (data.theoryState) {
-				setTheoryState(data.theoryState);
-				await db.put("data", { id: getUIDBKey("theoryState"), data: data.theoryState });
-			}
-		});
-
-		return () => unsubscribe();
-	}, [user, getUIDBKey]);
-
-
-	// Firestore listener for real-time generation updates
-	useEffect(() => {
-		if (USE_MOCK_DATA) return;
-		if (!generationJobId || !db || !user) {
-			if (generationStatus) setGenerationStatus(null);
-			return;
-		}
-	
-		const unsubscribe = onSnapshot(
-			doc(db, "generationJobs", generationJobId),
-			async (doc) => {
-				if (!doc.exists()) {
-					console.warn(`Job ${generationJobId} not found in Firestore.`);
-					return;
-				}
-	
-				const jobData = doc.data() as GenerationJob;
-				if (!isMountedRef.current) return;
-	
-				setGenerationStatus(jobData.statusMessage);
-	
-				const learningDocRef = getLearningDocRef(user.uid);
-
-				// Update data incrementally in Firestore, which will trigger the main listener
-				if (jobData.theorySet && JSON.stringify(jobData.theorySet) !== JSON.stringify(theorySet)) {
-					await updateDoc(learningDocRef, { theorySet: jobData.theorySet });
-				}
-				if (jobData.flashcardSet && JSON.stringify(jobData.flashcardSet) !== JSON.stringify(flashcardSet)) {
-					await updateDoc(learningDocRef, { flashcardSet: jobData.flashcardSet });
-				}
-				if (jobData.quizSet && JSON.stringify(jobData.quizSet) !== JSON.stringify(quizSet)) {
-					await updateDoc(learningDocRef, { quizSet: jobData.quizSet });
-				}
-	
-				if (jobData.status === "completed") {
-					toast({
-						title: "Hoàn tất!",
-						description: "Tất cả nội dung cho chủ đề đã được tạo.",
-					});
-					setGenerationJobId(null);
-					setGenerationStatus(null);
-					await updateDoc(learningDocRef, { generationJobId: null });
-				} else if (jobData.status === "failed") {
-					toast({
-						title: "Lỗi tạo nội dung",
-						description: jobData.error || "Đã xảy ra lỗi không xác định.",
-						variant: "destructive",
-					});
-					setGenerationJobId(null);
-					setGenerationStatus(null);
-					await updateDoc(learningDocRef, { generationJobId: null });
-				}
-			}
-		);
-	
-		return () => unsubscribe();
-	}, [generationJobId, user]);
-
-
-	// --- Data Handling Callbacks ---
-	const handleClearLearningData = useCallback(async () => {
-		if (USE_MOCK_DATA) {
-			toast({ title: "Chế độ Mock", description: "Không thể xóa dữ liệu trong chế độ mock." });
-			return;
-		}
-		if (!user) return;
-		const db = await getDb();
-		const keysToDelete: DataKey[] = [
-			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
-			"theory", "theoryState", "theoryChapterIndex", "generationJobId"
-		];
-		const userKeysToDelete = keysToDelete.map(key => getUIDBKey(key));
-
-		const tx = db.transaction("data", "readwrite");
-		const store = tx.objectStore("data");
-		await Promise.all(userKeysToDelete.map(key => store.delete(key)));
-		await tx.done;
-
-		// Reset Firestore document
-		await setDoc(getLearningDocRef(user.uid), {
-			topic, // keep current settings
-			language,
-			model,
-		}, { merge: false }); // `merge: false` overwrites the document
-
-		// Reset state in memory
-		setFlashcardSet(null)
-		setFlashcardState({ understoodIndices: [] })
-		setFlashcardIndex(0)
-		setQuizSet(null)
-		setQuizState({ currentQuestionIndex: 0, answers: {} })
-		setCurrentQuestionIndex(0)
-		setTheorySet(null)
-		setTheoryState({ understoodIndices: [] })
-		setTheoryChapterIndex(0)
-		setGenerationJobId(null);
-    	setGenerationStatus(null);
-		setShowFlashcardSummary(false)
-		setShowQuizSummary(false)
-		setShowTheorySummary(false)
-
-		toast({
-			title: "Đã xóa dữ liệu học tập",
-			description:
-				"Toàn bộ dữ liệu học tập cho chủ đề cũ đã được xóa.",
-		})
-	}, [toast, user, getUIDBKey, topic, language, model]);
-
+	// Load initial data from Firebase
 	const loadInitialData = useCallback(async () => {
-		if (USE_MOCK_DATA) {
-			setTopic(MOCK_TOPIC);
-			setTheorySet(MOCK_THEORY_SET);
-			setFlashcardSet(MOCK_CARD_SET);
-			setQuizSet(MOCK_QUIZ_SET);
-			setQuizState({ currentQuestionIndex: 0, answers: {} });
-			setFlashcardState({ understoodIndices: [] });
-			setTheoryState({ understoodIndices: [] });
-			setHasCompletedOnboarding(true);
-			return;
-		}
+		if (!user?.uid) return
 
-		if (!user) {
-			// If no user, reset all learning state
-			setFlashcardSet(null);
-			setQuizSet(null);
-			setTheorySet(null);
-			setFlashcardState({ understoodIndices: [] });
-			setQuizState({ currentQuestionIndex: 0, answers: {} });
-			setTheoryState({ understoodIndices: [] });
-			setFlashcardIndex(0);
-			setCurrentQuestionIndex(0);
-			setTheoryChapterIndex(0);
-			setTopic("Lịch sử La Mã");
-			setLanguage("Vietnamese");
-			setModel("gemini-2.5-flash-lite");
-			setGenerationJobId(null);
-			setGenerationStatus(null);
-			return;
-		};
-		// Load from cache first for instant UI
-		const db = await getDb()
-		const [
-			savedViewRes,
-			savedTopicRes,
-			savedLanguageRes,
-			savedModelRes,
-			flashcardDataRes,
-			quizDataRes,
-			theoryDataRes,
-			jobIdRes,
-		] = await Promise.all([
-			db.get("data", getUIDBKey("view")),
-			db.get("data", getUIDBKey("topic")),
-			db.get("data", getUIDBKey("language")),
-			db.get("data", getUIDBKey("model")),
-			db.get("data", getUIDBKey("flashcards")),
-			db.get("data", getUIDBKey("quiz")),
-			db.get("data", getUIDBKey("theory")),
-			db.get("data", getUIDBKey("generationJobId")),
-		])
+		try {
+			setIsLoading(true)
 
-		// Settings are still loaded from IndexedDB for persistence across sessions
-		if(savedViewRes?.data) setView(savedViewRes.data);
-		if(savedTopicRes?.data) setTopic(savedTopicRes.data);
-		if(savedLanguageRes?.data) setLanguage(savedLanguageRes.data);
-		if(savedModelRes?.data) setModel(savedModelRes.data);
+			// Load from Firebase
+			const [
+				savedView,
+				savedTopic,
+				savedLanguage,
+				savedModel,
+				savedFlashcards,
+				savedQuiz,
+				savedTheory,
+				savedFlashcardState,
+				savedQuizState,
+				savedTheoryState,
+				savedFlashcardIndex,
+				savedCurrentQuestionIndex,
+				savedTheoryChapterIndex,
+			] = await Promise.all([
+				getData("view") as Promise<"flashcards" | "quiz" | "theory" | null>,
+				getData("topic") as Promise<string | null>,
+				getData("language") as Promise<string | null>,
+				getData("model") as Promise<string | null>,
+				getData("flashcards") as Promise<CardSet | null>,
+				getData("quiz") as Promise<QuizSet | null>,
+				getData("theory") as Promise<TheorySet | null>,
+				getData("flashcardState") as Promise<FlashcardState | null>,
+				getData("quizState") as Promise<QuizState | null>,
+				getData("theoryState") as Promise<TheoryState | null>,
+				getData("flashcardIndex") as Promise<number | null>,
+				getData("currentQuestionIndex") as Promise<number | null>,
+				getData("theoryChapterIndex") as Promise<number | null>,
+			])
 
-		// Learning content is also loaded from cache for speed, but will be overwritten by Firestore listener
-		if(flashcardDataRes?.data) setFlashcardSet(flashcardDataRes.data);
-		if(quizDataRes?.data) setQuizSet(quizDataRes.data);
-		if(theoryDataRes?.data) setTheorySet(theoryDataRes.data);
+			// Set state from Firebase data
+			if (savedView) setView(savedView)
+			if (savedTopic) setTopic(savedTopic)
+			if (savedLanguage) setLanguage(savedLanguage)
+			if (savedModel) setModel(savedModel)
+			if (savedFlashcards) setFlashcardSet(savedFlashcards)
+			if (savedQuiz) setQuizSet(savedQuiz)
+			if (savedTheory) setTheorySet(savedTheory)
+			if (savedFlashcardState) setFlashcardState(savedFlashcardState)
+			if (savedQuizState) setQuizState(savedQuizState)
+			if (savedTheoryState) setTheoryState(savedTheoryState)
+			if (savedFlashcardIndex !== null) setFlashcardIndex(savedFlashcardIndex)
+			if (savedCurrentQuestionIndex !== null) setCurrentQuestionIndex(savedCurrentQuestionIndex)
+			if (savedTheoryChapterIndex !== null) setTheoryChapterIndex(savedTheoryChapterIndex)
 
-		// Check Firestore for a running job that might have been missed
-		const learningDoc = await getDoc(getLearningDocRef(user.uid));
-		const firestoreJobId = learningDoc.data()?.generationJobId;
-		if (firestoreJobId) {
-			setGenerationJobId(firestoreJobId);
-		} else if (jobIdRes?.data) {
-			setGenerationJobId(jobIdRes.data)
-		}
-
-	}, [user, getUIDBKey, setHasCompletedOnboarding]);
-
-	// --- AI Generation Callbacks ---
-	const handleCloneTopic = useCallback(async (publicTopicId: string) => {
-		if (USE_MOCK_DATA) {
-			toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
-			return;
-		}
-		if (!user) {
-			throw new Error("Bạn phải đăng nhập để tải về chủ đề.");
-		}
-		
-		await api.clonePublicTopic({ publicTopicId });
-		
-		// The onSnapshot listener will automatically pick up the new data
-		// once the backend function updates the user's learningData document.
-		// We just need to mark onboarding as complete.
-		const clonedTopicDoc = await getDoc(getLearningDocRef(user.uid));
-		const clonedData = clonedTopicDoc.data();
-
-		if (clonedData) {
-			onOnboardingComplete(clonedData.topic, clonedData.language, clonedData.model);
+		} catch (error) {
+			console.error("Error loading learning data:", error)
 			toast({
-				title: "Tải về thành công!",
-				description: `Bạn có thể bắt đầu học chủ đề "${clonedData.topic}".`
-			});
+				title: "Lỗi tải dữ liệu",
+				description: "Không thể tải dữ liệu học tập.",
+				variant: "destructive",
+			})
+		} finally {
+			setIsLoading(false)
 		}
-	}, [user, onOnboardingComplete, toast]);
-	
-	const handleGenerate = useCallback(
-		async (options: GenerateOptions) => {
-			if (USE_MOCK_DATA) {
-				toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
-				return;
-			}
-			const { forceNew, personalization } = options;
-	
-			if (!topic.trim()) {
-				toast({
-					title: "Chủ đề trống",
-					description: "Vui lòng nhập một chủ đề để bắt đầu tạo.",
-					variant: "destructive",
-				});
-				return;
-			}
-			if (!user) {
-				toast({
-					title: "Yêu cầu đăng nhập",
-					description: "Bạn cần đăng nhập để tạo nội dung.",
-					variant: "destructive",
-				});
-				return;
-			}
-			if (generationJobId) {
-				toast({
-					title: "Đang tạo...",
-					description: `Một quá trình tạo nội dung khác đang chạy.`,
-				});
-				return;
-			}
-	
-			if (forceNew) {
-				await handleClearLearningData();
-			}
-	
-			setIsLoading(true);
-	
-			try {
-				const apiInput = {
-					topic,
-					language,
-					knowledgeLevel: personalization?.knowledgeLevel ?? 'beginner',
-					learningGoal: personalization?.learningGoal ?? 'overview',
-					learningStyle: personalization?.learningStyle ?? 'reading',
-					tone: personalization?.tone ?? 'casual',
-				};
-	
-				const { jobId } = await api.startGenerationJob(apiInput);
-	
-				if (!jobId) {
-					throw new Error("Backend did not return a job ID.");
-				}
-				
-				if (isMountedRef.current) {
-					setGenerationJobId(jobId);
-					await updateDoc(getLearningDocRef(user.uid), { generationJobId: jobId });
-					const db = await getDb();
-					await db.put("data", { id: getUIDBKey("generationJobId"), data: jobId });
-				}
-	
-			} catch (error: any) {
-				console.error("🚫 Lỗi bắt đầu quá trình tạo:", error);
-				toast({
-					title: "Lỗi khởi tạo",
-					description: `Không thể bắt đầu quá trình tạo: ${error.message}.`,
-					variant: "destructive",
-				});
-				if (isMountedRef.current) {
-					setGenerationJobId(null);
-					setGenerationStatus(null);
-				}
-			} finally {
-				if (isMountedRef.current) setIsLoading(false);
-			}
-		},
-		[toast, topic, language, handleClearLearningData, user, getUIDBKey, generationJobId]
-	);
+	}, [user?.uid, getData, toast])
 
-	const handleGeneratePodcastForChapter = useCallback(
-		async (chapterIndex: number) => {
-			if (USE_MOCK_DATA) {
-				toast({ title: "Chế độ Mock", description: "Tính năng này không khả dụng trong chế độ mock." });
-				return;
-			}
-			if (!user) return;
-			if (!theorySet || !theorySet.chapters[chapterIndex]?.content) {
-				toast({
-					title: "Thiếu nội dung",
-					description: "Cần có nội dung lý thuyết để tạo podcast.",
-					variant: "destructive",
-				})
-				return
-			}
-			if (isGeneratingRef.current || isGeneratingPodcast) {
-				toast({
-					title: "Đang bận",
-					description: "Một quá trình tạo khác đang chạy.",
-					variant: "destructive",
-				})
-				return
-			}
+	// Load data when user is available
+	useEffect(() => {
+		if (user !== undefined) {
+			loadInitialData()
+		}
+	}, [user, loadInitialData])
 
-			setIsGeneratingPodcast(true)
-			isGeneratingRef.current = true
-			
-			const chapter = theorySet.chapters[chapterIndex]
-			const learningDocRef = getLearningDocRef(user.uid);
+	// Save functions
+	const saveView = useCallback(async (newView: "flashcards" | "quiz" | "theory") => {
+		try {
+			await saveData("view", newView)
+		} catch (error) {
+			console.error("Error saving view:", error)
+		}
+	}, [saveData])
 
-			try {
-				let tempTheorySet = { ...theorySet };
-				if (!chapter.podcastScript) {
-					const scriptResult = await api.generatePodcastScript({ topic, chapterTitle: chapter.title, theoryContent: chapter.content!, language });
-					if (!scriptResult?.script) throw new Error("Không thể tạo kịch bản podcast.");
-					tempTheorySet.chapters[chapterIndex].podcastScript = scriptResult.script;
-				}
-				if (!chapter.audioDataUri) {
-					const audioResult = await api.generateAudio({ script: tempTheorySet.chapters[chapterIndex].podcastScript! });
-					if (!audioResult?.audioDataUri) throw new Error("Không thể tạo file âm thanh podcast.");
-					tempTheorySet.chapters[chapterIndex].audioDataUri = audioResult.audioDataUri;
-				}
+	const saveSettings = useCallback(async (settings: { topic: string; language: string; model: string }) => {
+		try {
+			await saveMultipleData({
+				topic: settings.topic,
+				language: settings.language,
+				model: settings.model,
+			})
+		} catch (error) {
+			console.error("Error saving settings:", error)
+			toast({
+				title: "Lỗi lưu cài đặt",
+				description: "Không thể lưu cài đặt học tập.",
+				variant: "destructive",
+			})
+		}
+	}, [saveMultipleData, toast])
 
-				await updateDoc(learningDocRef, { theorySet: tempTheorySet });
-				toast({ title: "Hoàn tất!", description: `Podcast cho chương "${chapter.title}" đã được tạo.` });
-
-			} catch (error: any) {
-				console.error(`🚫 Lỗi tạo podcast cho chương ${chapterIndex}:`, error);
-				toast({ title: "Lỗi không xác định", description: `Đã xảy ra lỗi: ${error.message}.`, variant: "destructive", });
-			} finally {
-				setIsGeneratingPodcast(false)
-				isGeneratingRef.current = false
-			}
-		},
-		[ theorySet, topic, language, isGeneratingPodcast, toast, user ]
-	);
-
-	// --- Settings Callbacks ---
-
-	const onSettingsSave = useCallback(
-		async (settings: {
-			topic: string
-			language: string
-			model: string
-		}) => {
-			if (USE_MOCK_DATA) return;
-			setTopic(settings.topic)
-			setLanguage(settings.language)
-			setModel(settings.model)
-			const db = await getDb()
-			await db.put("data", { id: getUIDBKey("topic"), data: settings.topic })
-			await db.put("data", { id: getUIDBKey("language"), data: settings.language })
-			await db.put("data", { id: getUIDBKey("model"), data: settings.model })
-
-			if (user) {
-				await updateDoc(getLearningDocRef(user.uid), {
-					topic: settings.topic,
-					language: settings.language,
-					model: settings.model,
-				});
-			}
-		},
-		[getUIDBKey, user]
-	)
-
-	// --- Learning UI Callbacks (reordered to fix initialization error) ---
-
-	const onQuizStateChange = useCallback(async (newState: QuizState) => {
-		setQuizState(newState);
-		if (USE_MOCK_DATA || !user) return;
-		await updateDoc(getLearningDocRef(user.uid), { quizState: newState });
-	}, [user]);
-
-	const onFlashcardStateChange = useCallback(
-		async (newState: FlashcardState) => {
-			setFlashcardState(newState);
-			if (USE_MOCK_DATA || !user) return;
-			await updateDoc(getLearningDocRef(user.uid), { flashcardState: newState });
-		},
-		[user]
-	);
-
-	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
-		setTheoryState(newState);
-		if (USE_MOCK_DATA || !user) return;
-		await updateDoc(getLearningDocRef(user.uid), { theoryState: newState });
-	}, [user]);
-
-	const onViewChange = useCallback(
-		async (newView: "flashcards" | "quiz" | "theory") => {
-			if (view === newView) return
-			setView(newView)
-			setShowQuizSummary(false)
-			setShowFlashcardSummary(false)
-			setShowTheorySummary(false)
-			if (USE_MOCK_DATA) return;
-			const db = await getDb()
-			await db.put("data", { id: getUIDBKey("view"), data: newView })
-		},
-		[view, getUIDBKey]
-	);
+	// Event handlers
+	const onViewChange = useCallback(async (newView: "flashcards" | "quiz" | "theory") => {
+		setView(newView)
+		await saveView(newView)
+	}, [saveView])
 
 	const onFlashcardIndexChange = useCallback(async (index: number) => {
 		setFlashcardIndex(index)
-		if (USE_MOCK_DATA) return;
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("flashcardIndex"), data: index })
-	}, [getUIDBKey]);
+		try {
+			await saveData("flashcardIndex", index)
+		} catch (error) {
+			console.error("Error saving flashcard index:", error)
+		}
+	}, [saveData])
 
-	const onCurrentQuestionIndexChange = useCallback(
-		(index: number) => {
-			setCurrentQuestionIndex(index)
-			if (quizState) {
-				const newState = { ...quizState, currentQuestionIndex: index }
-				onQuizStateChange(newState); // This will handle Firestore update
-			}
-		},
-		[quizState, onQuizStateChange]
-	);
+	const onCurrentQuestionIndexChange = useCallback(async (index: number) => {
+		setCurrentQuestionIndex(index)
+		try {
+			await saveData("currentQuestionIndex", index)
+		} catch (error) {
+			console.error("Error saving question index:", error)
+		}
+	}, [saveData])
 
 	const onTheoryChapterIndexChange = useCallback(async (index: number) => {
 		setTheoryChapterIndex(index)
-		if (USE_MOCK_DATA) return;
-		const db = await getDb()
-		await db.put("data", { id: getUIDBKey("theoryChapterIndex"), data: index })
-	}, [getUIDBKey]);
+		try {
+			await saveData("theoryChapterIndex", index)
+		} catch (error) {
+			console.error("Error saving chapter index:", error)
+		}
+	}, [saveData])
+
+	const onQuizStateChange = useCallback(async (newState: QuizState) => {
+		setQuizState(newState)
+		try {
+			await saveData("quizState", newState)
+		} catch (error) {
+			console.error("Error saving quiz state:", error)
+		}
+	}, [saveData])
+
+	const onFlashcardStateChange = useCallback(async (newState: FlashcardState) => {
+		setFlashcardState(newState)
+		try {
+			await saveData("flashcardState", newState)
+		} catch (error) {
+			console.error("Error saving flashcard state:", error)
+		}
+	}, [saveData])
+
+	const onTheoryStateChange = useCallback(async (newState: TheoryState) => {
+		setTheoryState(newState)
+		try {
+			await saveData("theoryState", newState)
+		} catch (error) {
+			console.error("Error saving theory state:", error)
+		}
+	}, [saveData])
 
 	const onQuizReset = useCallback(async () => {
-		const newQuizState: QuizState = { currentQuestionIndex: 0, answers: {} }
-		onQuizStateChange(newQuizState);
-		setCurrentQuestionIndex(0);
-		setShowQuizSummary(false);
-		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại bài trắc nghiệm." });
-	}, [toast, onQuizStateChange]);
+		setQuizState(null)
+		setCurrentQuestionIndex(0)
+		try {
+			await saveMultipleData({
+				quizState: null,
+				currentQuestionIndex: 0,
+			})
+		} catch (error) {
+			console.error("Error resetting quiz:", error)
+		}
+	}, [saveMultipleData])
 
 	const onFlashcardReset = useCallback(async () => {
-		const newFlashcardState: FlashcardState = { understoodIndices: [] }
-		onFlashcardStateChange(newFlashcardState);
-        setShowFlashcardSummary(false);
-		setFlashcardIndex(0);
-		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại bộ thẻ này." });
-	}, [toast, onFlashcardStateChange]);
+		setFlashcardState(null)
+		setFlashcardIndex(0)
+		try {
+			await saveMultipleData({
+				flashcardState: null,
+				flashcardIndex: 0,
+			})
+		} catch (error) {
+			console.error("Error resetting flashcards:", error)
+		}
+	}, [saveMultipleData])
 
 	const onTheoryReset = useCallback(async () => {
-		const newTheoryState: TheoryState = { understoodIndices: [] }
-		onTheoryStateChange(newTheoryState);
-		setShowTheorySummary(false);
-		setTheoryChapterIndex(0);
-		toast({ title: "Bắt đầu lại", description: "Bạn có thể bắt đầu lại phần lý thuyết." });
-	}, [toast, onTheoryStateChange]);
+		setTheoryState(null)
+		setTheoryChapterIndex(0)
+		try {
+			await saveMultipleData({
+				theoryState: null,
+				theoryChapterIndex: 0,
+			})
+		} catch (error) {
+			console.error("Error resetting theory:", error)
+		}
+	}, [saveMultipleData])
 
-	const onGenerate = useCallback(
-		(options: GenerateOptions) => {
-			handleGenerate(options)
-		},
-		[handleGenerate]
-	);
+	const onSettingsSave = useCallback(async (settings: { topic: string; language: string; model: string }) => {
+		setTopic(settings.topic)
+		setLanguage(settings.language)
+		setModel(settings.model)
+		await saveSettings(settings)
+	}, [saveSettings])
+
+	// Generation handlers
+	const handleGenerate = useCallback(async (options: GenerateOptions) => {
+		if (!topic || !language || !model) {
+			toast({
+				title: "Thiếu thông tin",
+				description: "Vui lòng hoàn thành thiết lập trước khi tạo nội dung.",
+				variant: "destructive",
+			})
+			return
+		}
+
+		try {
+			setIsLoading(true)
+			
+			// Call API to start generation job
+			const response = await api.startGenerationJob({
+				topic,
+				language,
+				knowledgeLevel: options.personalization?.knowledgeLevel || "intermediate",
+				learningGoal: options.personalization?.learningGoal || "general",
+				learningStyle: options.personalization?.learningStyle || "visual",
+				tone: options.personalization?.tone || "friendly",
+			})
+
+			setGenerationJobId(response.jobId)
+			setGenerationStatus("processing")
+
+			// Poll for job completion
+			const pollInterval = setInterval(async () => {
+				try {
+					const statusResponse = await api.getJobStatus(response.jobId)
+					setGenerationStatus(statusResponse.data.status)
+
+					if (statusResponse.data.status === "completed" && statusResponse.data.result) {
+						clearInterval(pollInterval)
+						
+						// Save generated content to Firebase
+						await saveMultipleData({
+							flashcards: statusResponse.data.result.flashcards,
+							quiz: statusResponse.data.result.quiz,
+							theory: statusResponse.data.result.theory,
+						})
+
+						// Update local state
+						setFlashcardSet(statusResponse.data.result.flashcards)
+						setQuizSet(statusResponse.data.result.quiz)
+						setTheorySet(statusResponse.data.result.theory)
+
+						toast({
+							title: "Tạo nội dung thành công",
+							description: "Nội dung học tập đã được tạo.",
+						})
+						
+						setIsLoading(false)
+					} else if (statusResponse.data.status === "failed") {
+						clearInterval(pollInterval)
+						setIsLoading(false)
+						toast({
+							title: "Lỗi tạo nội dung",
+							description: statusResponse.data.error || "Không thể tạo nội dung học tập.",
+							variant: "destructive",
+						})
+					}
+				} catch (error) {
+					console.error("Error polling job status:", error)
+				}
+			}, 2000)
+
+		} catch (error) {
+			console.error("Error generating content:", error)
+			setIsLoading(false)
+			toast({
+				title: "Lỗi tạo nội dung",
+				description: "Không thể bắt đầu tạo nội dung học tập.",
+				variant: "destructive",
+			})
+		}
+	}, [topic, language, model, saveMultipleData, toast])
+
+	const handleGeneratePodcastForChapter = useCallback(async (chapterIndex: number) => {
+		if (!theorySet?.chapters[chapterIndex]) {
+			toast({
+				title: "Lỗi",
+				description: "Chương không tồn tại.",
+				variant: "destructive",
+			})
+			return
+		}
+
+		const chapter = theorySet.chapters[chapterIndex]
+		if (!chapter.content) {
+			toast({
+				title: "Lỗi",
+				description: "Nội dung chương không có sẵn.",
+				variant: "destructive",
+			})
+			return
+		}
+
+		try {
+			setIsGeneratingPodcast(true)
+			
+			// Call API to generate podcast script
+			const response = await api.generatePodcastScript({
+				topic,
+				chapterTitle: chapter.title,
+				theoryContent: chapter.content,
+				language,
+			})
+
+			// The podcast script API returns immediately with the script
+			toast({
+				title: "Podcast script đã sẵn sàng",
+				description: "Script podcast cho chương này đã được tạo.",
+			})
+			
+			setIsGeneratingPodcast(false)
+
+		} catch (error) {
+			console.error("Error generating podcast:", error)
+			setIsGeneratingPodcast(false)
+			toast({
+				title: "Lỗi tạo podcast",
+				description: "Không thể tạo podcast script.",
+				variant: "destructive",
+			})
+		}
+	}, [theorySet, language, toast])
+
+	const handleCloneTopic = useCallback(async (publicTopicId: string) => {
+		try {
+			setIsLoading(true)
+			
+			const response = await api.clonePublicTopic({ publicTopicId })
+			
+			toast({
+				title: "Sao chép thành công",
+				description: response.message || "Chủ đề đã được sao chép vào tài khoản của bạn.",
+			})
+
+		} catch (error) {
+			console.error("Error cloning topic:", error)
+			toast({
+				title: "Lỗi sao chép",
+				description: "Không thể sao chép chủ đề.",
+				variant: "destructive",
+			})
+		} finally {
+			setIsLoading(false)
+		}
+	}, [toast])
+
+	const handleClearLearningData = useCallback(async () => {
+		try {
+			const learningKeys = [
+				"flashcards", "flashcardState", "flashcardIndex", 
+				"quiz", "quizState", "currentQuestionIndex",
+				"theory", "theoryState", "theoryChapterIndex", 
+				"topic", "language", "model", "view"
+			]
+
+			// Clear data from Firebase
+			await saveMultipleData(Object.fromEntries(learningKeys.map(key => [key, null])))
+
+			// Reset local state
+			setFlashcardSet(null)
+			setQuizSet(null)
+			setTheorySet(null)
+			setFlashcardState(null)
+			setQuizState(null)
+			setTheoryState(null)
+			setFlashcardIndex(0)
+			setCurrentQuestionIndex(0)
+			setTheoryChapterIndex(0)
+			setTopic("")
+			setLanguage("")
+			setModel("")
+			setView("flashcards")
+
+			toast({
+				title: "Đã xóa dữ liệu",
+				description: "Tất cả dữ liệu học tập đã được xóa.",
+			})
+
+		} catch (error) {
+			console.error("Error clearing learning data:", error)
+			toast({
+				title: "Lỗi xóa dữ liệu",
+				description: "Không thể xóa dữ liệu học tập.",
+				variant: "destructive",
+			})
+		}
+	}, [saveMultipleData, toast])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (pollingIntervalRef.current) {
+				clearInterval(pollingIntervalRef.current)
+			}
+		}
+	}, [])
 
 	const value: LearningContextType = {
-		isLoading,
+		// State
+		isLoading: isLoading || dataLoading,
 		isGeneratingPodcast,
 		generationJobId,
 		generationStatus,
+
+		// Learning State
 		view,
 		topic,
 		language,
 		model,
+
+		// Datasets
 		flashcardSet,
 		quizSet,
 		theorySet,
+
+		// UI State
 		quizState,
 		flashcardState,
 		theoryState,
@@ -702,6 +575,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		showQuizSummary,
 		showFlashcardSummary,
 		showTheorySummary,
+
+		// Handlers
 		onViewChange,
 		onFlashcardIndexChange,
 		onCurrentQuestionIndexChange,
@@ -719,7 +594,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
 		onTheoryReset,
 		onSettingsSave,
 		handleClearLearningData,
-		onGenerate,
+		onGenerate: handleGenerate,
 		handleCloneTopic,
 	}
 

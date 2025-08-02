@@ -4,6 +4,7 @@
 
 import React, { useRef, useMemo, ReactNode } from "react"
 import { AppProvider, useAppContext } from "@/contexts/AppContext"
+import { Login } from "@/components/Login"
 import LeftColumn from "@/components/LeftColumn"
 import RightColumn from "@/components/RightColumn"
 import {
@@ -27,6 +28,8 @@ import { Settings } from "@/components/Settings"
 function HomePageContent() {
 	const { 
 		isMounted, 
+		user,
+		loading,
 		backgroundImage, 
 		visibility, 
 		onVisibilityChange,
@@ -223,6 +226,20 @@ function HomePageContent() {
 
 	if (!isMounted) {
 		return null
+	}
+
+	// Show loading while checking authentication
+	if (loading) {
+		return (
+			<div className="min-h-screen w-full flex items-center justify-center">
+				<div className="text-lg">Đang tải...</div>
+			</div>
+		)
+	}
+
+	// Show login screen if user is not authenticated
+	if (!user) {
+		return <Login />
 	}
 
 	return (

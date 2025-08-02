@@ -11,8 +11,9 @@ import React, {
 	ReactNode,
 } from "react"
 import { useToast, clearAllToastTimeouts } from "@/hooks/use-toast"
-import { getDb, DataKey, closeDb } from "@/lib/idb"
 import { useAuthContext } from "./AuthContext"
+import { useFirebaseData } from "@/hooks/use-firebase-data"
+import { getFirestore, doc, deleteDoc } from "firebase/firestore"
 
 export interface ComponentVisibility {
 	home: boolean
@@ -30,6 +31,7 @@ interface SettingsContextType {
 	visibility: ComponentVisibility
 	hasCompletedOnboarding: boolean
 	uploadedBackgrounds: string[]
+	isLoading: boolean
 	onClearAllData: () => void
 	onVisibilityChange: (visibility: ComponentVisibility) => void
 	onBackgroundChange: (background: string | null) => void
@@ -72,9 +74,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
 	const { toast } = useToast()
 
-	const getUIDBKey = useCallback((key: string) => {
-		return `${user?.uid || 'guest'}-${key}`;
-	}, [user]);
+	const { saveData, getData, saveMultipleData, isLoading } = useFirebaseData();
 
 
 	useEffect(() => {
@@ -90,48 +90,57 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	}, [user])
 
 	const loadInitialData = useCallback(async () => {
-		if (!isMounted) return;
+		if (!isMounted || !user?.uid) return;
 
-		const db = await getDb()
+		try {
+			const [
+				savedVisibility,
+				savedBg,
+				savedUploadedBgs,
+				onboardingCompleted,
+			] = await Promise.all([
+				getData("visibility") as Promise<ComponentVisibility | null>,
+				getData("background") as Promise<string | null>,
+				getData("uploadedBackgrounds") as Promise<string[] | null>,
+				getData("hasCompletedOnboarding") as Promise<boolean | null>,
+			])
 
-		const [
-			savedVisibilityRes,
-			savedBgRes,
-			savedUploadedBgsRes,
-			onboardingStatusRes,
-		] = await Promise.all([
-			db.get("data", getUIDBKey("visibility")),
-			db.get("data", getUIDBKey("background")),
-			db.get("data", getUIDBKey("uploadedBackgrounds")),
-			db.get("data", getUIDBKey("hasCompletedOnboarding")),
-		])
-
-		const savedVisibility = savedVisibilityRes?.data as ComponentVisibility
-		const savedBg = savedBgRes?.data as string
-		const savedUploadedBgs = (savedUploadedBgsRes?.data as string[]) || []
-		const onboardingCompleted =
-			(onboardingStatusRes?.data as boolean) || false
-
-		setHasCompletedOnboarding(onboardingCompleted)
-		if (savedBg) setBackgroundImage(savedBg)
-		setUploadedBackgrounds(savedUploadedBgs)
-		if (savedVisibility) setVisibility(savedVisibility)
-	}, [isMounted, getUIDBKey])
+			setHasCompletedOnboarding(onboardingCompleted || false)
+			if (savedBg) setBackgroundImage(savedBg)
+			setUploadedBackgrounds(savedUploadedBgs || [])
+			if (savedVisibility) setVisibility(savedVisibility)
+		} catch (error) {
+			console.error("Error loading initial data:", error)
+			toast({
+				title: "Lỗi tải dữ liệu",
+				description: "Không thể tải cài đặt của bạn.",
+				variant: "destructive",
+			})
+		}
+	}, [isMounted, user?.uid, getData, toast])
 
 	const onBackgroundChange = useCallback(
 		async (newBg: string | null) => {
 			if (backgroundImage === (newBg ?? "")) return
 
-			const db = await getDb()
-			if (newBg) {
-				setBackgroundImage(newBg)
-				await db.put("data", { id: getUIDBKey("background"), data: newBg })
-			} else {
-				setBackgroundImage("")
-				await db.delete("data", getUIDBKey("background"))
+			try {
+				if (newBg) {
+					setBackgroundImage(newBg)
+					await saveData("background", newBg)
+				} else {
+					setBackgroundImage("")
+					await saveData("background", null)
+				}
+			} catch (error) {
+				console.error("Error saving background:", error)
+				toast({
+					title: "Lỗi lưu cài đặt",
+					description: "Không thể lưu hình nền.",
+					variant: "destructive",
+				})
 			}
 		},
-		[backgroundImage, getUIDBKey]
+		[backgroundImage, saveData, toast]
 	)
 
 	const onUploadedBackgroundsChange = useCallback(
@@ -139,23 +148,36 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			if (uploadedBackgrounds.toString() === newUploadedBgs.toString())
 				return
 
-			setUploadedBackgrounds(newUploadedBgs)
-			const db = await getDb()
-			await db.put("data", {
-				id: getUIDBKey("uploadedBackgrounds"),
-				data: newUploadedBgs,
-			})
+			try {
+				setUploadedBackgrounds(newUploadedBgs)
+				await saveData("uploadedBackgrounds", newUploadedBgs)
+			} catch (error) {
+				console.error("Error saving uploaded backgrounds:", error)
+				toast({
+					title: "Lỗi lưu cài đặt",
+					description: "Không thể lưu hình nền đã tải lên.",
+					variant: "destructive",
+				})
+			}
 		},
-		[uploadedBackgrounds, getUIDBKey]
+		[uploadedBackgrounds, saveData, toast]
 	)
 
 	const onVisibilityChange = useCallback(
 		async (newVisibility: ComponentVisibility) => {
-			setVisibility(newVisibility)
-			const db = await getDb()
-			await db.put("data", { id: getUIDBKey("visibility"), data: newVisibility })
+			try {
+				setVisibility(newVisibility)
+				await saveData("visibility", newVisibility)
+			} catch (error) {
+				console.error("Error saving visibility:", error)
+				toast({
+					title: "Lỗi lưu cài đặt",
+					description: "Không thể lưu cài đặt hiển thị.",
+					variant: "destructive",
+				})
+			}
 		},
-		[getUIDBKey]
+		[saveData, toast]
 	)
 
 	const onOnboardingComplete = useCallback(
@@ -164,58 +186,90 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			finalLanguage: string,
 			finalModel: string
 		) => {
-			// This now also updates the learning context state via its own save function
-			setHasCompletedOnboarding(true)
-			const db = await getDb()
-			await db.put("data", { id: getUIDBKey("topic"), data: finalTopic })
-			await db.put("data", { id: getUIDBKey("language"), data: finalLanguage })
-			await db.put("data", { id: getUIDBKey("model"), data: finalModel })
-			await db.put("data", { id: getUIDBKey("hasCompletedOnboarding"), data: true })
+			try {
+				// This now also updates the learning context state via its own save function
+				setHasCompletedOnboarding(true)
+				await saveMultipleData({
+					topic: finalTopic,
+					language: finalLanguage,
+					model: finalModel,
+					hasCompletedOnboarding: true,
+				})
+			} catch (error) {
+				console.error("Error completing onboarding:", error)
+				toast({
+					title: "Lỗi hoàn thành thiết lập",
+					description: "Không thể lưu cài đặt ban đầu.",
+					variant: "destructive",
+				})
+			}
 		},
-		[getUIDBKey]
+		[saveMultipleData, toast]
 	)
 
 	const onClearAllData = useCallback(async () => {
-		const db = await getDb()
-		const allKeys = await db.getAllKeys("data");
-		const userKeysToDelete = allKeys.filter(key => key.startsWith(user?.uid || 'guest'));
+		if (!user?.uid) return;
 
-		const tx = db.transaction("data", "readwrite")
-		const store = tx.objectStore("data")
-		await Promise.all(userKeysToDelete.map((key) => store.delete(key)))
-		await tx.done
+		try {
+			// Clear all Firebase data for this user
+			const firestore = getFirestore();
+			const userDocRef = doc(firestore, 'users', user.uid);
+			await deleteDoc(userDocRef);
 
-		localStorage.removeItem("newtab-ai-layout-v2")
+			// Clear localStorage as well
+			localStorage.removeItem("newtab-ai-layout-v2")
 
-		// Reload the page to reset all state cleanly
-		window.location.reload()
+			toast({
+				title: "Đã xóa dữ liệu",
+				description: "Toàn bộ dữ liệu ứng dụng của bạn đã được xóa.",
+			})
 
-		toast({
-			title: "Đã xóa dữ liệu",
-			description: "Toàn bộ dữ liệu ứng dụng của bạn đã được xóa.",
-		})
-	}, [toast, user])
+			// Reload the page to reset all state cleanly
+			window.location.reload()
+		} catch (error) {
+			console.error("Error clearing data:", error)
+			toast({
+				title: "Lỗi xóa dữ liệu",
+				description: "Không thể xóa dữ liệu ứng dụng.",
+				variant: "destructive",
+			})
+		}
+	}, [user?.uid, toast])
 
 	const handleResetOnboarding = useCallback(async () => {
-		const db = await getDb()
-		const learningKeys: DataKey[] = [
-			"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
-			"theory", "theoryState", "theoryChapterIndex", "topic", "language",
-			"model", "view", "hasCompletedOnboarding"
-		];
-		const userKeysToDelete = learningKeys.map(key => getUIDBKey(key));
-		
-		const tx = db.transaction("data", "readwrite")
-		const store = tx.objectStore("data")
-		await Promise.all(userKeysToDelete.map((key) => store.delete(key)))
-		await tx.done
+		if (!user?.uid) return;
 
-		setHasCompletedOnboarding(false)
-		window.location.reload()
-	}, [getUIDBKey])
+		try {
+			const learningKeys = [
+				"flashcards", "flashcardState", "flashcardIndex", "quiz", "quizState",
+				"theory", "theoryState", "theoryChapterIndex", "topic", "language",
+				"model", "view", "hasCompletedOnboarding"
+			];
+			
+			// Clear learning-related data from Firebase
+			await saveMultipleData(Object.fromEntries(learningKeys.map(key => [key, null])));
+
+			setHasCompletedOnboarding(false)
+			
+			toast({
+				title: "Đã đặt lại thiết lập",
+				description: "Tiến trình học tập đã được đặt lại.",
+			})
+			
+			window.location.reload()
+		} catch (error) {
+			console.error("Error resetting onboarding:", error)
+			toast({
+				title: "Lỗi đặt lại thiết lập",
+				description: "Không thể đặt lại tiến trình học tập.",
+				variant: "destructive",
+			})
+		}
+	}, [user?.uid, saveMultipleData, toast])
 
 	const value: SettingsContextType = {
 		isMounted,
+		isLoading,
 		backgroundImage,
 		visibility,
 		hasCompletedOnboarding,
